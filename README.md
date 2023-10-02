@@ -17,9 +17,8 @@ Local Navigation Page 是一个基于本地/局域网的导航页应用，旨在
    ```
 
    目录结构
-   ```bash
-  
-├── ._index.html
+```
+HTML 
 ├── CSS
 │   ├── search_input.css
 │   ├── settings_box.css
@@ -32,8 +31,8 @@ Local Navigation Page 是一个基于本地/局域网的导航页应用，旨在
     ├── darkMode.js
     ├── jquery-3.3.1.slim.min.js
     └── main.js
-    ```
-    由于使用了大量的异步处理，和一堆js来处理功能，所以以防代码混淆，对各个功能予以文件区分。
+```
+由于使用了大量的异步处理，和一堆js来处理功能，所以以防代码混淆，对各个功能予以文件区分。
    
 3. **打开导航页**：在浏览器中打开 index.html 文件，或者将其设置为浏览器的默认起始页。
 
@@ -54,7 +53,7 @@ Local Navigation Page 是一个基于本地/局域网的导航页应用，旨在
 <img width="1667" alt="image" src="https://github.com/LceAn/LocalNavigationPage/assets/63484787/7b5b748f-a3e2-427e-b12b-e2bbf2f98ce2">
 
 ## 许可证
-本项目采用 MIT 许可证进行许可 - 有关详细信息，请参阅 LICENSE 文件。
+本项目采用 Apache-2.0 许可证 - 有关详细信息，请参阅 LICENSE 文件。
 
 ## 如何贡献
 如果您想为 Local Navigation Page 贡献代码，欢迎提交拉取请求。如果您遇到问题或有建议，也请提出问题。
