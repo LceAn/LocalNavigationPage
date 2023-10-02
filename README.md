@@ -1,0 +1,2 @@
+# LocalNavigationPage
+基于很多管理URL无法存于云上存在安全隐患，写了一个简单的本地静态导航页
