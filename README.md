@@ -43,6 +43,7 @@ HTML
   >> ~~可惜这也是偏离了简单的初衷，我无法直接看到config信息~~
 
    目前的解决办法是修改`data/Links.json`文件，其中存储了网站信息
+   
    ID:排序，URL:网址，name:网站名称，catrgory:分类组
 ```
 {
@@ -65,6 +66,8 @@ HTML
 <img width="1667" alt="image" src="https://github.com/LceAn/LocalNavigationPage/assets/63484787/2b6853dc-da8a-4462-8e07-460f2c53e963">
 夜间模式
 <img width="1667" alt="image" src="https://github.com/LceAn/LocalNavigationPage/assets/63484787/7b5b748f-a3e2-427e-b12b-e2bbf2f98ce2">
+设置界面
+<img width="1499" alt="image" src="https://github.com/LceAn/LocalNavigationPage/assets/63484787/8b9974a1-0fb7-476b-950b-fc91b961ac77">
 
 ## 许可证
 本项目采用 Apache-2.0 许可证 - 有关详细信息，请参阅 LICENSE 文件。
