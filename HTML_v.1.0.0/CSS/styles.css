@@ -1,0 +1,131 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    text-align: center;
+    transition: background-color 0.3s ease;
+}
+
+ul, h2 {
+	display: flex;
+    list-style: none;
+	text-align: left;
+    padding: 0;
+	margin: 10px 0; /* 设置上下间距，可根据需要调整 */
+}
+
+button {
+    background-color: #007BFF;
+    color: #fff;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.category {
+    margin: 20px 0;
+}
+
+.category h2 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+#link-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    display: block;
+	position: absolute; /* 添加定位属性 */
+	top: 20%; /* 设置距离顶部的距离 */
+}
+
+.link-button {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 10px;
+    background-color: #007BFF;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.link-button:hover {
+    background-color: #0056b3;
+}
+
+.dark-mode {
+    background-color: #000;
+    color: #fff;
+}
+
+/* 公共按钮样式 */
+.button-common {
+    background-color: #007BFF;
+    color: #fff;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.button-common:hover {
+    background-color: #0056b3;
+}
+
+/* 切换模式按钮样式 */
+#toggle-mode {
+    position: absolute;
+    top: 20px;
+    right: 60px;
+}
+
+/* 设置按钮样式 */
+#open-settings {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* 右上角按钮容器 */
+.top-right-buttons {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+
+/* 编辑按钮样式 */
+.edit-button {
+    /* 使用公共按钮样式 */
+}
+
+.edit-button:hover {
+    /* 使用公共按钮样式 */
+}
+
+
+/* 用于消息容器 */
+#message-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    color: black;
+    padding: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    z-index: 99999;
+}

@@ -1,0 +1,79 @@
+
+/* 设置界面样式 */
+#settings-container {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+}
+
+#settings-box {
+    width: 80%;
+    max-width: 600px;
+    margin: 20px auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.settings-list h3,
+.settings-form h3 {
+    text-align: left;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.settings-list ul {
+    display: inline-block;
+    list-style: none;
+    padding: 0;
+}
+
+.settings-list li {
+    margin-bottom: 10px;
+}
+
+.settings-form .form-item {
+    margin-bottom: 10px;
+}
+
+/* 设置界面夜间模式样式 */
+.dark-mode #settings-container {
+    background-color: #333; /* 更暗的背景颜色 */
+    color: #fff; /* 更亮的文本颜色 */
+}
+
+.dark-mode #settings-box {
+    background-color: #444; /* 更暗的设置框背景颜色 */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); /* 更亮的设置框阴影颜色 */
+}
+
+.dark-mode .settings-form h3,
+.dark-mode .settings-list h3 {
+    color: #fff; /* 更亮的标题文本颜色 */
+}
+
+.dark-mode .settings-list ul {
+    list-style: none; /* 移除默认的列表标记点 */
+    padding: 0; /* 移除默认的内边距 */
+}
+
+.dark-mode .settings-list li {
+    margin-bottom: 10px; /* 调整列表项之间的间距 */
+}
+
+.dark-mode .settings-form .form-item {
+    margin-bottom: 10px; /* 调整表单项之间的间距 */
+}
