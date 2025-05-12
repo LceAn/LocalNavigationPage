@@ -1,0 +1,76 @@
+
+#search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc; /* 添加容器的边框样式 */
+    border-radius: 5px;
+    overflow: hidden; /* 隐藏按钮溢出的部分 */
+}
+
+/* 搜索框容器样式 */
+.search-container {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+}
+
+/* 搜索框样式 */
+#search-input {
+	flex: 1; /* 让搜索框自动扩展填满容器剩余空间 */
+    /* flex-grow: 1; */
+    padding: 10px;
+    border: 1px solid #dfe1e5;
+    border-radius: 24px;
+    margin-right: 10px;
+    font-size: 16px;
+    outline: none;/* 移除默认的外边框 */
+    transition: box-shadow 0.3s ease;
+}
+
+/* 搜索按钮容器样式 */
+.search-buttons {
+    display: flex;
+    align-items: center;
+}
+
+/* 搜索按钮样式 */
+.search-button {
+    background-color: #f8f9fa;
+    color: #202124;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 16px;
+    outline: none;
+}
+
+/* 搜索按钮的 hover 样式 */
+.search-button:hover {
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+	outline: none; /* 移除默认的聚焦外边框 */
+    color: #000000;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 搜索框获取焦点时的样式 */
+#search-input:focus {
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}
+
+/* 夜间模式的样式 */
+.dark-mode #search-input {
+    background-color: #333; /* 夜间模式下的背景颜色 */
+    color: #fff; /* 夜间模式下的文本颜色 */
+}
+
+.dark-mode .search-button {
+    background-color: #444; /* 夜间模式下的按钮背景颜色 */
+    color: #fff; /* 夜间模式下的按钮文本颜色 */
+}
+
+/* 夜间模式下的搜索框获取焦点时的样式 */
+.dark-mode #search-input:focus {
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+}

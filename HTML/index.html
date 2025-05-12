@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导航页</title>
+    <link rel="stylesheet" href="css/styles.css">
+	<link rel="stylesheet" href="css/search_input.css">
+	<link rel="stylesheet" href="css/settings_box.css">
+	<script src="js/jquery-3.3.1.slim.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	
+</head>
+
+<body>
+    <!-- 显示闪现消息 -->
+    <div id="message-container"	class="alert alert-success"></div>
+    <!-- 右上角按钮容器 -->
+    <div class="top-right-buttons">
+        <!-- 切换模式按钮 -->
+        <button id="toggle-mode">昼夜</button>
+
+        <!-- 设置按钮 -->
+        <button id="open-settings">设置</button>
+    </div>
+
+    <div class="container">
+        <h1>管理界面总导航</h1>
+		<!-- 搜索框和按钮 -->
+		<div class="search-container">
+			<input type="text" id="search-input" placeholder="输入搜索词">
+			<div class="search-buttons">
+				<button class="search-button" data-engine="百度">百度</button>
+				<button class="search-button" data-engine="Google">谷歌</button>
+				<button class="search-button" data-engine="必应">必应</button>
+			</div>
+		</div>
+        <!-- 动态渲染的链接部分 -->
+        <div id="link-container">
+            <!-- 这里将会动态添加链接 -->
+        </div>
+    </div>
+
+    <!-- 设置界面 -->
+    <div id="settings-container">
+        <div id="settings-box">
+            <div class="settings-header">
+                <h2>设置</h2>
+                <button id="close-settings">关闭</button>
+            </div>
+            <div class="settings-form">
+                <h3>添加/编辑链接</h3>
+				<form id="settings-form">
+					<!-- 编辑表单，初始状态为隐藏 -->
+					<div id="edit-form" style="display: none;">
+						<div class="form-item">
+							<label for="edit-name">名称：</label>
+							<input type="text" id="edit-name" name="edit-name">
+						</div>
+						<div class="form-item">
+							<label for="edit-url">URL：</label>
+							<input type="text" id="edit-url" name="edit-url">
+						</div>
+						<div class="form-item">
+							<label for="edit-category">分类：</label>
+							<input type="text" id="edit-category" name="edit-category">
+						</div>
+						<div class="form-item">
+							<label for="edit-id">ID：</label>
+							<input type="text" id="edit-id" name="edit-id" disabled>
+						</div>
+						<button type="button" id="save-button">保存</button>
+					</div>
+					<!-- 编辑表单结束 -->
+					<div class="form-item">
+						<button type="button" id="edit-link" style="display: none;">编辑</button>
+						<button type="button" id="add-link-button">添加链接</button>
+					</div>
+				</form>
+            </div>
+            <div class="settings-list">
+                <h3>现有链接</h3>
+				<br>
+                <ul id="existing-links">
+                    <!-- 这里显示当前的网址列表 -->
+                </ul>
+            </div>
+        </div>
+    </div>
+	
+<script src="js/main.js"></script>
+<script src="js/darkMode.js"></script>
+</body>
+</html>
