@@ -23,20 +23,78 @@ document.addEventListener("DOMContentLoaded", function () {
 	
 	    // 显示消息容器
 	    messageContainer.style.display = 'block';
+	    
+	    // 淡入效果
+	    setTimeout(() => {
+	        messageContainer.style.opacity = '1';
+	    }, 10);
 	
 	    // 在一定时间后隐藏消息
 	    setTimeout(() => {
 	        hideMessage();
-	    }, 1000); // 2秒后隐藏消息
+	    }, 2000); // 显示2秒
 	}
 	
 	// 函数2：隐藏消息
 	function hideMessage() {
-	    // 隐藏消息容器
-	    messageContainer.style.display = 'none';
+	    // 淡出效果
+	    messageContainer.style.opacity = '0';
+	    
+	    // 完全隐藏
+	    setTimeout(() => {
+	        messageContainer.style.display = 'none';
+	    }, 300);
 	}
 	// 示例用法
 	showMessage('欢迎');
+
+	// 控制搜索框在滚动时的行为
+	const searchContainer = document.querySelector('.search-container');
+	const searchContainerWrapper = document.querySelector('.search-container-wrapper');
+	let searchContainerHeight = searchContainerWrapper.offsetHeight;
+	let searchContainerOffset = searchContainerWrapper.offsetTop;
+	let lastScrollPosition = 0;
+	let ticking = false;
+	
+	// 初始化搜索框位置信息
+	function initSearchContainerPosition() {
+	    searchContainerHeight = searchContainerWrapper.offsetHeight;
+	    searchContainerOffset = searchContainerWrapper.offsetTop;
+	    handleScroll();
+	}
+	
+	// 处理滚动事件
+	function handleScroll() {
+	    const scrollY = window.scrollY || window.pageYOffset;
+	    
+	    // 当滚动超过搜索框位置时添加固定样式
+	    if (scrollY > searchContainerOffset + 50) {
+	        if (!searchContainer.classList.contains('fixed')) {
+	            searchContainer.classList.add('fixed');
+	        }
+	    } else {
+	        searchContainer.classList.remove('fixed');
+	    }
+	    
+	    ticking = false;
+	}
+	
+	// 优化滚动事件处理，减少重绘
+	function requestScrollTick() {
+	    if (!ticking) {
+	        requestAnimationFrame(handleScroll);
+	        ticking = true;
+	    }
+	}
+	
+	// 监听滚动事件
+	window.addEventListener('scroll', requestScrollTick);
+	
+	// 监听窗口大小变化，重新计算位置
+	window.addEventListener('resize', initSearchContainerPosition);
+	
+	// 页面加载后初始化位置
+	window.addEventListener('load', initSearchContainerPosition);
 
 	// 打开设置按钮的事件处理程序
 	const openSettingsButton = document.getElementById('open-settings');
@@ -62,6 +120,8 @@ document.addEventListener("DOMContentLoaded", function () {
 		document.getElementById('edit-name').value = '';
 		document.getElementById('edit-url').value = '';
 		document.getElementById('edit-category').value = '';
+		document.getElementById('edit-tag').value = '';
+		document.getElementById('edit-thumbnail').value = '';
 		document.getElementById('edit-id').value = '';
 	});
 	// 编辑链接按钮的点击事件处理程序
@@ -165,12 +225,46 @@ function renderLinksByCategory(links) {
             // 渲染链接
             categoryLinks.forEach(link => {
                 const linkElement = document.createElement('li');
-                const linkAnchor = document.createElement('a');
-                linkAnchor.setAttribute('class', 'link-button');
-                linkAnchor.setAttribute('href', link.url);
-				linkElement.setAttribute('target', '_blank');
-                linkAnchor.textContent = link.name;
-                linkElement.appendChild(linkAnchor);
+                
+                // 创建卡片链接
+                const linkCard = document.createElement('a');
+                linkCard.setAttribute('class', 'link-card');
+                linkCard.setAttribute('href', link.url);
+                linkCard.setAttribute('target', '_blank');
+                
+                // 添加缩略图背景
+                if (link.thumbnail) {
+                    const thumbnailDiv = document.createElement('div');
+                    thumbnailDiv.className = 'link-card-thumbnail';
+                    thumbnailDiv.style.backgroundImage = `url(${link.thumbnail})`;
+                    linkCard.appendChild(thumbnailDiv);
+                } else {
+                    // 如果没有缩略图，可以动态生成一个
+                    const thumbnailDiv = document.createElement('div');
+                    thumbnailDiv.className = 'link-card-thumbnail';
+                    thumbnailDiv.style.backgroundImage = `url(https://s0.wp.com/mshots/v1/${encodeURIComponent(link.url)}?w=240&h=240)`;
+                    linkCard.appendChild(thumbnailDiv);
+                }
+                
+                // 创建卡片内容区域
+                const cardContent = document.createElement('div');
+                cardContent.setAttribute('class', 'link-card-content');
+                
+                // 创建卡片标题
+                const cardTitle = document.createElement('h3');
+                cardTitle.setAttribute('class', 'link-card-title');
+                cardTitle.textContent = link.name;
+                
+                // 创建卡片标签（左下角）- 使用tag字段而不是category
+                const cardTag = document.createElement('span');
+                cardTag.setAttribute('class', 'link-card-tag');
+                cardTag.textContent = link.tag || ''; // 使用tag字段，如果不存在则显示空字符串
+                
+                // 组装卡片
+                cardContent.appendChild(cardTitle);
+                linkCard.appendChild(cardContent);
+                linkCard.appendChild(cardTag);
+                linkElement.appendChild(linkCard);
                 linkList.appendChild(linkElement);
             });
         }
@@ -242,6 +336,18 @@ function createLinkItem(link) {
 	    document.getElementById('edit-url').value = link.url;
 	    document.getElementById('edit-category').value = link.category;
 	    document.getElementById('edit-id').value = link.ID;
+        
+        // 如果存在标签输入框，则填充标签字段
+        const tagInput = document.getElementById('edit-tag');
+        if (tagInput) {
+            tagInput.value = link.tag || '';
+        }
+        
+        // 如果存在缩略图输入框，则填充缩略图字段
+        const thumbnailInput = document.getElementById('edit-thumbnail');
+        if (thumbnailInput) {
+            thumbnailInput.value = link.thumbnail || '';
+        }
 	
 	    // 保存按钮点击事件处理程序
 	    const saveButton = document.getElementById('save-button');
@@ -251,12 +357,16 @@ function createLinkItem(link) {
 	        const editedUrl = document.getElementById('edit-url').value;
 	        const editedCategory = document.getElementById('edit-category').value;
 	        const editedID = document.getElementById('edit-id').value;
+            const editedTag = document.getElementById('edit-tag') ? document.getElementById('edit-tag').value : '';
+            const editedThumbnail = document.getElementById('edit-thumbnail') ? document.getElementById('edit-thumbnail').value : '';
 	
 	        // 更新链接信息
 	        link.name = editedName;
 	        link.url = editedUrl;
 	        link.category = editedCategory;
 	        link.ID = editedID;
+            link.tag = editedTag;
+            link.thumbnail = editedThumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(editedUrl)}?w=240&h=240`;
 	
 	        // 更新显示的链接文本
 	        linkAnchor.textContent = editedName;
@@ -291,8 +401,24 @@ function createLinkItem(link) {
 // 创建按钮元素
 function createButton(text, className) {
     const button = document.createElement('button');
-    button.textContent = text;
-    button.className = className;
+    
+    if (className === 'edit-button') {
+        button.className = className + ' icon-button';
+        const icon = document.createElement('i');
+        icon.className = 'ri-edit-line';
+        button.appendChild(icon);
+        button.title = '编辑';
+    } else if (className === 'delete-button') {
+        button.className = className + ' icon-button';
+        const icon = document.createElement('i');
+        icon.className = 'ri-delete-bin-line';
+        button.appendChild(icon);
+        button.title = '删除';
+    } else {
+        button.textContent = text;
+        button.className = className;
+    }
+    
     return button;
 }
 

@@ -9,7 +9,8 @@
 	<link rel="stylesheet" href="css/settings_box.css">
 	<script src="js/jquery-3.3.1.slim.min.js"></script>
 	<script src="js/bootstrap.min.js"></script>
-	
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
 </head>
 
 <body>
@@ -18,22 +19,35 @@
     <!-- 右上角按钮容器 -->
     <div class="top-right-buttons">
         <!-- 切换模式按钮 -->
-        <button id="toggle-mode">昼夜</button>
+        <button id="toggle-mode" class="icon-button" title="切换昼夜模式">
+            <i class="ri-sun-line" id="theme-icon"></i>
+        </button>
 
         <!-- 设置按钮 -->
-        <button id="open-settings">设置</button>
+        <button id="open-settings" class="icon-button" title="打开设置">
+            <i class="ri-settings-3-line"></i>
+        </button>
     </div>
 
     <div class="container">
-		<!-- 搜索框和按钮 -->
-		<div class="search-container">
-			<input type="text" id="search-input" placeholder="输入搜索词">
-			<div class="search-buttons">
-				<button class="search-button" data-engine="百度">百度</button>
-				<button class="search-button" data-engine="Google">谷歌</button>
-				<button class="search-button" data-engine="必应">必应</button>
-			</div>
-		</div>
+        <!-- 简洁标题 -->
+        <div class="page-header">
+            <h1>我的导航</h1>
+        </div>
+        
+        <!-- 搜索框容器包装 -->
+        <div class="search-container-wrapper">
+            <!-- 搜索框和按钮 -->
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="输入搜索词">
+                <div class="search-buttons">
+                    <button class="search-button" data-engine="百度">百度</button>
+                    <button class="search-button" data-engine="Google">谷歌</button>
+                    <button class="search-button" data-engine="必应">必应</button>
+                </div>
+            </div>
+        </div>
+        
         <!-- 动态渲染的链接部分 -->
         <div id="link-container">
             <!-- 这里将会动态添加链接 -->
@@ -45,7 +59,9 @@
         <div id="settings-box">
             <div class="settings-header">
                 <h2>设置</h2>
-                <button id="close-settings">关闭</button>
+                <button id="close-settings" class="icon-button">
+                    <i class="ri-close-line"></i>
+                </button>
             </div>
             <div class="settings-form">
                 <h3>添加/编辑链接</h3>
@@ -63,6 +79,14 @@
 						<div class="form-item">
 							<label for="edit-category">分类：</label>
 							<input type="text" id="edit-category" name="edit-category">
+						</div>
+						<div class="form-item">
+							<label for="edit-tag">标签：</label>
+							<input type="text" id="edit-tag" name="edit-tag">
+						</div>
+						<div class="form-item">
+							<label for="edit-thumbnail">缩略图：</label>
+							<input type="text" id="edit-thumbnail" name="edit-thumbnail" placeholder="留空则自动生成">
 						</div>
 						<div class="form-item">
 							<label for="edit-id">ID：</label>
