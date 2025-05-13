@@ -11,9 +11,10 @@
 /* 固定搜索框的容器 */
 .search-container-wrapper {
     position: relative;
-    z-index: 100;
+    z-index: 10;
     padding: 0 20px;
-    transition: all 0.3s ease;
+    transition: transform 0.3s ease;
+    background-color: transparent;
 }
 
 /* 搜索框容器默认样式 */
@@ -24,6 +25,7 @@
     max-width: 650px;
     transition: all 0.3s ease;
     position: relative;
+    background-color: transparent;
 }
 
 /* 搜索框在固定状态下的样式 */
@@ -34,12 +36,14 @@
     right: 0;
     max-width: 100%;
     margin: 0;
-    z-index: 100;
+    z-index: 10;
     flex-direction: row;
     align-items: center;
     padding: 10px 15px;
-    background-color: #ffffff;
+    background-color: var(--bg-color, #ffffff);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(0);
+    opacity: 1;
 }
 
 /* 固定状态下的搜索框样式调整 */
@@ -160,7 +164,7 @@
 
 /* 夜间模式下固定搜索框背景 */
 .dark-mode .search-container.fixed {
-    background-color: #212529;
+    background-color: var(--bg-color, #212529);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 

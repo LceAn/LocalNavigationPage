@@ -299,6 +299,7 @@ li {
     margin-bottom: 5px;
     text-align: center;
     padding: 0 20px;
+    position: relative;
 }
 
 .page-header h1 {
@@ -308,6 +309,32 @@ li {
     margin-top: 20px;
     margin-bottom: 10px;
     letter-spacing: 0.5px;
+}
+
+/* 时间和日期显示样式 */
+.datetime-display {
+    font-size: 14px;
+    color: #8b95a5;
+    font-weight: 400;
+    margin-top: -5px;
+    margin-bottom: 15px;
+    letter-spacing: 0.3px;
+}
+
+.datetime-display .date-separator {
+    margin: 0 6px;
+    opacity: 0.6;
+}
+
+/* 时间显示使用等宽字体 */
+#current-time {
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+}
+
+.dark-mode .datetime-display {
+    color: #768390;
 }
 
 .dark-mode .page-header h1 {
@@ -379,4 +406,138 @@ li {
     .icon-button i {
         font-size: 18px;
     }
+}
+
+/* 分类容器样式 */
+.category-container {
+    margin: 20px 0;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.5);
+    transition: all 0.3s ease;
+}
+
+.category-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.category-header:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.category-header h2 {
+    margin: 0;
+    font-size: 17px;
+    color: #445566;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* 卡片数量标签样式 */
+.card-count {
+    display: inline-block;
+    min-width: 24px;
+    text-align: center;
+    background: #e9ecf3;
+    color: #8b95a5;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 10px;
+    padding: 2px 8px;
+    vertical-align: middle;
+}
+
+.card-count i {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.category-header:hover .card-count {
+    background-color: rgba(91, 124, 170, 0.15);
+}
+
+/* 深色模式样式 */
+.dark-mode .card-count {
+    background: #2c3035;
+    color: #768390;
+}
+
+.dark-mode .category-header:hover .card-count {
+    background-color: rgba(91, 124, 170, 0.25);
+}
+
+.dark-mode .category-container {
+    background-color: rgba(44, 48, 53, 0.5);
+}
+
+.dark-mode .category-header:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .category-header h2 {
+    color: #adbac7;
+}
+
+.dark-mode .toggle-button {
+    color: #768390;
+}
+
+.dark-mode .toggle-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #adbac7;
+}
+
+/* 折叠按钮样式 */
+.toggle-button {
+    background: none;
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    color: #8b95a5;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+}
+
+.toggle-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #5b7caa;
+    transform: none;
+    box-shadow: none;
+}
+
+.toggle-button i {
+    font-size: 20px;
+    transition: transform 0.3s ease;
+}
+
+/* 链接列表样式 */
+.link-list {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px 20px 20px;
+    margin: 0;
+    transition: all 0.3s ease;
+}
+
+/* 折叠状态样式 */
+.category-container.collapsed .link-list {
+    display: none;
+}
+
+.category-container.collapsed .toggle-button i {
+    transform: rotate(-90deg);
 }

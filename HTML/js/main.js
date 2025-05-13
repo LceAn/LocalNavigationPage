@@ -1,6 +1,25 @@
-// main.js
-
 document.addEventListener("DOMContentLoaded", function () {
+    // 更新时间和日期
+	function updateDateTime() {
+		const now = new Date();
+		const timeElement = document.getElementById('current-time');
+		const dateElement = document.getElementById('current-date');
+		// 显示时:分:秒
+		const hours = String(now.getHours()).padStart(2, '0');
+		const minutes = String(now.getMinutes()).padStart(2, '0');
+		const seconds = String(now.getSeconds()).padStart(2, '0');
+		timeElement.textContent = `${hours}:${minutes}:${seconds}`;
+		// 日期
+		const year = now.getFullYear();
+		const month = now.getMonth() + 1;
+		const day = now.getDate();
+		dateElement.textContent = `${year}年${month}月${day}日`;
+	}
+	// 立即更新一次
+	updateDateTime();
+	// 每秒更新一次
+	setInterval(updateDateTime, 1000);
+
     // 获取链接数据并渲染到页面
     fetch('data/links.json')
         .then(response => response.json())
@@ -66,13 +85,24 @@ document.addEventListener("DOMContentLoaded", function () {
 	// 处理滚动事件
 	function handleScroll() {
 	    const scrollY = window.scrollY || window.pageYOffset;
+	    const documentHeight = document.documentElement.scrollHeight;
+	    const windowHeight = window.innerHeight;
 	    
-	    // 当滚动超过搜索框位置时添加固定样式
-	    if (scrollY > searchContainerOffset + 50) {
-	        if (!searchContainer.classList.contains('fixed')) {
-	            searchContainer.classList.add('fixed');
+	    // 检查页面是否有足够的内容可以滚动
+	    const hasScrollableContent = documentHeight > windowHeight;
+	    
+	    // 只有当页面有足够内容可以滚动时，才处理固定定位
+	    if (hasScrollableContent) {
+	        // 当滚动超过搜索框位置时添加固定样式
+	        if (scrollY > searchContainerOffset + 50) {
+	            if (!searchContainer.classList.contains('fixed')) {
+	                searchContainer.classList.add('fixed');
+	            }
+	        } else {
+	            searchContainer.classList.remove('fixed');
 	        }
 	    } else {
+	        // 如果页面内容不足以滚动，移除固定定位
 	        searchContainer.classList.remove('fixed');
 	    }
 	    
@@ -208,66 +238,109 @@ function renderLinksByCategory(links) {
         categories[category].push(link);
     });
 
-    // 渲染链接
+    // 1. 分类内排序
     for (const category in categories) {
-        if (categories.hasOwnProperty(category)) {
-            const categoryLinks = categories[category];
+        categories[category].sort((a, b) => b.ID - a.ID);
+    }
 
-            // 创建分类标题
-            const categoryTitle = document.createElement('h2');
-            categoryTitle.textContent = category;
-            linkContainer.appendChild(categoryTitle);
+    // 2. 分类间排序，得到排序后的分类数组
+    const sortedCategories = Object.entries(categories)
+        .sort((a, b) => {
+            const maxA = Math.max(...a[1].map(link => link.ID));
+            const maxB = Math.max(...b[1].map(link => link.ID));
+            return maxB - maxA;
+        });
 
-            // 创建链接列表
-            const linkList = document.createElement('ul');
-            linkContainer.appendChild(linkList);
+    // 渲染链接，按排序后的分类顺序
+    for (const [category, categoryLinks] of sortedCategories) {
+        // 创建分类容器
+        const categoryContainer = document.createElement('div');
+        categoryContainer.className = 'category-container';
 
-            // 渲染链接
-            categoryLinks.forEach(link => {
-                const linkElement = document.createElement('li');
-                
-                // 创建卡片链接
-                const linkCard = document.createElement('a');
-                linkCard.setAttribute('class', 'link-card');
-                linkCard.setAttribute('href', link.url);
-                linkCard.setAttribute('target', '_blank');
-                
-                // 添加缩略图背景
-                if (link.thumbnail) {
-                    const thumbnailDiv = document.createElement('div');
-                    thumbnailDiv.className = 'link-card-thumbnail';
-                    thumbnailDiv.style.backgroundImage = `url(${link.thumbnail})`;
-                    linkCard.appendChild(thumbnailDiv);
-                } else {
-                    // 如果没有缩略图，可以动态生成一个
-                    const thumbnailDiv = document.createElement('div');
-                    thumbnailDiv.className = 'link-card-thumbnail';
-                    thumbnailDiv.style.backgroundImage = `url(https://s0.wp.com/mshots/v1/${encodeURIComponent(link.url)}?w=240&h=240)`;
-                    linkCard.appendChild(thumbnailDiv);
-                }
-                
-                // 创建卡片内容区域
-                const cardContent = document.createElement('div');
-                cardContent.setAttribute('class', 'link-card-content');
-                
-                // 创建卡片标题
-                const cardTitle = document.createElement('h3');
-                cardTitle.setAttribute('class', 'link-card-title');
-                cardTitle.textContent = link.name;
-                
-                // 创建卡片标签（左下角）- 使用tag字段而不是category
-                const cardTag = document.createElement('span');
-                cardTag.setAttribute('class', 'link-card-tag');
-                cardTag.textContent = link.tag || ''; // 使用tag字段，如果不存在则显示空字符串
-                
-                // 组装卡片
-                cardContent.appendChild(cardTitle);
-                linkCard.appendChild(cardContent);
-                linkCard.appendChild(cardTag);
-                linkElement.appendChild(linkCard);
-                linkList.appendChild(linkElement);
-            });
-        }
+        // 创建分类标题和折叠按钮
+        const categoryHeader = document.createElement('div');
+        categoryHeader.className = 'category-header';
+        
+        const categoryTitle = document.createElement('h2');
+        categoryTitle.textContent = category;
+        
+        // 数量标签
+        const cardCount = document.createElement('span');
+        cardCount.className = 'card-count';
+        cardCount.textContent = categoryLinks.length;
+        
+        const toggleButton = document.createElement('button');
+        toggleButton.className = 'toggle-button';
+        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+        toggleButton.title = '展开/折叠';
+        
+        categoryHeader.appendChild(categoryTitle);
+        categoryHeader.appendChild(cardCount);
+        categoryHeader.appendChild(toggleButton);
+        categoryContainer.appendChild(categoryHeader);
+
+        // 创建链接列表容器
+        const linkList = document.createElement('ul');
+        linkList.className = 'link-list';
+        categoryContainer.appendChild(linkList);
+
+        // 渲染链接
+        categoryLinks.forEach(link => {
+            const linkElement = document.createElement('li');
+            
+            // 创建卡片链接
+            const linkCard = document.createElement('a');
+            linkCard.setAttribute('class', 'link-card');
+            linkCard.setAttribute('href', link.url);
+            linkCard.setAttribute('target', '_blank');
+            
+            // 添加缩略图背景
+            if (link.thumbnail) {
+                const thumbnailDiv = document.createElement('div');
+                thumbnailDiv.className = 'link-card-thumbnail';
+                thumbnailDiv.style.backgroundImage = `url(${link.thumbnail})`;
+                linkCard.appendChild(thumbnailDiv);
+            } else {
+                // 如果没有缩略图，可以动态生成一个
+                const thumbnailDiv = document.createElement('div');
+                thumbnailDiv.className = 'link-card-thumbnail';
+                thumbnailDiv.style.backgroundImage = `url(https://s0.wp.com/mshots/v1/${encodeURIComponent(link.url)}?w=240&h=240)`;
+                linkCard.appendChild(thumbnailDiv);
+            }
+            
+            // 创建卡片内容区域
+            const cardContent = document.createElement('div');
+            cardContent.setAttribute('class', 'link-card-content');
+            
+            // 创建卡片标题
+            const cardTitle = document.createElement('h3');
+            cardTitle.setAttribute('class', 'link-card-title');
+            cardTitle.textContent = link.name;
+            
+            // 创建卡片标签
+            const cardTag = document.createElement('span');
+            cardTag.setAttribute('class', 'link-card-tag');
+            cardTag.textContent = link.tag || '';
+            
+            // 组装卡片
+            cardContent.appendChild(cardTitle);
+            linkCard.appendChild(cardContent);
+            linkCard.appendChild(cardTag);
+            linkElement.appendChild(linkCard);
+            linkList.appendChild(linkElement);
+        });
+
+        // 添加折叠功能
+        toggleButton.addEventListener('click', () => {
+            const isExpanded = linkList.style.display !== 'none';
+            linkList.style.display = isExpanded ? 'none' : 'flex';
+            toggleButton.innerHTML = isExpanded ? 
+                '<i class="ri-arrow-right-s-line"></i>' : 
+                '<i class="ri-arrow-down-s-line"></i>';
+            categoryContainer.classList.toggle('collapsed');
+        });
+
+        linkContainer.appendChild(categoryContainer);
     }
 }
 
