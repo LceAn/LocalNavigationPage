@@ -219,6 +219,65 @@ document.addEventListener("DOMContentLoaded", function () {
 
 	// 这里可以添加其他功能
 	
+	// 置顶按钮功能
+	const backToTopBtn = document.createElement('button');
+	backToTopBtn.id = 'back-to-top';
+	backToTopBtn.className = 'back-to-top';
+	backToTopBtn.title = '回到顶部';
+	backToTopBtn.innerHTML = '<i class="ri-arrow-up-line"></i>';
+	document.body.appendChild(backToTopBtn);
+
+	window.addEventListener('scroll', () => {
+	    if (window.scrollY > 200) {
+	        backToTopBtn.classList.add('show');
+	    } else {
+	        backToTopBtn.classList.remove('show');
+	    }
+	});
+	backToTopBtn.addEventListener('click', () => {
+	    window.scrollTo({ top: 0, behavior: 'smooth' });
+	});
+
+	// 一键收起/展开分组按钮功能
+	const toggleAllGroupsBtn = document.createElement('button');
+	toggleAllGroupsBtn.id = 'toggle-all-groups';
+	toggleAllGroupsBtn.className = 'toggle-all-groups';
+	toggleAllGroupsBtn.title = '一键收起/展开分组';
+	toggleAllGroupsBtn.innerHTML = '<i class="ri-arrow-up-down-line"></i>';
+	document.body.appendChild(toggleAllGroupsBtn);
+
+	let allCollapsed = false;
+	toggleAllGroupsBtn.addEventListener('click', () => {
+	    const groupContainers = document.querySelectorAll('.category-container');
+	    groupContainers.forEach(container => {
+	        const linkList = container.querySelector('.link-list');
+	        const toggleBtn = container.querySelector('.toggle-button');
+	        if (!allCollapsed) {
+	            linkList.style.display = 'none';
+	            toggleBtn.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+	            container.classList.add('collapsed');
+	        } else {
+	            linkList.style.display = 'flex';
+	            toggleBtn.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+	            container.classList.remove('collapsed');
+	        }
+	    });
+	    allCollapsed = !allCollapsed;
+	});
+
+	function updateWeather() {
+		fetch('https://wttr.in/shanghai?format=%C+%t&m')
+			.then(res => res.text())
+			.then(text => {
+				document.getElementById('weather-text').textContent = text.trim();
+			})
+			.catch(() => {
+				document.getElementById('weather-text').textContent = '获取失败';
+			});
+	}
+	// 页面加载时和每30分钟刷新一次
+	updateWeather();
+	setInterval(updateWeather, 1800000);
 });
 
 

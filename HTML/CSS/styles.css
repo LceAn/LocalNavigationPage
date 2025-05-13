@@ -541,3 +541,90 @@ li {
 .category-container.collapsed .toggle-button i {
     transform: rotate(-90deg);
 }
+
+.back-to-top {
+    position: fixed;
+    right: 32px;
+    bottom: 32px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #5b7caa;
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 16px rgba(91,124,170,0.10);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    cursor: pointer;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, background 0.2s;
+}
+.back-to-top:hover {
+    background: #4a6890;
+}
+.back-to-top.show {
+    opacity: 1;
+    pointer-events: auto;
+}
+.dark-mode .back-to-top {
+    background: #2c3035;
+    color: #adbac7;
+}
+.dark-mode .back-to-top:hover {
+    background: #445566;
+}
+
+.toggle-all-groups {
+    position: fixed;
+    left: 32px;
+    bottom: 32px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #5b7caa;
+    color: #fff;
+    border: none;
+    box-shadow: 0 4px 16px rgba(91,124,170,0.10);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    cursor: pointer;
+    z-index: 9999;
+    opacity: 0.85;
+    transition: background 0.2s;
+}
+.toggle-all-groups:hover {
+    background: #4a6890;
+}
+.dark-mode .toggle-all-groups {
+    background: #2c3035;
+    color: #adbac7;
+}
+.dark-mode .toggle-all-groups:hover {
+    background: #445566;
+}
+
+#weather-info {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    color: #8b95a5;
+    margin-left: 8px;
+    font-weight: 400;
+    gap: 4px;
+    opacity: 0.95;
+    transition: color 0.3s;
+}
+#weather-info i {
+    font-size: 16px;
+    margin-right: 2px;
+    vertical-align: middle;
+}
+.dark-mode #weather-info {
+    color: #768390;
+}
