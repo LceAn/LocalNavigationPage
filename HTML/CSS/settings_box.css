@@ -1,226 +1,370 @@
-/* 设置界面样式 */
+/* 设置界面容器 */
 #settings-container {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
     z-index: 1000;
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    animation: fadeIn 0.2s ease-out;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
+/* 设置面板 */
 #settings-box {
-    width: 85%;
-    max-width: 700px;
-    margin: 40px auto;
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    animation: slideDown 0.3s ease-out;
-    max-height: 80vh;
+    background-color: var(--bg-secondary);
+    border-radius: var(--rounded-lg);
+    box-shadow: var(--shadow-lg);
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
     overflow-y: auto;
+    padding: 30px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    animation: slideUp 0.4s ease-out;
+    border: 1px solid rgba(0,0,0,0.04);
 }
 
-@keyframes slideDown {
-    from { transform: translateY(-30px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
+/* 设置头部 */
 .settings-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     padding-bottom: 15px;
-    border-bottom: 1px solid #eaecef;
+    border-bottom: 1px solid var(--primary-light);
 }
 
 .settings-header h2 {
     font-size: 22px;
     font-weight: 600;
-    color: #445566;
+    color: var(--text-primary);
     margin: 0;
 }
 
-.settings-header button {
-    padding: 8px 16px;
+/* 关闭设置按钮 */
+#close-settings {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--rounded-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--secondary-color);
+    font-size: 24px;
+    transition: all var(--transition-fast) ease;
+    background-color: var(--primary-light);
 }
 
-.settings-list h3,
+#close-settings:hover {
+    color: var(--primary-color);
+    transform: rotate(90deg);
+}
+
+/* 设置表单部分 */
+.settings-form {
+    margin-bottom: 30px;
+}
+
 .settings-form h3 {
-    text-align: left;
     font-size: 18px;
     font-weight: 600;
-    margin: 20px 0 15px;
-    color: #445566;
-}
-
-.settings-list ul {
-    display: block;
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.settings-list li {
-    margin-bottom: 15px;
-    padding: 12px 15px;
-    border-radius: 10px;
-    background-color: #f8f9fa;
+    color: var(--text-primary);
+    margin-top: 0;
+    margin-bottom: 20px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 10px;
 }
 
-.settings-list li a {
-    color: #445566;
-    text-decoration: none;
-    font-weight: 500;
+.settings-form h3::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--primary-color);
+    border-radius: var(--rounded-sm);
+    display: inline-block;
 }
 
-.settings-form .form-item {
-    margin-bottom: 15px;
+/* 表单样式 */
+.form-item {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
 }
 
-.settings-form label {
+.form-item label {
     display: block;
     margin-bottom: 8px;
-    font-weight: 500;
-    color: #445566;
-    text-align: left;
-}
-
-.settings-form input {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
     font-size: 14px;
-    box-sizing: border-box;
-    transition: all 0.3s ease;
+    font-weight: 500;
+    color: var(--text-secondary);
 }
 
-.settings-form input:focus {
-    border-color: #5b7caa;
-    box-shadow: 0 0 0 3px rgba(91, 124, 170, 0.15);
+.form-item input {
+    padding: 12px 15px;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: var(--rounded-md);
+    font-size: 15px;
+    transition: all var(--transition-fast) ease;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.form-item input:focus {
     outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
 }
 
-.settings-form button#save-button {
-    background-color: #5b7caa;
-    margin-top: 10px;
-    width: 100%;
-    padding: 12px;
+.form-item input:disabled {
+    background-color: rgba(0,0,0,0.03);
+    color: var(--secondary-color);
+    cursor: not-allowed;
 }
 
-.settings-form button#add-link-button {
-    background-color: #5b7caa;
-    margin-top: 10px;
-    width: 100%;
-    padding: 12px;
+.form-item input::placeholder {
+    color: var(--secondary-color);
+    opacity: 0.6;
 }
 
-/* 设置界面夜间模式样式 */
-.dark-mode #settings-container {
-    background-color: rgba(0, 0, 0, 0.7);
+/* 按钮样式 */
+button[type="button"] {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: var(--rounded-md);
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 15px;
+    transition: all var(--transition-fast) ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-.dark-mode #settings-box {
-    background-color: #2c3035;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+button[type="button"]:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
-.dark-mode .settings-header {
-    border-bottom-color: #3d4249;
+button[type="button"]:active {
+    transform: translateY(0);
 }
 
-.dark-mode .settings-header h2,
-.dark-mode .settings-form h3,
-.dark-mode .settings-list h3 {
-    color: #e9ecef;
+#add-link-button {
+    background-color: var(--primary-color);
 }
 
-.dark-mode .settings-list li {
-    background-color: #343a40;
+#save-button {
+    background-color: #2ecc71;
 }
 
-.dark-mode .settings-list li a {
-    color: #e9ecef;
+#save-button:hover {
+    background-color: #27ae60;
 }
 
-.dark-mode .settings-form label {
-    color: #e9ecef;
+/* 现有链接列表样式 */
+.settings-list {
+    margin-top: 20px;
 }
 
-.dark-mode .settings-form input {
-    background-color: #343a40;
-    border-color: #3d4249;
-    color: #e9ecef;
+.settings-list h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 0;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.dark-mode .settings-form input:focus {
-    border-color: #5b7caa;
-    box-shadow: 0 0 0 3px rgba(91, 124, 170, 0.2);
+.settings-list h3::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--primary-color);
+    border-radius: var(--rounded-sm);
+    display: inline-block;
 }
 
-/* 响应式样式 */
+#existing-links {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(79, 110, 245, 0.2) transparent;
+}
+
+#existing-links::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+#existing-links::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 10px;
+    margin: 5px;
+}
+
+#existing-links::-webkit-scrollbar-thumb {
+    background: rgba(79, 110, 245, 0.2);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    transition: all var(--transition-normal) ease;
+}
+
+#existing-links::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 110, 245, 0.4);
+    background-clip: padding-box;
+}
+
+#existing-links li {
+    padding: 12px 15px;
+    border-radius: var(--rounded-md);
+    background-color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all var(--transition-fast) ease;
+    border: 1px solid rgba(0,0,0,0.04);
+}
+
+#existing-links li:hover {
+    background-color: var(--primary-light);
+    transform: translateX(5px);
+}
+
+#existing-links a {
+    color: var(--text-primary);
+    text-decoration: none;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#existing-links h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 20px 0 10px 0;
+    border-bottom: 1px solid var(--primary-light);
+    padding-bottom: 5px;
+}
+
+/* 编辑和删除按钮样式 */
+.icon-button {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    padding: 0;
+    margin-left: 10px;
+    border-radius: var(--rounded-full);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    border: none;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    transition: all var(--transition-fast) ease;
+    cursor: pointer;
+}
+
+.icon-button:hover {
+    transform: translateY(-2px);
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.edit-button {
+    background-color: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+}
+
+.edit-button:hover {
+    background-color: #3498db;
+    color: white;
+}
+
+.delete-button {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+.delete-button:hover {
+    background-color: #e74c3c;
+    color: white;
+}
+
+/* 响应式设计 */
 @media (max-width: 768px) {
     #settings-box {
-        width: 90%;
+        width: 95%;
         padding: 20px;
-        margin: 20px auto;
+        gap: 20px;
+    }
+    
+    .form-item input {
+        padding: 10px;
+    }
+    
+    button[type="button"] {
+        padding: 10px 20px;
+        font-size: 14px;
     }
     
     .settings-header h2 {
         font-size: 20px;
     }
     
-    .settings-form input {
+    .settings-form h3, .settings-list h3 {
+        font-size: 16px;
+    }
+    
+    #existing-links li {
         padding: 10px;
     }
-}
-
-/* 设置面板中的图标按钮样式 */
-.settings-list .icon-button {
-    width: 36px;
-    height: 36px;
-    margin: 0 5px;
-    background-color: transparent;
-    box-shadow: none;
-}
-
-.settings-list .edit-button {
-    color: #5b7caa;
-}
-
-.settings-list .delete-button {
-    color: #e74c3c;
-}
-
-.settings-list .icon-button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-    transform: translateY(0);
-    box-shadow: none;
-}
-
-.dark-mode .settings-list .icon-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.dark-mode .settings-list .edit-button {
-    color: #6c90c0;
-}
-
-.dark-mode .settings-list .delete-button {
-    color: #e57373;
 }

@@ -10,40 +10,50 @@
 
 /* 固定搜索框的容器 */
 .search-container-wrapper {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto 30px;
     position: relative;
-    z-index: 10;
-    padding: 0 20px;
-    transition: transform 0.3s ease;
-    background-color: transparent;
 }
 
 /* 搜索框容器默认样式 */
 .search-container {
+    background-color: var(--bg-secondary);
+    box-shadow: var(--shadow-md);
+    border-radius: var(--rounded-lg);
+    padding: 8px 15px;
     display: flex;
-    flex-direction: column;
-    margin: 40px auto 30px;
-    max-width: 650px;
-    transition: all 0.3s ease;
-    position: relative;
-    background-color: transparent;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0 auto;
+    max-width: 600px;
+    transition: all var(--transition-fast) ease-out;
+    border: 1px solid rgba(0,0,0,0.04);
 }
 
 /* 搜索框在固定状态下的样式 */
 .search-container.fixed {
     position: fixed;
-    top: 0;
+    top: 15px;
     left: 0;
     right: 0;
-    max-width: 100%;
-    margin: 0;
-    z-index: 10;
-    flex-direction: row;
-    align-items: center;
-    padding: 10px 15px;
-    background-color: var(--bg-color, #ffffff);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin: 0 auto;
+    z-index: 100;
+    max-width: 500px;
     transform: translateY(0);
-    opacity: 1;
+    box-shadow: var(--shadow-lg);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* 固定状态下的搜索框样式调整 */
@@ -86,51 +96,48 @@
 /* 搜索框样式 */
 #search-input {
     flex: 1;
-    padding: 14px 20px;
-    border: 1px solid #e6e8eb;
-    border-radius: 24px;
-    margin-bottom: 16px;
-    font-size: 15px;
+    border: none;
+    padding: 12px 20px;
+    font-size: 16px;
+    background: none;
+    color: var(--text-primary);
     outline: none;
-    transition: all 0.3s ease;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.04);
-    font-family: inherit;
+    font-family: var(--font-sans);
+    min-width: 200px;
 }
 
-#search-input:focus {
-    border-color: #5b7caa;
-    box-shadow: 0 0 0 3px rgba(91, 124, 170, 0.12);
+#search-input::placeholder {
+    color: var(--secondary-color);
+    opacity: 0.6;
 }
 
 /* 搜索按钮容器样式 */
 .search-buttons {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    transition: all 0.3s ease;
+    gap: 8px;
+    margin-left: auto;
 }
 
 /* 搜索按钮样式 */
 .search-button {
-    background-color: #f5f7fa;
-    color: #5b7caa;
-    padding: 10px 24px;
-    border: 1px solid #e6e8eb;
-    border-radius: 22px;
+    background-color: var(--primary-light);
+    color: var(--primary-color);
+    border: none;
+    padding: 10px 16px;
+    border-radius: var(--rounded-sm);
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 15px;
     font-weight: 500;
-    letter-spacing: 0.3px;
+    font-size: 14px;
+    transition: all var(--transition-fast) ease;
+    margin: 0;
 }
 
 /* 搜索按钮的 hover 样式 */
 .search-button:hover {
-    background-color: #e9f0f9;
+    background-color: var(--primary-color);
+    color: white;
     transform: translateY(-2px);
-    color: #4a6890;
+    box-shadow: var(--shadow-sm);
 }
 
 /* 搜索按钮的点击样式 */
@@ -170,34 +177,25 @@
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+    .search-container {
+        padding: 8px;
+        flex-direction: column;
+    }
+    
     #search-input {
-        padding: 12px 16px;
-        font-size: 14px;
+        width: 100%;
+        padding: 10px 15px;
+        text-align: center;
+    }
+    
+    .search-buttons {
+        width: 100%;
+        margin: 8px 0;
+        justify-content: center;
     }
     
     .search-button {
-        padding: 9px 18px;
+        padding: 8px 14px;
         font-size: 13px;
-    }
-    
-    .search-container {
-        margin: 20px auto 25px;
-        width: 90%;
-    }
-    
-    .search-container.fixed {
-        padding: 8px 12px;
-    }
-    
-    .search-container.fixed #search-input {
-        max-width: 180px;
-        padding: 7px 12px;
-        font-size: 13px;
-    }
-    
-    .search-container.fixed .search-button {
-        padding: 6px 10px;
-        font-size: 12px;
-        margin: 0 3px;
     }
 }

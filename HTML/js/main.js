@@ -278,6 +278,109 @@ document.addEventListener("DOMContentLoaded", function () {
 	// 页面加载时和每30分钟刷新一次
 	updateWeather();
 	setInterval(updateWeather, 1800000);
+
+	// 分类展开/收缩功能
+	function setupCategoryToggle() {
+	    const categoryContainers = document.querySelectorAll('.category-container');
+	    
+	    categoryContainers.forEach(container => {
+	        // 默认添加 collapsed 类
+	        container.classList.add('collapsed');
+	        
+	        // 为整个分组标题添加点击事件
+	        const categoryHeader = container.querySelector('.category-header');
+	        categoryHeader.addEventListener('click', function() {
+	            container.classList.toggle('collapsed');
+	        });
+	        
+	        // 为原有的切换按钮保留点击事件
+	        const toggleButton = container.querySelector('.toggle-button');
+	        if (toggleButton) {
+	            toggleButton.addEventListener('click', function(event) {
+	                event.stopPropagation(); // 阻止事件冒泡
+	                container.classList.toggle('collapsed');
+	            });
+	        }
+	    });
+	}
+
+	// 如果在初始加载时没有通过 fetch 渲染链接，也要设置分类展开/收缩
+	setupCategoryToggle();
+
+    // 创建垂直位置调整按钮
+    const createVerticalPositionControls = () => {
+        const controlContainer = document.createElement('div');
+        controlContainer.className = 'vertical-position-control';
+        
+        // 向上移动按钮
+        const moveUpButton = document.createElement('button');
+        moveUpButton.className = 'position-button move-up';
+        moveUpButton.title = '向上移动内容';
+        moveUpButton.innerHTML = '<i class="ri-arrow-up-line"></i>';
+        
+        // 居中按钮
+        const centerButton = document.createElement('button');
+        centerButton.className = 'position-button center-content';
+        centerButton.title = '居中内容';
+        centerButton.innerHTML = '<i class="ri-align-center"></i>';
+        
+        // 向下移动按钮
+        const moveDownButton = document.createElement('button');
+        moveDownButton.className = 'position-button move-down';
+        moveDownButton.title = '向下移动内容';
+        moveDownButton.innerHTML = '<i class="ri-arrow-down-line"></i>';
+        
+        // 添加到容器
+        controlContainer.appendChild(moveUpButton);
+        controlContainer.appendChild(centerButton);
+        controlContainer.appendChild(moveDownButton);
+        document.body.appendChild(controlContainer);
+        
+        // 获取容器元素
+        const container = document.querySelector('.container');
+        
+        // 绑定事件
+        moveUpButton.addEventListener('click', () => {
+            container.classList.remove('content-position-default', 'content-position-bottom');
+            container.classList.add('content-position-top');
+            localStorage.setItem('contentPosition', 'top');
+            showMessage('内容已向上移动');
+        });
+        
+        centerButton.addEventListener('click', () => {
+            container.classList.remove('content-position-top', 'content-position-bottom');
+            container.classList.add('content-position-default');
+            localStorage.setItem('contentPosition', 'default');
+            showMessage('内容已居中');
+        });
+        
+        moveDownButton.addEventListener('click', () => {
+            container.classList.remove('content-position-default', 'content-position-top');
+            container.classList.add('content-position-bottom');
+            localStorage.setItem('contentPosition', 'bottom');
+            showMessage('内容已向下移动');
+        });
+        
+        // 恢复之前的位置设置
+        const savedPosition = localStorage.getItem('contentPosition');
+        if (savedPosition) {
+            switch (savedPosition) {
+                case 'top':
+                    container.classList.add('content-position-top');
+                    break;
+                case 'bottom':
+                    container.classList.add('content-position-bottom');
+                    break;
+                default:
+                    container.classList.add('content-position-default');
+            }
+        } else {
+            container.classList.add('content-position-default');
+        }
+    };
+    
+    // 创建垂直位置控制按钮
+    createVerticalPositionControls();
 });
 
 
@@ -314,7 +417,8 @@ function renderLinksByCategory(links) {
     for (const [category, categoryLinks] of sortedCategories) {
         // 创建分类容器
         const categoryContainer = document.createElement('div');
-        categoryContainer.className = 'category-container';
+        categoryContainer.className = 'category-container collapsed';  // 明确添加 collapsed 类
+        categoryContainer.dataset.category = category; // 添加数据属性以便稍后识别
 
         // 创建分类标题和折叠按钮
         const categoryHeader = document.createElement('div');
@@ -330,7 +434,7 @@ function renderLinksByCategory(links) {
         
         const toggleButton = document.createElement('button');
         toggleButton.className = 'toggle-button';
-        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
         toggleButton.title = '展开/折叠';
         
         categoryHeader.appendChild(categoryTitle);
@@ -341,6 +445,7 @@ function renderLinksByCategory(links) {
         // 创建链接列表容器
         const linkList = document.createElement('ul');
         linkList.className = 'link-list';
+        linkList.style.display = 'none';  // 默认隐藏
         categoryContainer.appendChild(linkList);
 
         // 渲染链接
@@ -362,8 +467,9 @@ function renderLinksByCategory(links) {
             } else {
                 // 如果没有缩略图，可以动态生成一个
                 const thumbnailDiv = document.createElement('div');
+                const thumbnailUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(link.url)}?w=240&h=240`;
                 thumbnailDiv.className = 'link-card-thumbnail';
-                thumbnailDiv.style.backgroundImage = `url(https://s0.wp.com/mshots/v1/${encodeURIComponent(link.url)}?w=240&h=240)`;
+                thumbnailDiv.style.backgroundImage = `url(${thumbnailUrl})`;
                 linkCard.appendChild(thumbnailDiv);
             }
             
@@ -389,20 +495,135 @@ function renderLinksByCategory(links) {
             linkList.appendChild(linkElement);
         });
 
-        // 添加折叠功能
-        toggleButton.addEventListener('click', () => {
+        // 添加折叠功能到整个分类标题
+        categoryHeader.addEventListener('click', (event) => {
+            // 获取当前展开状态
             const isExpanded = linkList.style.display !== 'none';
-            linkList.style.display = isExpanded ? 'none' : 'flex';
-            toggleButton.innerHTML = isExpanded ? 
-                '<i class="ri-arrow-right-s-line"></i>' : 
-                '<i class="ri-arrow-down-s-line"></i>';
-            categoryContainer.classList.toggle('collapsed');
+
+            // 如果是收起操作，直接收起当前分类
+            if (isExpanded) {
+                toggleCategoryDisplay(categoryContainer, linkList, toggleButton, false);
+                return;
+            }
+
+            // 获取当前分类在网格中的位置
+            const containerRect = categoryContainer.getBoundingClientRect();
+            // 找出同一行的其他分类容器
+            const sameRowContainers = Array.from(document.querySelectorAll('.category-container')).filter(container => {
+                if (container === categoryContainer) return false;
+                const rect = container.getBoundingClientRect();
+                // 如果矩形的顶部y坐标接近，则认为在同一行
+                const isInSameRow = Math.abs(rect.top - containerRect.top) < 20;
+                return isInSameRow;
+            });
+
+            // 平滑收起同一行的其他分类（如果已展开）
+            sameRowContainers.forEach(container => {
+                const otherLinkList = container.querySelector('.link-list');
+                const otherToggleButton = container.querySelector('.toggle-button');
+                
+                // 如果这个分类已经展开，平滑收起
+                if (otherLinkList.style.display !== 'none') {
+                    otherLinkList.style.opacity = '1';
+                    otherLinkList.style.transition = 'opacity 0.2s ease-out';
+                    
+                    setTimeout(() => {
+                        otherLinkList.style.opacity = '0';
+                    }, 0);
+                    
+                    setTimeout(() => {
+                        toggleCategoryDisplay(container, otherLinkList, otherToggleButton, false);
+                        otherLinkList.style.transition = '';
+                        otherLinkList.style.opacity = '';
+                    }, 200);
+                }
+            });
+
+            // 展开当前分类，添加淡入效果
+            toggleCategoryDisplay(categoryContainer, linkList, toggleButton, true);
+            linkList.style.opacity = '0';
+            linkList.style.transition = 'opacity 0.3s ease-in';
+            setTimeout(() => {
+                linkList.style.opacity = '1';
+            }, 10);
+            setTimeout(() => {
+                linkList.style.transition = '';
+            }, 300);
+        });
+
+        // 为切换按钮添加点击事件，阻止事件冒泡
+        toggleButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            
+            // 获取当前展开状态
+            const isExpanded = linkList.style.display !== 'none';
+            
+            if (isExpanded) {
+                // 收起当前分类
+                toggleCategoryDisplay(categoryContainer, linkList, toggleButton, false);
+            } else {
+                // 获取当前分类在网格中的位置
+                const containerRect = categoryContainer.getBoundingClientRect();
+                // 找出同一行的其他分类容器
+                const sameRowContainers = Array.from(document.querySelectorAll('.category-container')).filter(container => {
+                    if (container === categoryContainer) return false;
+                    const rect = container.getBoundingClientRect();
+                    // 如果矩形的顶部y坐标接近，则认为在同一行
+                    const isInSameRow = Math.abs(rect.top - containerRect.top) < 20;
+                    return isInSameRow;
+                });
+
+                // 平滑收起同一行的其他分类（如果已展开）
+                sameRowContainers.forEach(container => {
+                    const otherLinkList = container.querySelector('.link-list');
+                    const otherToggleButton = container.querySelector('.toggle-button');
+                    
+                    // 如果这个分类已经展开，平滑收起
+                    if (otherLinkList.style.display !== 'none') {
+                        otherLinkList.style.opacity = '1';
+                        otherLinkList.style.transition = 'opacity 0.2s ease-out';
+                        
+                        setTimeout(() => {
+                            otherLinkList.style.opacity = '0';
+                        }, 0);
+                        
+                        setTimeout(() => {
+                            toggleCategoryDisplay(container, otherLinkList, otherToggleButton, false);
+                            otherLinkList.style.transition = '';
+                            otherLinkList.style.opacity = '';
+                        }, 200);
+                    }
+                });
+
+                // 展开当前分类，添加淡入效果
+                toggleCategoryDisplay(categoryContainer, linkList, toggleButton, true);
+                linkList.style.opacity = '0';
+                linkList.style.transition = 'opacity 0.3s ease-in';
+                setTimeout(() => {
+                    linkList.style.opacity = '1';
+                }, 10);
+                setTimeout(() => {
+                    linkList.style.transition = '';
+                }, 300);
+            }
         });
 
         linkContainer.appendChild(categoryContainer);
     }
 }
 
+// 切换分类的显示/隐藏状态
+function toggleCategoryDisplay(container, linkList, toggleButton, isExpand) {
+    if (isExpand) {
+        linkList.style.display = 'flex';
+        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+        container.classList.remove('collapsed');
+    } else {
+        linkList.style.display = 'none';
+        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        container.classList.add('collapsed');
+    }
+}
 
 // 渲染链接到设置界面
 function renderLinksInSettings(links) {
