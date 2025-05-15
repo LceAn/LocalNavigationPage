@@ -649,38 +649,55 @@ body {
   opacity: 0.9;
 }
 
-/* 垂直位置调整控制器 */
-.vertical-position-control {
+/* 下拉菜单样式 */
+.dropdown-menu {
   position: fixed;
-  bottom: 100px;
-  right: 32px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--rounded-md);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  z-index: 10000;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dropdown-item {
+  padding: 10px 15px;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
-  z-index: 9999;
+  color: var(--text-primary);
+  transition: all var(--transition-fast) ease;
+}
+
+.dropdown-item i {
+  font-size: 16px;
+  color: var(--primary-color);
+}
+
+.dropdown-item:hover {
+  background-color: var(--primary-light);
+}
+
+.dark-mode .dropdown-menu {
+  background-color: var(--bg-secondary);
+  border-color: rgba(255,255,255,0.08);
+}
+
+.dark-mode .dropdown-item:hover {
+  background-color: rgba(93, 95, 239, 0.15);
+}
+
+/* 垂直位置调整控制器 - 保留CSS类但修改视觉呈现以便兼容 */
+.vertical-position-control {
+  display: none; /* 隐藏原有控制器 */
 }
 
 .position-button {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--rounded-full);
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  color: white;
-  border: none;
-  box-shadow: var(--shadow-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  cursor: pointer;
-  transition: all var(--transition-fast) cubic-bezier(0.16, 1, 0.3, 1);
-  opacity: 0.85;
-}
-
-.position-button:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-  opacity: 1;
+  display: none; /* 隐藏原有按钮 */
 }
 
 .back-to-top {
@@ -719,31 +736,9 @@ body {
   opacity: 1;
 }
 
+/* 移除不再使用的类 */
 .toggle-all-groups {
-  position: fixed;
-  left: 32px;
-  bottom: 32px;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--rounded-full);
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  color: white;
-  border: none;
-  box-shadow: var(--shadow-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  cursor: pointer;
-  z-index: 9999;
-  opacity: 0.85;
-  transition: all var(--transition-fast) cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.toggle-all-groups:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
-  opacity: 1;
+  display: none; /* 隐藏原有按钮 */
 }
 
 #weather-info {
@@ -834,6 +829,19 @@ body {
   margin-left: 12px;
 }
 
+/* 右上角按钮容器内的图标按钮 */
+.top-right-buttons .icon-button {
+  margin-left: 0;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* 暗色模式下的右上角按钮 */
+.dark-mode .top-right-buttons .icon-button {
+  background: rgba(30, 41, 59, 0.7);
+}
+
 .icon-button i {
   font-size: 18px;
   transition: all var(--transition-fast) ease;
@@ -849,6 +857,56 @@ body {
 .icon-button:active {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
+}
+
+/* 右上角按钮容器 */
+.top-right-buttons {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+  padding: 8px;
+  border-radius: var(--rounded-lg);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal) ease;
+}
+
+/* 功能按钮和设置按钮组 */
+.function-buttons, .settings-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 按钮组之间的分隔线 */
+.button-divider {
+  width: 1px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0.1);
+  margin: 0 4px;
+}
+
+.dark-mode .button-divider {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .top-right-buttons {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.top-right-buttons:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-md);
+}
+
+.dark-mode .top-right-buttons:hover {
+  background: rgba(15, 23, 42, 0.4);
 }
 
 @media (max-width: 1600px) {
@@ -898,21 +956,45 @@ body {
     max-height: 200px;
   }
   
-  .vertical-position-control {
-    bottom: 20px;
+  .back-to-top {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
     right: 20px;
+    bottom: 20px;
   }
   
-  .position-button {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+  .top-right-buttons {
+    top: 10px;
+    right: 10px;
+    gap: 5px;
+    padding: 6px;
+    border-radius: var(--rounded-md);
   }
   
-  .toggle-all-groups, .back-to-top {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+  .function-buttons, .settings-buttons {
+    gap: 5px;
+  }
+  
+  .button-divider {
+    height: 20px;
+    margin: 0 2px;
+  }
+  
+  .icon-button {
+    width: 34px;
+    height: 34px;
+    margin-left: 0;
+  }
+  
+  /* 下拉菜单移动端样式 */
+  .dropdown-menu {
+    min-width: 160px;
+  }
+  
+  .dropdown-item {
+    padding: 8px 12px;
+    font-size: 14px;
   }
   
   .link-card-thumbnail {

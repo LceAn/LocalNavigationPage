@@ -130,7 +130,8 @@ document.addEventListener("DOMContentLoaded", function () {
 	const openSettingsButton = document.getElementById('open-settings');
 	openSettingsButton.addEventListener('click', function () {
 	    const settingsContainer = document.getElementById('settings-container');
-	    settingsContainer.style.display = 'block'; // 显示设置界面
+	    // 确保使用flex布局显示设置界面
+	    settingsContainer.style.display = 'flex';
 		
 		// 调用渲染链接到设置界面的函数
 		renderLinksInSettings(links); // 请确保 links 变量包含了链接数据
@@ -241,10 +242,13 @@ document.addEventListener("DOMContentLoaded", function () {
 	// 一键收起/展开分组按钮功能
 	const toggleAllGroupsBtn = document.createElement('button');
 	toggleAllGroupsBtn.id = 'toggle-all-groups';
-	toggleAllGroupsBtn.className = 'toggle-all-groups';
+	toggleAllGroupsBtn.className = 'icon-button';
 	toggleAllGroupsBtn.title = '一键收起/展开分组';
 	toggleAllGroupsBtn.innerHTML = '<i class="ri-arrow-up-down-line"></i>';
-	document.body.appendChild(toggleAllGroupsBtn);
+	
+	// 将按钮添加到功能按钮容器中
+	const functionButtons = document.querySelector('.function-buttons');
+	functionButtons.appendChild(toggleAllGroupsBtn);
 
 	let allCollapsed = false;
 	toggleAllGroupsBtn.addEventListener('click', () => {
@@ -263,6 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	        }
 	    });
 	    allCollapsed = !allCollapsed;
+	    showMessage(allCollapsed ? '已收起所有分组' : '已展开所有分组');
 	});
 
 	function updateWeather() {
@@ -309,56 +314,124 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 创建垂直位置调整按钮
     const createVerticalPositionControls = () => {
-        const controlContainer = document.createElement('div');
-        controlContainer.className = 'vertical-position-control';
+        // 获取功能按钮容器
+        const functionButtons = document.querySelector('.function-buttons');
         
-        // 向上移动按钮
-        const moveUpButton = document.createElement('button');
-        moveUpButton.className = 'position-button move-up';
-        moveUpButton.title = '向上移动内容';
-        moveUpButton.innerHTML = '<i class="ri-arrow-up-line"></i>';
+        // 创建位置调整下拉菜单按钮
+        const positionButton = document.createElement('button');
+        positionButton.className = 'icon-button';
+        positionButton.title = '页面位置调整';
+        positionButton.id = 'position-button';
+        positionButton.innerHTML = '<i class="ri-layout-line"></i>';
         
-        // 居中按钮
-        const centerButton = document.createElement('button');
-        centerButton.className = 'position-button center-content';
-        centerButton.title = '居中内容';
-        centerButton.innerHTML = '<i class="ri-align-center"></i>';
+        // 创建下拉菜单容器
+        const dropdownMenu = document.createElement('div');
+        dropdownMenu.className = 'dropdown-menu';
+        dropdownMenu.id = 'position-dropdown';
+        dropdownMenu.style.display = 'none';
         
-        // 向下移动按钮
-        const moveDownButton = document.createElement('button');
-        moveDownButton.className = 'position-button move-down';
-        moveDownButton.title = '向下移动内容';
-        moveDownButton.innerHTML = '<i class="ri-arrow-down-line"></i>';
+        // 创建菜单选项
+        const options = [
+            { text: '向上移动内容', icon: 'ri-arrow-up-line', action: 'top' },
+            { text: '居中内容', icon: 'ri-align-center', action: 'default' },
+            { text: '向下移动内容', icon: 'ri-arrow-down-line', action: 'bottom' }
+        ];
         
-        // 添加到容器
-        controlContainer.appendChild(moveUpButton);
-        controlContainer.appendChild(centerButton);
-        controlContainer.appendChild(moveDownButton);
-        document.body.appendChild(controlContainer);
+        options.forEach(option => {
+            const menuItem = document.createElement('div');
+            menuItem.className = 'dropdown-item';
+            menuItem.innerHTML = `<i class="${option.icon}"></i> ${option.text}`;
+            menuItem.dataset.action = option.action;
+            dropdownMenu.appendChild(menuItem);
+        });
+        
+        // 添加到DOM
+        functionButtons.appendChild(positionButton);
+        document.body.appendChild(dropdownMenu);
         
         // 获取容器元素
         const container = document.querySelector('.container');
         
-        // 绑定事件
-        moveUpButton.addEventListener('click', () => {
-            container.classList.remove('content-position-default', 'content-position-bottom');
-            container.classList.add('content-position-top');
-            localStorage.setItem('contentPosition', 'top');
-            showMessage('内容已向上移动');
+        // 显示/隐藏下拉菜单
+        positionButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isVisible = dropdownMenu.style.display === 'block';
+            
+            if (isVisible) {
+                dropdownMenu.style.display = 'none';
+            } else {
+                // 计算下拉菜单位置
+                const rect = positionButton.getBoundingClientRect();
+                
+                // 计算可能的位置 - 调整为向左展开
+                let menuTop = rect.bottom + 5;
+                // 将菜单定位在按钮左侧，而不是右侧
+                let menuLeft = rect.left - dropdownMenu.offsetWidth;
+                
+                // 获取窗口尺寸
+                const windowWidth = window.innerWidth;
+                const windowHeight = window.innerHeight;
+                
+                // 确保菜单不会超出左侧边界
+                if (menuLeft < 10) {
+                    // 如果左侧空间不足，则在右侧显示
+                    menuLeft = rect.right;
+                }
+                
+                // 确保菜单不会超出右侧边界
+                if (menuLeft + dropdownMenu.offsetWidth > windowWidth - 10) {
+                    menuLeft = windowWidth - dropdownMenu.offsetWidth - 10;
+                }
+                
+                // 确保菜单不会超出底部边界
+                // 先显示菜单以获取其高度
+                dropdownMenu.style.opacity = '0';
+                dropdownMenu.style.display = 'block';
+                
+                const menuHeight = dropdownMenu.offsetHeight;
+                
+                // 如果菜单会超出底部，则在按钮上方显示
+                if (menuTop + menuHeight > windowHeight - 10) {
+                    menuTop = rect.top - menuHeight - 5;
+                }
+                
+                // 应用计算后的位置
+                dropdownMenu.style.top = menuTop + 'px';
+                dropdownMenu.style.left = menuLeft + 'px';
+                dropdownMenu.style.opacity = '1';
+            }
         });
         
-        centerButton.addEventListener('click', () => {
-            container.classList.remove('content-position-top', 'content-position-bottom');
-            container.classList.add('content-position-default');
-            localStorage.setItem('contentPosition', 'default');
-            showMessage('内容已居中');
+        // 关闭下拉菜单（点击页面其他区域）
+        document.addEventListener('click', () => {
+            dropdownMenu.style.display = 'none';
         });
         
-        moveDownButton.addEventListener('click', () => {
-            container.classList.remove('content-position-default', 'content-position-top');
-            container.classList.add('content-position-bottom');
-            localStorage.setItem('contentPosition', 'bottom');
-            showMessage('内容已向下移动');
+        // 菜单项点击事件
+        dropdownMenu.addEventListener('click', (e) => {
+            const menuItem = e.target.closest('.dropdown-item');
+            if (!menuItem) return;
+            
+            const action = menuItem.dataset.action;
+            
+            // 移除所有位置类
+            container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
+            
+            // 添加选中的位置类
+            if (action) {
+                container.classList.add(`content-position-${action}`);
+                localStorage.setItem('contentPosition', action);
+                let message = '';
+                switch(action) {
+                    case 'top': message = '内容已向上移动'; break;
+                    case 'default': message = '内容已居中'; break;
+                    case 'bottom': message = '内容已向下移动'; break;
+                }
+                showMessage(message);
+            }
+            
+            // 隐藏下拉菜单
+            dropdownMenu.style.display = 'none';
         });
         
         // 恢复之前的位置设置
