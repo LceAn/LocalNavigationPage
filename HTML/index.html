@@ -2,316 +2,133 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#6366f1">
+    <title>Local Navigation - 本地导航</title>
     
-    <!-- SEO 优化 -->
-    <title>Local Navigation Page - 本地导航页</title>
-    <meta name="title" content="Local Navigation Page - 本地导航页">
-    <meta name="description" content="一个简洁、高效的本地/局域网导航页，支持自定义链接、分类管理、快速搜索、日夜模式切换">
-    <meta name="keywords" content="导航页，本地导航，局域网导航，书签管理，链接管理">
-    <meta name="author" content="LceAn">
-    <meta name="robots" content="noindex, nofollow">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- PWA 支持 -->
-    <meta name="theme-color" content="#4a90d9">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="导航页">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
-    
-    <!-- 预加载资源 -->
-    <link rel="preload" href="css/styles.css" as="style">
-    <link rel="preload" href="css/search_input.css" as="style">
-    <link rel="preload" href="css/settings_box.css" as="style">
-    <link rel="preload" href="js/main.js" as="script">
-    
-    <!-- 样式表 -->
+    <!-- Styles -->
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/search_input.css">
-    <link rel="stylesheet" href="css/settings_box.css">
-    
-    <!-- 脚本库 -->
-    <script src="js/jquery-3.3.1.slim.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
 </head>
-
 <body>
-    <!-- 跳过导航链接（无障碍访问） -->
-    <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">跳过导航</a>
+    <!-- 背景渐变 -->
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
     
-    <!-- 消息提示容器 -->
-    <div id="message-container" class="alert alert-success" role="alert" aria-live="polite"></div>
-    
-    <!-- 顶部导航栏 -->
-    <header class="top-header" role="banner">
-        <div class="header-content">
-            <h1 class="site-title">
-                <span class="title-icon" aria-hidden="true">🧭</span>
-                <span class="title-text">管理界面总导航</span>
-            </h1>
+    <!-- 主容器 -->
+    <div class="app-container">
+        <!-- 头部 -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">🧭</span>
+                    <span class="logo-text">Navigation</span>
+                </div>
+            </div>
             
-            <!-- 顶部右侧按钮 -->
-            <nav class="top-right-buttons" aria-label="功能按钮">
-                <!-- 布局控制下拉菜单 -->
-                <div class="dropdown layout-control">
-                    <button class="dropdown-toggle" id="layoutDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="布局调整">
-                        <span class="icon" aria-hidden="true">⊞</span>
-                        <span class="text">布局</span>
-                    </button>
-                    <div class="dropdown-menu" aria-labelledby="layoutDropdown">
-                        <button class="dropdown-item" data-layout="up" title="上移布局">
-                            <span aria-hidden="true">⬆️</span> 上移
-                        </button>
-                        <button class="dropdown-item" data-layout="center" title="居中布局">
-                            <span aria-hidden="true">⬛</span> 居中
-                        </button>
-                        <button class="dropdown-item" data-layout="down" title="下移布局">
-                            <span aria-hidden="true">⬇️</span> 下移
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- 分组控制按钮 -->
-                <button id="toggle-all-groups" class="icon-button" title="一键收起/展开所有分组" aria-label="收起或展开所有链接分组">
-                    <span class="icon" aria-hidden="true">≡</span>
-                    <span class="text">分组</span>
+            <div class="header-right">
+                <button class="icon-btn" id="toggle-view" title="切换视图">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
                 </button>
-                
-                <!-- 分隔线 -->
-                <div class="button-divider" role="separator"></div>
-                
-                <!-- 日夜模式切换 -->
-                <button id="toggle-mode" class="icon-button" title="切换昼夜模式" aria-label="切换日夜模式" aria-pressed="false">
-                    <i class="ri-sun-line" id="theme-icon" aria-hidden="true">☀️</i>
-                    <span class="text mode-text">夜间</span>
+                <button class="icon-btn" id="toggle-theme" title="切换主题">
+                    <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
                 </button>
-                
-                <!-- 设置按钮 -->
-                <button id="open-settings" class="icon-button" title="打开设置" aria-label="打开设置面板" aria-controls="settings-container">
-                    <i class="ri-settings-3-line" aria-hidden="true">⚙️</i>
-                    <span class="text">设置</span>
+                <button class="icon-btn" id="open-settings" title="设置">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
                 </button>
-            </nav>
-        </div>
-    </header>
-    
-    <!-- 主内容区 -->
-    <main id="main-content" class="container" role="main">
-        <!-- 搜索区域 -->
-        <section class="search-section" aria-label="搜索功能">
-            <div class="search-container">
-                <label for="search-input" class="sr-only">搜索链接</label>
-                <input 
-                    type="text" 
-                    id="search-input" 
-                    class="search-input"
-                    placeholder="搜索链接或输入网址..." 
-                    autocomplete="off"
-                    aria-describedby="search-help"
-                >
-                <span id="search-help" class="sr-only">输入关键词后选择搜索引擎进行搜索</span>
-                
-                <div class="search-buttons" role="group" aria-label="搜索引擎选择">
-                    <button class="search-button active" data-engine="百度" aria-pressed="true">
-                        <span aria-hidden="true">🔍</span> 百度
-                    </button>
-                    <button class="search-button" data-engine="Google" aria-pressed="false">
-                        <span aria-hidden="true">🌐</span> Google
-                    </button>
-                    <button class="search-button" data-engine="必应" aria-pressed="false">
-                        <span aria-hidden="true">🔎</span> 必应
-                    </button>
+            </div>
+        </header>
+        
+        <!-- 搜索区 -->
+        <section class="search-section">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" class="search-input" id="search-input" placeholder="搜索链接或输入网址...">
+                <div class="search-engines">
+                    <button class="engine-btn active" data-engine="百度">百度</button>
+                    <button class="engine-btn" data-engine="Google">Google</button>
+                    <button class="engine-btn" data-engine="必应">必应</button>
                 </div>
             </div>
         </section>
         
-        <!-- 链接列表容器 -->
-        <section class="links-section" aria-label="链接列表">
-            <div id="link-container" role="list">
-                <!-- 动态渲染的链接卡片 -->
-                <div class="loading-state" aria-live="polite">
-                    <span class="loading-icon" aria-hidden="true">⏳</span>
-                    <span>正在加载链接...</span>
-                </div>
+        <!-- 链接卡片区 -->
+        <main class="links-section">
+            <div id="link-container" class="links-grid">
+                <!-- 动态加载链接卡片 -->
             </div>
-        </section>
+        </main>
         
-        <!-- 空状态提示 -->
-        <div id="empty-state" class="empty-state" style="display: none;" aria-live="polite">
-            <span class="empty-icon" aria-hidden="true">📭</span>
-            <h2>暂无链接</h2>
-            <p>点击"设置"按钮添加您的第一个链接</p>
-        </div>
-    </main>
-    
-    <!-- 页脚 -->
-    <footer class="site-footer" role="contentinfo">
-        <div class="footer-content">
-            <div class="current-time" aria-live="polite" aria-label="当前时间">
-                <span class="time-icon" aria-hidden="true">🕐</span>
-                <time id="current-time" datetime=""></time>
+        <!-- 页脚 -->
+        <footer class="app-footer">
+            <div class="footer-time">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <time id="current-time"></time>
             </div>
-            <div class="copyright">
-                <span aria-hidden="true">©</span>
-                <span id="current-year"></span>
+            <div class="footer-text">
                 <span>Local Navigation Page</span>
+                <span class="divider">•</span>
+                <span id="current-year"></span>
             </div>
-        </div>
-    </footer>
+        </footer>
+    </div>
     
-    <!-- 设置面板（模态框） -->
-    <div 
-        id="settings-container" 
-        class="settings-overlay" 
-        role="dialog" 
-        aria-modal="true" 
-        aria-labelledby="settings-title"
-        aria-hidden="true"
-    >
-        <div id="settings-box" class="settings-panel">
-            <!-- 设置面板头部 -->
-            <header class="settings-header">
-                <h2 id="settings-title" class="settings-title">
-                    <span aria-hidden="true">⚙️</span> 设置
-                </h2>
-                <button 
-                    id="close-settings" 
-                    class="close-button" 
-                    aria-label="关闭设置面板"
-                    title="关闭"
-                >
-                    <span aria-hidden="true">×</span>
+    <!-- 设置面板 -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>设置</h2>
+                <button class="modal-close" id="close-settings">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
-            </header>
-            
-            <!-- 设置面板内容 -->
-            <div class="settings-content">
-                <!-- 链接管理表单 -->
-                <section class="settings-form" aria-labelledby="form-title">
-                    <h3 id="form-title">添加/编辑链接</h3>
-                    <form id="settings-form" role="form">
-                        <!-- 编辑表单（初始隐藏） -->
-                        <div id="edit-form" class="edit-form" style="display: none;" aria-live="polite">
-                            <div class="form-item">
-                                <label for="edit-name">
-                                    <span aria-hidden="true">📝</span> 名称：
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="edit-name" 
-                                    name="edit-name" 
-                                    required
-                                    placeholder="输入网站名称"
-                                    autocomplete="off"
-                                >
-                            </div>
-                            
-                            <div class="form-item">
-                                <label for="edit-url">
-                                    <span aria-hidden="true">🔗</span> URL：
-                                </label>
-                                <input 
-                                    type="url" 
-                                    id="edit-url" 
-                                    name="edit-url" 
-                                    required
-                                    placeholder="https://example.com"
-                                    autocomplete="off"
-                                >
-                            </div>
-                            
-                            <div class="form-item">
-                                <label for="edit-category">
-                                    <span aria-hidden="true">📁</span> 分类：
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="edit-category" 
-                                    name="edit-category" 
-                                    required
-                                    placeholder="输入分类名称"
-                                    list="category-list"
-                                    autocomplete="off"
-                                >
-                                <datalist id="category-list">
-                                    <!-- 动态填充现有分类 -->
-                                </datalist>
-                            </div>
-                            
-                            <div class="form-item">
-                                <label for="edit-id">
-                                    <span aria-hidden="true">🔢</span> ID（排序）：
-                                </label>
-                                <input 
-                                    type="number" 
-                                    id="edit-id" 
-                                    name="edit-id" 
-                                    required
-                                    min="1"
-                                    disabled
-                                >
-                                <small class="form-help">数字越小，排序越靠前</small>
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="button" id="save-button" class="btn btn-primary">
-                                    <span aria-hidden="true">💾</span> 保存
-                                </button>
-                                <button type="button" id="cancel-edit" class="btn btn-secondary">
-                                    <span aria-hidden="true">❌</span> 取消
-                                </button>
-                                <button type="button" id="delete-link" class="btn btn-danger" style="display: none;">
-                                    <span aria-hidden="true">🗑️</span> 删除
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- 表单控制按钮 -->
-                        <div class="form-actions main-actions">
-                            <button type="button" id="edit-link" class="btn btn-secondary" style="display: none;" disabled>
-                                <span aria-hidden="true">✏️</span> 编辑选中
-                            </button>
-                            <button type="button" id="add-link-button" class="btn btn-primary">
-                                <span aria-hidden="true">➕</span> 添加链接
-                            </button>
-                        </div>
-                    </form>
-                </section>
-                
-                <!-- 现有链接列表 -->
-                <section class="settings-list" aria-labelledby="links-list-title">
-                    <h3 id="links-list-title">
-                        <span aria-hidden="true">📋</span> 现有链接
-                        <span class="link-count" aria-live="polite">(<span id="total-links">0</span>个)</span>
-                    </h3>
-                    <ul id="existing-links" class="links-list" role="list">
-                        <!-- 动态填充现有链接 -->
-                        <li class="loading-item" aria-live="polite">
-                            <span class="loading-icon" aria-hidden="true">⏳</span>
-                            <span>正在加载...</span>
-                        </li>
-                    </ul>
-                </section>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="links">链接管理</button>
+                    <button class="tab-btn" data-tab="appearance">外观</button>
+                </div>
+                <div class="tab-content active" id="tab-links">
+                    <!-- 链接管理内容 -->
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- 返回顶部按钮 -->
-    <button 
-        id="back-to-top" 
-        class="back-to-top" 
-        title="返回顶部" 
-        aria-label="返回顶部"
-        style="display: none;"
-    >
-        <span aria-hidden="true">⬆️</span>
-    </button>
-    
-    <!-- 脚本文件 -->
+    <script src="js/jquery-3.3.1.slim.min.js"></script>
     <script src="js/main.js"></script>
     <script src="js/darkMode.js"></script>
 </body>
