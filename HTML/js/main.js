@@ -1,298 +1,276 @@
-// main.js
+/**
+ * Local Navigation Page - Modern JavaScript 2026
+ * 智能链接管理系统
+ */
 
-document.addEventListener("DOMContentLoaded", function () {
-    // 获取链接数据并渲染到页面
-    fetch('data/links.json')
-        .then(response => response.json())
-        .then(data => {
-            const links = data.links;
-            // 渲染链接到index
-            renderLinksByCategory(links);
-			// 渲染链接到设置界面
-			renderLinksInSettings(links);
-        })
-        .catch(error => console.error('加载链接数据失败：', error));
-	
-	// 在全局范围内存储消息容器的引用
-	const messageContainer = document.getElementById('message-container');
-	
-	// 函数1：显示消息
-	function showMessage(message) {
-	    // 设置消息内容
-	    messageContainer.textContent = message;
-	
-	    // 显示消息容器
-	    messageContainer.style.display = 'block';
-	
-	    // 在一定时间后隐藏消息
-	    setTimeout(() => {
-	        hideMessage();
-	    }, 1000); // 2秒后隐藏消息
-	}
-	
-	// 函数2：隐藏消息
-	function hideMessage() {
-	    // 隐藏消息容器
-	    messageContainer.style.display = 'none';
-	}
-	// 示例用法
-	showMessage('欢迎');
+// 全局状态管理
+const AppState = {
+    links: [],
+    categories: new Set(),
+    searchEngine: '百度',
+    darkMode: false,
+    viewMode: 'grid' // grid | list
+};
 
-	// 打开设置按钮的事件处理程序
-	const openSettingsButton = document.getElementById('open-settings');
-	openSettingsButton.addEventListener('click', function () {
-	    const settingsContainer = document.getElementById('settings-container');
-	    settingsContainer.style.display = 'block'; // 显示设置界面
-		
-		// 调用渲染链接到设置界面的函数
-		renderLinksInSettings(links); // 请确保 links 变量包含了链接数据
-	});
-	// 关闭设置按钮的事件处理程序
-	const closeSettingsButton = document.getElementById('close-settings');
-	closeSettingsButton.addEventListener('click', function () {
-		const settingsContainer = document.getElementById('settings-container');
-		settingsContainer.style.display = 'none'; // 隐藏设置界面
-		showMessage('设置关闭成功');
-	});
-	// 添加链接按钮的点击事件处理程序
-	const addLinkButton = document.getElementById('add-link-button');
-	addLinkButton.addEventListener('click', () => {
-		// 显示编辑表单，将表单字段清空
-		editForm.style.display = 'block';
-		document.getElementById('edit-name').value = '';
-		document.getElementById('edit-url').value = '';
-		document.getElementById('edit-category').value = '';
-		document.getElementById('edit-id').value = '';
-	});
-	// 编辑链接按钮的点击事件处理程序
-    const editLinkButton = document.getElementById('edit-link');
-    const editForm = document.getElementById('edit-form');
-    editLinkButton.addEventListener('click', () => {
-        // 显示编辑表单
-        editForm.style.display = 'block';
-    });
+// DOM 元素缓存
+const DOM = {};
 
-    // 关闭编辑表单按钮的点击事件处理程序
-    const closeEditFormButton = document.getElementById('close-settings');
-    closeEditFormButton.addEventListener('click', () => {
-        // 隐藏编辑表单
-        editForm.style.display = 'none';
-    });
-
-    // 保存按钮的点击事件处理程序
-    const saveButton = document.getElementById('save-button');
-    saveButton.addEventListener('click', () => {
-        // 在这里处理保存逻辑，包括获取表单中的数据，更新链接信息，保存到 links.json 等操作
-        // ...
-
-        // 隐藏编辑表单
-        editForm.style.display = 'none';
-		showMessage('保存成功');
-    });
-	
-	
-	// 获取搜索框和按钮元素
-	const searchInput = document.getElementById('search-input');
-	// 获取搜索按钮元素
-	const searchButtons = document.querySelectorAll('.search-button');
-	
-	// 点击事件处理程序
-	searchButtons.forEach(button => {
-	    button.addEventListener('click', () => {
-	        const searchTerm = searchInput.value;
-	        const searchEngine = button.getAttribute('data-engine');
-	        if (searchTerm && searchEngine) {
-	            let searchURL = '';
-	
-	            // 根据搜索引擎不同生成搜索链接
-	            switch (searchEngine) {
-	                case '百度':
-	                    searchURL = `https://www.baidu.com/s?wd=${encodeURIComponent(searchTerm)}`;
-	                    break;
-	                case 'Google':
-	                    searchURL = `https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`;
-	                    break;
-	                case '必应':
-	                    searchURL = `https://www.bing.com/search?q=${encodeURIComponent(searchTerm)}`;
-	                    break;
-	                default:
-	                    break;
-	            }
-	
-	            // 执行搜索
-	            if (searchURL) {
-	                window.open(searchURL, '_blank'); // '_blank' 表示在新标签页中打开
-	            }
-	        }
-	    });
-	});
-
-	// 这里可以添加其他功能
-	
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    cacheDOM();
+    bindEvents();
+    loadLinks();
+    initTheme();
+    updateTime();
+    setInterval(updateTime, 1000);
 });
 
+// 缓存 DOM 元素
+function cacheDOM() {
+    DOM.linkContainer = document.getElementById('link-container');
+    DOM.searchInput = document.getElementById('search-input');
+    DOM.engineBtns = document.querySelectorAll('.engine-btn');
+    DOM.themeBtn = document.getElementById('toggle-theme');
+    DOM.settingsBtn = document.getElementById('open-settings');
+    DOM.settingsModal = document.getElementById('settings-modal');
+    DOM.closeSettingsBtn = document.getElementById('close-settings');
+    DOM.currentTime = document.getElementById('current-time');
+    DOM.currentYear = document.getElementById('current-year');
+}
 
-// 渲染链接的函数（按照分类）
-function renderLinksByCategory(links) {
-    const linkContainer = document.getElementById('link-container');
-    linkContainer.innerHTML = ''; // 清空容器
-
-    // 根据分类创建链接列表
-    const categories = {};
-
-    links.forEach(link => {
-        const category = link.category;
-        if (!categories[category]) {
-            categories[category] = [];
-        }
-        categories[category].push(link);
+// 绑定事件
+function bindEvents() {
+    // 搜索功能
+    DOM.searchInput.addEventListener('input', debounce(handleSearch, 300));
+    
+    // 搜索引擎切换
+    DOM.engineBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            DOM.engineBtns.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            AppState.searchEngine = e.target.dataset.engine;
+        });
     });
-
-    // 渲染链接
-    for (const category in categories) {
-        if (categories.hasOwnProperty(category)) {
-            const categoryLinks = categories[category];
-
-            // 创建分类标题
-            const categoryTitle = document.createElement('h2');
-            categoryTitle.textContent = category;
-            linkContainer.appendChild(categoryTitle);
-
-            // 创建链接列表
-            const linkList = document.createElement('ul');
-            linkContainer.appendChild(linkList);
-
-            // 渲染链接
-            categoryLinks.forEach(link => {
-                const linkElement = document.createElement('li');
-                const linkAnchor = document.createElement('a');
-                linkAnchor.setAttribute('class', 'link-button');
-                linkAnchor.setAttribute('href', link.url);
-				linkElement.setAttribute('target', '_blank');
-                linkAnchor.textContent = link.name;
-                linkElement.appendChild(linkAnchor);
-                linkList.appendChild(linkElement);
-            });
+    
+    // 主题切换
+    DOM.themeBtn.addEventListener('click', toggleTheme);
+    
+    // 设置面板
+    DOM.settingsBtn.addEventListener('click', () => {
+        DOM.settingsModal.classList.add('active');
+    });
+    
+    DOM.closeSettingsBtn.addEventListener('click', () => {
+        DOM.settingsModal.classList.remove('active');
+    });
+    
+    // 点击遮罩关闭
+    DOM.settingsModal.addEventListener('click', (e) => {
+        if (e.target === DOM.settingsModal) {
+            DOM.settingsModal.classList.remove('active');
         }
+    });
+    
+    // ESC 键关闭模态框
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            DOM.settingsModal.classList.remove('active');
+        }
+    });
+}
+
+// 加载链接数据
+async function loadLinks() {
+    try {
+        const response = await fetch('data/links.json');
+        const data = await response.json();
+        AppState.links = data.links || [];
+        
+        // 提取分类
+        AppState.categories = new Set(
+            AppState.links.map(link => link.category)
+        );
+        
+        // 渲染卡片
+        renderLinks(AppState.links);
+        
+        // 显示空状态（如果没有链接）
+        if (AppState.links.length === 0) {
+            showEmptyState();
+        }
+    } catch (error) {
+        console.error('加载链接失败:', error);
+        showError('加载链接失败，请检查数据文件');
     }
 }
 
-
-// 渲染链接到设置界面
-function renderLinksInSettings(links) {
-    const existingLinksList = document.getElementById('existing-links');
-    // 清空现有链接列表
-    existingLinksList.innerHTML = '';
-	
-	// 根据分类创建链接列表
-	const categories = {};
-	
-	links.forEach(link => {
-	    const category = link.category;
-	    if (!categories[category]) {
-	        categories[category] = [];
-	    }
-		categories[category].push(link);
-	});
-	// 渲染链接
-	for (const category in categories) {
-		if (categories.hasOwnProperty(category)) {
-			const categoryLinks = categories[category];
-
-			// 创建分类标题
-			const categoryTitle = document.createElement('h2');
-			categoryTitle.textContent = category;
-			existingLinksList.appendChild(categoryTitle);
-
-			// 创建链接列表
-			const linkList = document.createElement('ul');
-			existingLinksList.appendChild(linkList);
-
-			// 渲染链接
-			categoryLinks.forEach(link => {
-				const linkItem = createLinkItem(link);
-				linkList.appendChild(linkItem);
-			});
-		}
-	}
-	const linkItem = createLinkItem(link);
-	existingLinksList.appendChild(linkItem);
-}
-
-// 创建链接列表项，包括链接文本、编辑按钮和删除按钮
-function createLinkItem(link) {
-    const linkItem = document.createElement('li');
-    // 链接文本
-    const linkAnchor = document.createElement('a');
-    linkAnchor.setAttribute('href', link.url);
-    linkAnchor.textContent = link.name;
-    linkItem.appendChild(linkAnchor);
-	
-
-    // 编辑按钮
-	const editButton = createButton('编辑', 'edit-button');
-	// 编辑按钮点击事件处理程序
-	editButton.addEventListener('click', () => {
-	    // 在弹出框中显示当前链接的信息
-	    const editForm = document.getElementById('edit-form');
-	    editForm.style.display = 'block'; // 显示编辑表单
-	
-	    // 填充表单字段
-	    document.getElementById('edit-name').value = link.name;
-	    document.getElementById('edit-url').value = link.url;
-	    document.getElementById('edit-category').value = link.category;
-	    document.getElementById('edit-id').value = link.ID;
-	
-	    // 保存按钮点击事件处理程序
-	    const saveButton = document.getElementById('save-button');
-	    saveButton.addEventListener('click', () => {
-	        // 获取表单中的修改后的信息
-	        const editedName = document.getElementById('edit-name').value;
-	        const editedUrl = document.getElementById('edit-url').value;
-	        const editedCategory = document.getElementById('edit-category').value;
-	        const editedID = document.getElementById('edit-id').value;
-	
-	        // 更新链接信息
-	        link.name = editedName;
-	        link.url = editedUrl;
-	        link.category = editedCategory;
-	        link.ID = editedID;
-	
-	        // 更新显示的链接文本
-	        linkAnchor.textContent = editedName;
-	
-	        // 隐藏编辑表单
-	        editForm.style.display = 'none';
-	
-	        // 在这里将修改后的链接信息保存到 links.json 中，可以使用 fetch 或其他方式发送 POST 请求
-	        // 请确保在保存之后更新 links.json 文件
-	        // ...
-	
-	        // 输出修改后的链接信息，供测试
-	        console.log('保存后的链接信息：', link);
-	    });
-	});
-
-	linkItem.appendChild(editButton);
-
-    // 删除按钮
-    const deleteButton = createButton('删除', 'delete-button');
-    // 添加删除按钮的点击事件处理程序
-    deleteButton.addEventListener('click', () => {
-        // 在这里处理删除链接的逻辑，可以弹出确认框等交互方式
-        // 你可以在这里获取 link 对象的信息并允许用户进行删除
-        console.log(`删除链接：${link.name}`);
+// 渲染链接卡片
+function renderLinks(links) {
+    if (!links || links.length === 0) {
+        showEmptyState();
+        return;
+    }
+    
+    DOM.linkContainer.innerHTML = links.map((link, index) => `
+        <div class="link-card" style="animation-delay: ${index * 50}ms" data-url="${link.url}">
+            <div class="link-category">${escapeHtml(link.category)}</div>
+            <div class="link-title">
+                <span class="link-icon">🌐</span>
+                <span class="link-name">${escapeHtml(link.name)}</span>
+            </div>
+            <div class="link-url">${escapeHtml(link.url)}</div>
+        </div>
+    `).join('');
+    
+    // 绑定点击事件
+    document.querySelectorAll('.link-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const url = card.dataset.url;
+            if (url) {
+                window.open(url, '_blank');
+            }
+        });
     });
-    linkItem.appendChild(deleteButton);
-
-    return linkItem;
 }
 
-// 创建按钮元素
-function createButton(text, className) {
-    const button = document.createElement('button');
-    button.textContent = text;
-    button.className = className;
-    return button;
+// 搜索处理
+function handleSearch(e) {
+    const query = e.target.value.toLowerCase().trim();
+    
+    if (!query) {
+        renderLinks(AppState.links);
+        return;
+    }
+    
+    const filtered = AppState.links.filter(link => {
+        return link.name.toLowerCase().includes(query) ||
+               link.url.toLowerCase().includes(query) ||
+               link.category.toLowerCase().includes(query);
+    });
+    
+    renderLinks(filtered);
 }
 
+// 主题切换
+function toggleTheme() {
+    AppState.darkMode = !AppState.darkMode;
+    document.body.classList.toggle('dark-mode', AppState.darkMode);
+    
+    // 更新图标
+    const sunIcon = DOM.themeBtn.querySelector('.sun-icon');
+    const moonIcon = DOM.themeBtn.querySelector('.moon-icon');
+    
+    if (AppState.darkMode) {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+    } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+    }
+    
+    // 保存到本地存储
+    localStorage.setItem('darkMode', AppState.darkMode);
+}
+
+// 初始化主题
+function initTheme() {
+    const savedTheme = localStorage.getItem('darkMode');
+    if (savedTheme === 'true') {
+        AppState.darkMode = true;
+        document.body.classList.add('dark-mode');
+        DOM.themeBtn.querySelector('.sun-icon').style.display = 'none';
+        DOM.themeBtn.querySelector('.moon-icon').style.display = 'block';
+    }
+}
+
+// 更新时间显示
+function updateTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('zh-CN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    const year = now.getFullYear();
+    
+    if (DOM.currentTime) {
+        DOM.currentTime.textContent = timeStr;
+        DOM.currentTime.dateTime = now.toISOString();
+    }
+    
+    if (DOM.currentYear) {
+        DOM.currentYear.textContent = year;
+    }
+}
+
+// 显示空状态
+function showEmptyState() {
+    DOM.linkContainer.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h2>暂无链接</h2>
+            <p>点击设置按钮添加您的第一个链接</p>
+        </div>
+    `;
+}
+
+// 显示错误消息
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error-message';
+    errorDiv.textContent = message;
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        background: #ef4444;
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 9999;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 3000);
+}
+
+// 工具函数：防抖
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// 工具函数：HTML 转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 添加 CSS 动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);
