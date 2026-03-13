@@ -1,94 +1,318 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>导航页</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <!-- SEO 优化 -->
+    <title>Local Navigation Page - 本地导航页</title>
+    <meta name="title" content="Local Navigation Page - 本地导航页">
+    <meta name="description" content="一个简洁、高效的本地/局域网导航页，支持自定义链接、分类管理、快速搜索、日夜模式切换">
+    <meta name="keywords" content="导航页，本地导航，局域网导航，书签管理，链接管理">
+    <meta name="author" content="LceAn">
+    <meta name="robots" content="noindex, nofollow">
+    
+    <!-- PWA 支持 -->
+    <meta name="theme-color" content="#4a90d9">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="导航页">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
+    
+    <!-- 预加载资源 -->
+    <link rel="preload" href="css/styles.css" as="style">
+    <link rel="preload" href="css/search_input.css" as="style">
+    <link rel="preload" href="css/settings_box.css" as="style">
+    <link rel="preload" href="js/main.js" as="script">
+    
+    <!-- 样式表 -->
     <link rel="stylesheet" href="css/styles.css">
-	<link rel="stylesheet" href="css/search_input.css">
-	<link rel="stylesheet" href="css/settings_box.css">
-	<script src="js/jquery-3.3.1.slim.min.js"></script>
-	<script src="js/bootstrap.min.js"></script>
-	
+    <link rel="stylesheet" href="css/search_input.css">
+    <link rel="stylesheet" href="css/settings_box.css">
+    
+    <!-- 脚本库 -->
+    <script src="js/jquery-3.3.1.slim.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
 </head>
 
 <body>
-    <!-- 显示闪现消息 -->
-    <div id="message-container"	class="alert alert-success"></div>
-    <!-- 右上角按钮容器 -->
-    <div class="top-right-buttons">
-        <!-- 切换模式按钮 -->
-        <button id="toggle-mode">昼夜</button>
-
-        <!-- 设置按钮 -->
-        <button id="open-settings">设置</button>
-    </div>
-
-    <div class="container">
-        <h1>管理界面总导航</h1>
-		<!-- 搜索框和按钮 -->
-		<div class="search-container">
-			<input type="text" id="search-input" placeholder="输入搜索词">
-			<div class="search-buttons">
-				<button class="search-button" data-engine="百度">百度</button>
-				<button class="search-button" data-engine="Google">谷歌</button>
-				<button class="search-button" data-engine="必应">必应</button>
-			</div>
-		</div>
-        <!-- 动态渲染的链接部分 -->
-        <div id="link-container">
-            <!-- 这里将会动态添加链接 -->
+    <!-- 跳过导航链接（无障碍访问） -->
+    <a href="#main-content" class="skip-link" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">跳过导航</a>
+    
+    <!-- 消息提示容器 -->
+    <div id="message-container" class="alert alert-success" role="alert" aria-live="polite"></div>
+    
+    <!-- 顶部导航栏 -->
+    <header class="top-header" role="banner">
+        <div class="header-content">
+            <h1 class="site-title">
+                <span class="title-icon" aria-hidden="true">🧭</span>
+                <span class="title-text">管理界面总导航</span>
+            </h1>
+            
+            <!-- 顶部右侧按钮 -->
+            <nav class="top-right-buttons" aria-label="功能按钮">
+                <!-- 布局控制下拉菜单 -->
+                <div class="dropdown layout-control">
+                    <button class="dropdown-toggle" id="layoutDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" title="布局调整">
+                        <span class="icon" aria-hidden="true">⊞</span>
+                        <span class="text">布局</span>
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="layoutDropdown">
+                        <button class="dropdown-item" data-layout="up" title="上移布局">
+                            <span aria-hidden="true">⬆️</span> 上移
+                        </button>
+                        <button class="dropdown-item" data-layout="center" title="居中布局">
+                            <span aria-hidden="true">⬛</span> 居中
+                        </button>
+                        <button class="dropdown-item" data-layout="down" title="下移布局">
+                            <span aria-hidden="true">⬇️</span> 下移
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 分组控制按钮 -->
+                <button id="toggle-all-groups" class="icon-button" title="一键收起/展开所有分组" aria-label="收起或展开所有链接分组">
+                    <span class="icon" aria-hidden="true">≡</span>
+                    <span class="text">分组</span>
+                </button>
+                
+                <!-- 分隔线 -->
+                <div class="button-divider" role="separator"></div>
+                
+                <!-- 日夜模式切换 -->
+                <button id="toggle-mode" class="icon-button" title="切换昼夜模式" aria-label="切换日夜模式" aria-pressed="false">
+                    <i class="ri-sun-line" id="theme-icon" aria-hidden="true">☀️</i>
+                    <span class="text mode-text">夜间</span>
+                </button>
+                
+                <!-- 设置按钮 -->
+                <button id="open-settings" class="icon-button" title="打开设置" aria-label="打开设置面板" aria-controls="settings-container">
+                    <i class="ri-settings-3-line" aria-hidden="true">⚙️</i>
+                    <span class="text">设置</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- 主内容区 -->
+    <main id="main-content" class="container" role="main">
+        <!-- 搜索区域 -->
+        <section class="search-section" aria-label="搜索功能">
+            <div class="search-container">
+                <label for="search-input" class="sr-only">搜索链接</label>
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    class="search-input"
+                    placeholder="搜索链接或输入网址..." 
+                    autocomplete="off"
+                    aria-describedby="search-help"
+                >
+                <span id="search-help" class="sr-only">输入关键词后选择搜索引擎进行搜索</span>
+                
+                <div class="search-buttons" role="group" aria-label="搜索引擎选择">
+                    <button class="search-button active" data-engine="百度" aria-pressed="true">
+                        <span aria-hidden="true">🔍</span> 百度
+                    </button>
+                    <button class="search-button" data-engine="Google" aria-pressed="false">
+                        <span aria-hidden="true">🌐</span> Google
+                    </button>
+                    <button class="search-button" data-engine="必应" aria-pressed="false">
+                        <span aria-hidden="true">🔎</span> 必应
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 链接列表容器 -->
+        <section class="links-section" aria-label="链接列表">
+            <div id="link-container" role="list">
+                <!-- 动态渲染的链接卡片 -->
+                <div class="loading-state" aria-live="polite">
+                    <span class="loading-icon" aria-hidden="true">⏳</span>
+                    <span>正在加载链接...</span>
+                </div>
+            </div>
+        </section>
+        
+        <!-- 空状态提示 -->
+        <div id="empty-state" class="empty-state" style="display: none;" aria-live="polite">
+            <span class="empty-icon" aria-hidden="true">📭</span>
+            <h2>暂无链接</h2>
+            <p>点击"设置"按钮添加您的第一个链接</p>
+        </div>
+    </main>
+    
+    <!-- 页脚 -->
+    <footer class="site-footer" role="contentinfo">
+        <div class="footer-content">
+            <div class="current-time" aria-live="polite" aria-label="当前时间">
+                <span class="time-icon" aria-hidden="true">🕐</span>
+                <time id="current-time" datetime=""></time>
+            </div>
+            <div class="copyright">
+                <span aria-hidden="true">©</span>
+                <span id="current-year"></span>
+                <span>Local Navigation Page</span>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- 设置面板（模态框） -->
+    <div 
+        id="settings-container" 
+        class="settings-overlay" 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="settings-title"
+        aria-hidden="true"
+    >
+        <div id="settings-box" class="settings-panel">
+            <!-- 设置面板头部 -->
+            <header class="settings-header">
+                <h2 id="settings-title" class="settings-title">
+                    <span aria-hidden="true">⚙️</span> 设置
+                </h2>
+                <button 
+                    id="close-settings" 
+                    class="close-button" 
+                    aria-label="关闭设置面板"
+                    title="关闭"
+                >
+                    <span aria-hidden="true">×</span>
+                </button>
+            </header>
+            
+            <!-- 设置面板内容 -->
+            <div class="settings-content">
+                <!-- 链接管理表单 -->
+                <section class="settings-form" aria-labelledby="form-title">
+                    <h3 id="form-title">添加/编辑链接</h3>
+                    <form id="settings-form" role="form">
+                        <!-- 编辑表单（初始隐藏） -->
+                        <div id="edit-form" class="edit-form" style="display: none;" aria-live="polite">
+                            <div class="form-item">
+                                <label for="edit-name">
+                                    <span aria-hidden="true">📝</span> 名称：
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="edit-name" 
+                                    name="edit-name" 
+                                    required
+                                    placeholder="输入网站名称"
+                                    autocomplete="off"
+                                >
+                            </div>
+                            
+                            <div class="form-item">
+                                <label for="edit-url">
+                                    <span aria-hidden="true">🔗</span> URL：
+                                </label>
+                                <input 
+                                    type="url" 
+                                    id="edit-url" 
+                                    name="edit-url" 
+                                    required
+                                    placeholder="https://example.com"
+                                    autocomplete="off"
+                                >
+                            </div>
+                            
+                            <div class="form-item">
+                                <label for="edit-category">
+                                    <span aria-hidden="true">📁</span> 分类：
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="edit-category" 
+                                    name="edit-category" 
+                                    required
+                                    placeholder="输入分类名称"
+                                    list="category-list"
+                                    autocomplete="off"
+                                >
+                                <datalist id="category-list">
+                                    <!-- 动态填充现有分类 -->
+                                </datalist>
+                            </div>
+                            
+                            <div class="form-item">
+                                <label for="edit-id">
+                                    <span aria-hidden="true">🔢</span> ID（排序）：
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="edit-id" 
+                                    name="edit-id" 
+                                    required
+                                    min="1"
+                                    disabled
+                                >
+                                <small class="form-help">数字越小，排序越靠前</small>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" id="save-button" class="btn btn-primary">
+                                    <span aria-hidden="true">💾</span> 保存
+                                </button>
+                                <button type="button" id="cancel-edit" class="btn btn-secondary">
+                                    <span aria-hidden="true">❌</span> 取消
+                                </button>
+                                <button type="button" id="delete-link" class="btn btn-danger" style="display: none;">
+                                    <span aria-hidden="true">🗑️</span> 删除
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 表单控制按钮 -->
+                        <div class="form-actions main-actions">
+                            <button type="button" id="edit-link" class="btn btn-secondary" style="display: none;" disabled>
+                                <span aria-hidden="true">✏️</span> 编辑选中
+                            </button>
+                            <button type="button" id="add-link-button" class="btn btn-primary">
+                                <span aria-hidden="true">➕</span> 添加链接
+                            </button>
+                        </div>
+                    </form>
+                </section>
+                
+                <!-- 现有链接列表 -->
+                <section class="settings-list" aria-labelledby="links-list-title">
+                    <h3 id="links-list-title">
+                        <span aria-hidden="true">📋</span> 现有链接
+                        <span class="link-count" aria-live="polite">(<span id="total-links">0</span>个)</span>
+                    </h3>
+                    <ul id="existing-links" class="links-list" role="list">
+                        <!-- 动态填充现有链接 -->
+                        <li class="loading-item" aria-live="polite">
+                            <span class="loading-icon" aria-hidden="true">⏳</span>
+                            <span>正在加载...</span>
+                        </li>
+                    </ul>
+                </section>
+            </div>
         </div>
     </div>
-
-    <!-- 设置界面 -->
-    <div id="settings-container">
-        <div id="settings-box">
-            <div class="settings-header">
-                <h2>设置</h2>
-                <button id="close-settings">关闭</button>
-            </div>
-            <div class="settings-form">
-                <h3>添加/编辑链接</h3>
-				<form id="settings-form">
-					<!-- 编辑表单，初始状态为隐藏 -->
-					<div id="edit-form" style="display: none;">
-						<div class="form-item">
-							<label for="edit-name">名称：</label>
-							<input type="text" id="edit-name" name="edit-name">
-						</div>
-						<div class="form-item">
-							<label for="edit-url">URL：</label>
-							<input type="text" id="edit-url" name="edit-url">
-						</div>
-						<div class="form-item">
-							<label for="edit-category">分类：</label>
-							<input type="text" id="edit-category" name="edit-category">
-						</div>
-						<div class="form-item">
-							<label for="edit-id">ID：</label>
-							<input type="text" id="edit-id" name="edit-id" disabled>
-						</div>
-						<button type="button" id="save-button">保存</button>
-					</div>
-					<!-- 编辑表单结束 -->
-					<div class="form-item">
-						<button type="button" id="edit-link" style="display: none;">编辑</button>
-						<button type="button" id="add-link-button">添加链接</button>
-					</div>
-				</form>
-            </div>
-            <div class="settings-list">
-                <h3>现有链接</h3>
-				<br>
-                <ul id="existing-links">
-                    <!-- 这里显示当前的网址列表 -->
-                </ul>
-            </div>
-        </div>
-    </div>
-	
-<script src="js/main.js"></script>
-<script src="js/darkMode.js"></script>
+    
+    <!-- 返回顶部按钮 -->
+    <button 
+        id="back-to-top" 
+        class="back-to-top" 
+        title="返回顶部" 
+        aria-label="返回顶部"
+        style="display: none;"
+    >
+        <span aria-hidden="true">⬆️</span>
+    </button>
+    
+    <!-- 脚本文件 -->
+    <script src="js/main.js"></script>
+    <script src="js/darkMode.js"></script>
 </body>
 </html>
