@@ -19,11 +19,11 @@ A lightweight navigation page application based on local/LAN, no database or bac
 
 ### ☀️ 日间模式 | Day Mode
 
-![日间模式](https://github.com/LceAn/LocalNavigationPage/assets/63484787/2b6853dc-da8a-4462-8e07-460f2c53e963)
+![日间模式](assets/day-mode.png)
 
 ### 🌙 夜间模式 | Night Mode
 
-![夜间模式](https://github.com/LceAn/LocalNavigationPage/assets/63484787/7b5b748f-a3e2-427e-b12b-e2bbf2f98ce2)
+![夜间模式](assets/night-mode.png)
 
 ---
 
