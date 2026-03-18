@@ -117,8 +117,8 @@ document.addEventListener("DOMContentLoaded", function () {
             button.classList.add('active');
             document.getElementById(`${targetTab}-tab`).classList.add('active');
 
-            // 如果切换到管理链接标签页，重新渲染链接
-            if (targetTab === 'manage-links') {
+            // 如果切换到链接管理标签页，重新渲染链接
+            if (targetTab === 'links') {
                 renderLinksInSettings(links);
             }
         });
@@ -165,37 +165,270 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // 添加链接按钮
-    const addLinkButton = document.getElementById('add-link-button');
+    // 弹窗相关元素
+    const linkModal = document.getElementById('link-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const addLinkToolbarBtn = document.getElementById('add-link-toolbar-btn');
     const editForm = document.getElementById('edit-form');
-    const addLinkPlaceholder = document.getElementById('add-link-placeholder');
-
-    addLinkButton.addEventListener('click', () => {
-        editForm.style.display = 'block';
-        addLinkPlaceholder.style.display = 'none';
+    
+    // 打开添加链接弹窗
+    function openAddModal() {
         // 清空表单
         document.getElementById('edit-name').value = '';
         document.getElementById('edit-url').value = '';
         document.getElementById('edit-category').value = '';
         document.getElementById('edit-tag').value = '';
         document.getElementById('edit-thumbnail').value = '';
-        document.getElementById('edit-id').value = '';
         // 清空预览
         const thumbnailPreview = document.getElementById('thumbnail-preview');
         thumbnailPreview.innerHTML = '<i class="ri-image-add-line"></i><span>预览</span>';
         thumbnailPreview.classList.remove('has-image');
-    });
+        // 更新标题
+        modalTitle.innerHTML = '<i class="ri-add-circle-line"></i><span>添加链接</span>';
+        // 显示弹窗
+        linkModal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            linkModal.classList.add('show');
+        });
+    }
+    
+    // 打开编辑链接弹窗
+    function openEditModal(link) {
+        // 填充表单
+        document.getElementById('edit-name').value = link.name;
+        document.getElementById('edit-url').value = link.url;
+        document.getElementById('edit-category').value = link.category;
+        document.getElementById('edit-tag').value = link.tag || '';
+        document.getElementById('edit-thumbnail').value = link.thumbnail || '';
+        // 更新标题
+        modalTitle.innerHTML = '<i class="ri-edit-circle-line"></i><span>编辑链接</span>';
+        // 显示弹窗
+        linkModal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            linkModal.classList.add('show');
+        });
+    }
+    
+    // 关闭弹窗
+    function closeModal() {
+        linkModal.classList.remove('show');
+        setTimeout(() => {
+            linkModal.style.display = 'none';
+            window.editingLinkId = null;
+        }, 250);
+    }
+    
+    // 工具栏添加链接按钮
+    if (addLinkToolbarBtn) {
+        addLinkToolbarBtn.addEventListener('click', openAddModal);
+    }
+    
+    // 关闭弹窗按钮
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeModal);
+    }
+    
+    // 点击弹窗背景关闭
+    if (linkModal) {
+        linkModal.addEventListener('click', (e) => {
+            if (e.target === linkModal) {
+                closeModal();
+            }
+        });
+    }
+
+    // ================================
+    // 分类管理功能
+    // ================================
+    const categoryModal = document.getElementById('category-modal');
+    const manageCategoriesBtn = document.getElementById('manage-categories-btn');
+    const categoryModalCloseBtn = document.getElementById('category-modal-close-btn');
+    const newCategoryNameInput = document.getElementById('new-category-name');
+    const addCategoryBtn = document.getElementById('add-category-btn');
+    const categoriesList = document.getElementById('categories-list');
+    
+    // 打开分类管理弹窗
+    function openCategoryModal() {
+        renderCategoriesList();
+        categoryModal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            categoryModal.classList.add('show');
+        });
+    }
+    
+    // 关闭分类管理弹窗
+    function closeCategoryModal() {
+        categoryModal.classList.remove('show');
+        setTimeout(() => {
+            categoryModal.style.display = 'none';
+        }, 250);
+    }
+    
+    // 渲染分类列表
+    function renderCategoriesList() {
+        const categories = {};
+        links.forEach(link => {
+            const category = link.category;
+            if (!categories[category]) {
+                categories[category] = 0;
+            }
+            categories[category]++;
+        });
+        
+        const categoryNames = Object.keys(categories);
+        
+        if (categoryNames.length === 0) {
+            categoriesList.innerHTML = `
+                <div class="categories-empty">
+                    <i class="ri-folder-off-line"></i>
+                    <p>暂无分类</p>
+                </div>
+            `;
+            return;
+        }
+        
+        categoriesList.innerHTML = categoryNames.map(name => `
+            <div class="category-item" data-category="${name}">
+                <div class="category-item-info">
+                    <div class="category-item-icon">
+                        <i class="ri-folder-line"></i>
+                    </div>
+                    <span class="category-item-name">${name}</span>
+                    <span class="category-item-count">${categories[name]} 个链接</span>
+                </div>
+                <div class="category-item-actions">
+                    <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${name}">
+                        <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="category-action-btn delete" title="删除" data-action="delete" data-category="${name}">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // 绑定分类项的事件
+        categoriesList.querySelectorAll('.category-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const category = btn.dataset.category;
+                if (action === 'edit') {
+                    editCategory(category);
+                } else if (action === 'delete') {
+                    deleteCategory(category);
+                }
+            });
+        });
+    }
+    
+    // 添加分类
+    function addCategory(name) {
+        if (!name || !name.trim()) {
+            showMessage('请输入分类名称');
+            return;
+        }
+        name = name.trim();
+        
+        const categories = [...new Set(links.map(l => l.category))];
+        if (categories.includes(name)) {
+            showMessage('分类已存在');
+            return;
+        }
+        
+        showMessage('已添加分类：' + name);
+        renderCategoriesList();
+        updateCategoryDatalist();
+        updateStorageInfo();
+        newCategoryNameInput.value = '';
+    }
+    
+    // 编辑分类（重命名）
+    function editCategory(oldName) {
+        const newName = prompt('请输入新的分类名称：', oldName);
+        if (newName && newName.trim() && newName !== oldName) {
+            const trimmedName = newName.trim();
+            // 更新所有该分类的链接
+            links.forEach(link => {
+                if (link.category === oldName) {
+                    link.category = trimmedName;
+                }
+            });
+            showMessage('已重命名分类');
+            renderCategoriesList();
+            renderLinksInSettings(links);
+            renderLinksByCategory(links);
+            updateCategoryDatalist();
+        }
+    }
+    
+    // 删除分类
+    function deleteCategory(name) {
+        const categoryLinks = links.filter(l => l.category === name);
+        if (categoryLinks.length > 0) {
+            if (!confirm(`分类"${name}"中有 ${categoryLinks.length} 个链接，删除后这些链接将被移动到"未分类"。确定要删除吗？`)) {
+                return;
+            }
+            // 将该分类的所有链接移动到"未分类"
+            links.forEach(link => {
+                if (link.category === name) {
+                    link.category = '未分类';
+                }
+            });
+        } else {
+            if (!confirm(`确定要删除空分类"${name}"吗？`)) {
+                return;
+            }
+        }
+        showMessage('已删除分类');
+        renderCategoriesList();
+        renderLinksInSettings(links);
+        renderLinksByCategory(links);
+        updateCategoryDatalist();
+    }
+    
+    // 管理分类按钮
+    if (manageCategoriesBtn) {
+        manageCategoriesBtn.addEventListener('click', openCategoryModal);
+    }
+    
+    // 关闭分类弹窗按钮
+    if (categoryModalCloseBtn) {
+        categoryModalCloseBtn.addEventListener('click', closeCategoryModal);
+    }
+    
+    // 点击分类弹窗背景关闭
+    if (categoryModal) {
+        categoryModal.addEventListener('click', (e) => {
+            if (e.target === categoryModal) {
+                closeCategoryModal();
+            }
+        });
+    }
+    
+    // 添加分类按钮
+    if (addCategoryBtn) {
+        addCategoryBtn.addEventListener('click', () => {
+            addCategory(newCategoryNameInput.value);
+        });
+    }
+    
+    // 回车添加分类
+    if (newCategoryNameInput) {
+        newCategoryNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addCategory(newCategoryNameInput.value);
+            }
+        });
+    }
 
     // 取消按钮
     const cancelButton = document.getElementById('cancel-button');
-    cancelButton.addEventListener('click', () => {
-        editForm.style.display = 'none';
-        addLinkPlaceholder.style.display = 'block';
-    });
+    cancelButton.addEventListener('click', closeModal);
 
     // 保存按钮
     const saveButton = document.getElementById('save-button');
-    let editingLinkId = null;
 
     saveButton.addEventListener('click', () => {
         const name = document.getElementById('edit-name').value.trim();
@@ -209,6 +442,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        const editingLinkId = window.editingLinkId;
         if (editingLinkId !== null) {
             // 编辑现有链接
             const linkIndex = links.findIndex(l => l.ID === editingLinkId);
@@ -235,11 +469,8 @@ document.addEventListener("DOMContentLoaded", function () {
             showMessage('已添加链接');
         }
 
-        // 隐藏表单
-        editForm.style.display = 'none';
-        addLinkPlaceholder.style.display = 'block';
-        editingLinkId = null;
-
+        // 关闭弹窗
+        closeModal();
         // 重新渲染
         renderLinksByCategory(links);
         renderLinksInSettings(links);
@@ -274,7 +505,14 @@ document.addEventListener("DOMContentLoaded", function () {
         const categories = [...new Set(links.map(l => l.category))];
         document.getElementById('total-links').textContent = links.length;
         document.getElementById('total-categories').textContent = categories.length;
-        document.getElementById('storage-links-count').textContent = links.length;
+        
+        // 更新迷你统计卡片
+        const storageSizeMini = document.getElementById('storage-size-mini');
+        if (storageSizeMini) {
+            const dataSize = new Blob([JSON.stringify(links)]).size;
+            const sizeText = dataSize < 1024 ? `${dataSize} B` : `${(dataSize / 1024).toFixed(1)} KB`;
+            storageSizeMini.textContent = sizeText;
+        }
 
         // 计算数据大小
         const dataSize = new Blob([JSON.stringify(links)]).size;
@@ -401,6 +639,48 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // 版本检测功能
+    const currentVersion = '1.0.0';
+    document.getElementById('current-version').textContent = currentVersion;
+    
+    // 检查 GitHub 最新版本
+    fetch('https://api.github.com/repos/LceAn/LocalNavigationPage/releases/latest')
+        .then(response => response.json())
+        .then(data => {
+            const latestVersion = data.tag_name.replace('v', '');
+            const statusEl = document.getElementById('version-check-status');
+            
+            if (compareVersions(latestVersion, currentVersion) > 0) {
+                statusEl.innerHTML = `
+                    <a href="https://github.com/LceAn/LocalNavigationPage/releases/latest" target="_blank" 
+                       style="color: var(--accent-color); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="ri-arrow-up-line"></i>
+                        <span>发现新版本 ${latestVersion}，点击更新</span>
+                    </a>
+                `;
+            } else {
+                statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-check-line"></i> 已是最新版本</span>';
+            }
+        })
+        .catch(error => {
+            console.error('版本检测失败:', error);
+            const statusEl = document.getElementById('version-check-status');
+            statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-error-warning-line"></i> 检测失败</span>';
+        });
+    
+    // 版本号比较函数
+    function compareVersions(v1, v2) {
+        const parts1 = v1.split('.').map(Number);
+        const parts2 = v2.split('.').map(Number);
+        for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+            const num1 = parts1[i] || 0;
+            const num2 = parts2[i] || 0;
+            if (num1 > num2) return 1;
+            if (num1 < num2) return -1;
+        }
+        return 0;
+    }
+
     // 主题选择功能
     const themeOptions = document.querySelectorAll('.theme-option');
     const savedTheme = localStorage.getItem('theme') || 'light';
@@ -431,6 +711,19 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // 网站标题设置
+    const siteTitleInput = document.getElementById('site-title-input');
+    const savedTitle = localStorage.getItem('siteTitle') || '我的导航';
+    siteTitleInput.value = savedTitle;
+    document.querySelector('.page-header h1').textContent = savedTitle;
+    
+    siteTitleInput.addEventListener('input', function() {
+        const title = this.value.trim() || '我的导航';
+        document.querySelector('.page-header h1').textContent = title;
+        document.title = title;
+        localStorage.setItem('siteTitle', title);
+    });
+
     // 布局选项功能
     const compactModeToggle = document.getElementById('compact-mode');
     const showThumbnailsToggle = document.getElementById('show-thumbnails');
@@ -449,12 +742,27 @@ document.addEventListener("DOMContentLoaded", function () {
         compactModeToggle.checked = localStorage.getItem('compactMode') === 'true';
     }
 
+    // 显示缩略图功能
     if (showThumbnailsToggle) {
+        function applyThumbnailSetting(show) {
+            const thumbnails = document.querySelectorAll('.link-card-thumbnail');
+            thumbnails.forEach(thumb => {
+                if (show) {
+                    thumb.style.display = 'block';
+                } else {
+                    thumb.style.display = 'none';
+                }
+            });
+        }
+        
         showThumbnailsToggle.addEventListener('change', function() {
             localStorage.setItem('showThumbnails', this.checked);
+            applyThumbnailSetting(this.checked);
             showMessage(this.checked ? '已显示缩略图' : '已隐藏缩略图');
         });
         showThumbnailsToggle.checked = localStorage.getItem('showThumbnails') !== 'false';
+        // 初始化应用缩略图设置
+        applyThumbnailSetting(showThumbnailsToggle.checked);
     }
 
     if (enableAnimationsToggle) {
@@ -916,34 +1224,9 @@ function createLinkItem(link) {
     editButton.title = '编辑';
     editButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        // 切换到添加链接标签页
-        document.querySelector('.tab-button[data-tab="add-link"]').click();
-
-        // 填充表单
-        document.getElementById('edit-name').value = link.name;
-        document.getElementById('edit-url').value = link.url;
-        document.getElementById('edit-category').value = link.category;
-        document.getElementById('edit-tag').value = link.tag || '';
-        document.getElementById('edit-thumbnail').value = link.thumbnail || '';
-        document.getElementById('edit-id').value = link.ID;
-
-        // 设置编辑状态
+        // 设置编辑状态并打开弹窗
         window.editingLinkId = link.ID;
-
-        // 显示表单，隐藏占位符
-        document.getElementById('edit-form').style.display = 'block';
-        document.getElementById('add-link-placeholder').style.display = 'none';
-
-        // 更新缩略图预览
-        const thumbnailInput = document.getElementById('edit-thumbnail');
-        const thumbnailPreview = document.getElementById('thumbnail-preview');
-        if (link.thumbnail) {
-            thumbnailPreview.innerHTML = `<img src="${link.thumbnail}" alt="预览">`;
-            thumbnailPreview.classList.add('has-image');
-        } else {
-            thumbnailPreview.innerHTML = '<i class="ri-image-add-line"></i><span>预览</span>';
-            thumbnailPreview.classList.remove('has-image');
-        }
+        openEditModal(link);
     });
 
     const deleteButton = document.createElement('button');

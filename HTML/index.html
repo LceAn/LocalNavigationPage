@@ -92,13 +92,9 @@
             
             <!-- 标签页导航 -->
             <div class="settings-tabs">
-                <button class="tab-button active" data-tab="add-link">
-                    <i class="ri-add-circle-line"></i>
-                    <span>添加链接</span>
-                </button>
-                <button class="tab-button" data-tab="manage-links">
+                <button class="tab-button active" data-tab="links">
                     <i class="ri-links-line"></i>
-                    <span>管理链接</span>
+                    <span>链接管理</span>
                 </button>
                 <button class="tab-button" data-tab="appearance">
                     <i class="ri-palette-line"></i>
@@ -116,14 +112,98 @@
             
             <!-- 标签页内容 -->
             <div class="settings-content">
-                <!-- 添加/编辑链接标签页 -->
-                <div class="tab-content active" id="add-link-tab">
+                <!-- 链接管理标签页 -->
+                <div class="tab-content active" id="links-tab">
                     <div class="tab-header">
-                        <i class="ri-edit-2-line"></i>
-                        <h3>添加/编辑链接</h3>
+                        <i class="ri-links-line"></i>
+                        <h3>链接管理</h3>
                     </div>
-                    <form id="settings-form">
-                        <div id="edit-form">
+                    
+                    <!-- 统计卡片 -->
+                    <div class="links-stats-row">
+                        <div class="stat-card">
+                            <div class="stat-icon links-stat">
+                                <i class="ri-links-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-links">0</span>
+                                <span class="stat-label">总链接数</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon categories-stat">
+                                <i class="ri-folder-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-categories">0</span>
+                                <span class="stat-label">分类数</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon storage-stat">
+                                <i class="ri-database-2-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="storage-size-mini">0 KB</span>
+                                <span class="stat-label">数据大小</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 工具栏 -->
+                    <div class="links-toolbar">
+                        <div class="links-search">
+                            <i class="ri-search-line"></i>
+                            <input type="text" id="links-search" placeholder="搜索链接名称或 URL...">
+                        </div>
+                        <div class="links-filter">
+                            <select id="category-filter">
+                                <option value="">全部分类</option>
+                            </select>
+                            <button class="btn-icon" id="manage-categories-btn" title="管理分类">
+                                <i class="ri-folder-settings-line"></i>
+                            </button>
+                            <button class="btn-primary" id="add-link-toolbar-btn">
+                                <i class="ri-add-line"></i>
+                                <span>添加链接</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 提示信息 -->
+                    <div class="links-hint">
+                        <i class="ri-information-line"></i>
+                        <span>添加链接时输入新的分类名称即可创建新分类，或直接点击"管理分类"按钮管理现有分类</span>
+                    </div>
+                    
+                    <!-- 链接列表 -->
+                    <div class="links-list-container">
+                        <ul id="existing-links">
+                            <!-- 这里显示当前的网址列表 -->
+                        </ul>
+                        <div class="links-empty" id="links-empty">
+                            <div class="empty-icon">
+                                <i class="ri-inbox-line"></i>
+                            </div>
+                            <p>暂无链接</p>
+                            <span>点击右上角"添加链接"按钮开始管理您的导航</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 添加/编辑链接弹窗 -->
+                <div class="modal-overlay" id="link-modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="modal-title">
+                                <i class="ri-add-circle-line"></i>
+                                <span>添加链接</span>
+                            </h3>
+                            <button class="modal-close" id="modal-close-btn">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
                             <div class="form-grid">
                                 <div class="form-item">
                                     <label for="edit-name">
@@ -182,84 +262,47 @@
                                         <span>预览</span>
                                     </div>
                                 </div>
-                                <div class="form-item">
-                                    <label for="edit-id">
-                                        <i class="ri-id-card-line"></i>
-                                        <span>链接 ID</span>
-                                    </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-id-card-line input-icon"></i>
-                                        <input type="text" id="edit-id" name="edit-id" disabled placeholder="自动生成">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" id="cancel-button" class="btn-secondary">
-                                    <i class="ri-close-line"></i>
-                                    <span>取消</span>
-                                </button>
-                                <button type="button" id="save-button" class="btn-primary">
-                                    <i class="ri-save-3-line"></i>
-                                    <span>保存</span>
-                                </button>
                             </div>
                         </div>
-                        <div id="add-link-placeholder">
-                            <div class="empty-state">
-                                <i class="ri-add-circle-line"></i>
-                                <p>点击下方按钮添加新链接</p>
-                                <span class="empty-state-hint">支持快速添加常用网站</span>
-                            </div>
-                        </div>
-                        <div class="form-item">
-                            <button type="button" id="edit-link" style="display: none;">编辑</button>
-                            <button type="button" id="add-link-button" class="btn-primary full-width">
-                                <i class="ri-add-line"></i>
-                                <span>添加新链接</span>
+                        <div class="modal-footer">
+                            <button type="button" id="cancel-button" class="btn-secondary">
+                                <i class="ri-close-line"></i>
+                                <span>取消</span>
+                            </button>
+                            <button type="button" id="save-button" class="btn-primary">
+                                <i class="ri-save-3-line"></i>
+                                <span>保存</span>
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
                 
-                <!-- 管理链接标签页 -->
-                <div class="tab-content" id="manage-links-tab">
-                    <div class="tab-header">
-                        <i class="ri-links-line"></i>
-                        <h3>管理链接</h3>
-                    </div>
-                    <div class="links-toolbar">
-                        <div class="links-search">
-                            <i class="ri-search-line"></i>
-                            <input type="text" id="links-search" placeholder="搜索链接名称或 URL...">
-                        </div>
-                        <div class="links-filter">
-                            <select id="category-filter">
-                                <option value="">全部分类</option>
-                            </select>
-                            <button class="filter-sort-btn" id="sort-links" title="排序">
-                                <i class="ri-sort-asc"></i>
+                <!-- 分类管理弹窗 -->
+                <div class="modal-overlay" id="category-modal">
+                    <div class="modal-content modal-sm">
+                        <div class="modal-header">
+                            <h3>
+                                <i class="ri-folder-settings-line"></i>
+                                <span>管理分类</span>
+                            </h3>
+                            <button class="modal-close" id="category-modal-close-btn">
+                                <i class="ri-close-line"></i>
                             </button>
                         </div>
-                    </div>
-                    <div class="links-stats">
-                        <div class="stat-item">
-                            <i class="ri-links-line"></i>
-                            <span class="stat-value" id="total-links">0</span>
-                            <span class="stat-label">总链接数</span>
+                        <div class="modal-body">
+                            <div class="category-add-row">
+                                <div class="input-wrapper">
+                                    <i class="ri-folder-add-line input-icon"></i>
+                                    <input type="text" id="new-category-name" placeholder="输入新分类名称...">
+                                </div>
+                                <button class="btn-primary" id="add-category-btn">
+                                    <i class="ri-add-line"></i>
+                                </button>
+                            </div>
+                            <div class="categories-list" id="categories-list">
+                                <!-- 动态填充分类列表 -->
+                            </div>
                         </div>
-                        <div class="stat-item">
-                            <i class="ri-folder-line"></i>
-                            <span class="stat-value" id="total-categories">0</span>
-                            <span class="stat-label">分类数</span>
-                        </div>
-                    </div>
-                    <ul id="existing-links">
-                        <!-- 这里显示当前的网址列表 -->
-                    </ul>
-                    <div class="links-empty" id="links-empty" style="display: none;">
-                        <i class="ri-inbox-line"></i>
-                        <p>暂无链接</p>
-                        <span>点击"添加链接"标签页添加新链接</span>
                     </div>
                 </div>
                 
@@ -301,6 +344,22 @@
                         </div>
                     </div>
                     
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-edit-line"></i>
+                            <span>网站设置</span>
+                        </div>
+                        <div class="layout-options">
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-text"></i>
+                                    <span>网站标题</span>
+                                </div>
+                                <input type="text" id="site-title-input" placeholder="我的导航" style="flex: 1; padding: 8px 12px; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 8px; font-size: 14px; background: var(--bg-secondary); color: var(--text-primary);">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="settings-section">
                         <div class="section-title">
                             <i class="ri-layout-grid-line"></i>
@@ -418,7 +477,10 @@
                         <div class="about-logo">
                             <i class="ri-compass-3-line"></i>
                             <h2>导航页</h2>
-                            <span class="about-version">Version 1.0.0</span>
+                            <span class="about-version">Version <span id="current-version">1.0.0</span></span>
+                            <div id="version-check-status" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);">
+                                <span class="version-checking"><i class="ri-loader-4-line ri-spin"></i> 检查更新中...</span>
+                            </div>
                         </div>
                         <p class="about-description">
                             一个简洁、高效的本地导航页面，帮助您快速访问常用网站。
