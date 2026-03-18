@@ -4,6 +4,9 @@
         "editor.lineHighlightBorder": "#9fced11f",
         "activityBar.background": "#2A3012",
         "titleBar.activeBackground": "#3A4419",
-        "titleBar.activeForeground": "#F9FAF2"
-    }
+        "titleBar.activeForeground": "#F9FAF2",
+        "titleBar.inactiveBackground": "#540357",
+        "titleBar.inactiveForeground": "#FFF9FF"
+    },
+    "liveServer.settings.port": 5501
 }

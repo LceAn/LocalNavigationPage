@@ -314,6 +314,8 @@ body {
   opacity: 0;
   animation: fadeUpGrid 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: 0.3s;
+  align-items: start;
+  grid-auto-rows: auto;
 }
 
 @keyframes fadeUpGrid {
@@ -340,6 +342,7 @@ body {
   overflow: hidden;
   position: relative;
   transform: translateZ(0);
+  height: fit-content;
 }
 
 .category-container:hover {
@@ -376,6 +379,22 @@ body {
   scrollbar-color: rgba(93, 95, 239, 0.2) transparent;
   background-color: var(--bg-card);
   position: relative;
+  transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+}
+
+/* 展开/收起动画 */
+.category-container.collapsed .link-list {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+}
+
+.category-container:not(.collapsed) .link-list {
+  max-height: 280px;
+  padding-top: var(--space-4);
+  padding-bottom: var(--space-4);
+  opacity: 1;
 }
 
 /* 自定义滚动条样式 - Webkit浏览器 */
@@ -1011,4 +1030,19 @@ body {
     font-size: 12px;
     max-width: 90px;
   }
+}
+
+/* 天气文本样式 */
+#weather-text {
+    transition: opacity 0.3s ease;
+    display: inline-block;
+    min-width: 100px;
+}
+
+#weather-text.loading {
+    opacity: 0.7;
+}
+
+#weather-text.loaded {
+    opacity: 1;
 }

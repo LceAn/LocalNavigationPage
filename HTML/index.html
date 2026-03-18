@@ -81,55 +81,381 @@
     <div id="settings-container">
         <div id="settings-box">
             <div class="settings-header">
-                <h2>设置</h2>
-                <button id="close-settings" class="icon-button">
+                <div class="header-title">
+                    <i class="ri-settings-3-line"></i>
+                    <h2>设置</h2>
+                </div>
+                <button id="close-settings" class="icon-button" title="关闭设置">
                     <i class="ri-close-line"></i>
                 </button>
             </div>
-            <div class="settings-form">
-                <h3>添加/编辑链接</h3>
-				<form id="settings-form">
-					<!-- 编辑表单，初始状态为隐藏 -->
-					<div id="edit-form" style="display: none;">
-						<div class="form-item">
-							<label for="edit-name">名称：</label>
-							<input type="text" id="edit-name" name="edit-name">
-						</div>
-						<div class="form-item">
-							<label for="edit-url">URL：</label>
-							<input type="text" id="edit-url" name="edit-url">
-						</div>
-						<div class="form-item">
-							<label for="edit-category">分类：</label>
-							<input type="text" id="edit-category" name="edit-category">
-						</div>
-						<div class="form-item">
-							<label for="edit-tag">标签：</label>
-							<input type="text" id="edit-tag" name="edit-tag">
-						</div>
-						<div class="form-item">
-							<label for="edit-thumbnail">缩略图：</label>
-							<input type="text" id="edit-thumbnail" name="edit-thumbnail" placeholder="留空则自动生成">
-						</div>
-						<div class="form-item">
-							<label for="edit-id">ID：</label>
-							<input type="text" id="edit-id" name="edit-id" disabled>
-						</div>
-						<button type="button" id="save-button">保存</button>
-					</div>
-					<!-- 编辑表单结束 -->
-					<div class="form-item">
-						<button type="button" id="edit-link" style="display: none;">编辑</button>
-						<button type="button" id="add-link-button">添加链接</button>
-					</div>
-				</form>
+            
+            <!-- 标签页导航 -->
+            <div class="settings-tabs">
+                <button class="tab-button active" data-tab="add-link">
+                    <i class="ri-add-circle-line"></i>
+                    <span>添加链接</span>
+                </button>
+                <button class="tab-button" data-tab="manage-links">
+                    <i class="ri-links-line"></i>
+                    <span>管理链接</span>
+                </button>
+                <button class="tab-button" data-tab="appearance">
+                    <i class="ri-palette-line"></i>
+                    <span>外观</span>
+                </button>
+                <button class="tab-button" data-tab="data">
+                    <i class="ri-database-2-line"></i>
+                    <span>数据</span>
+                </button>
+                <button class="tab-button" data-tab="about">
+                    <i class="ri-information-line"></i>
+                    <span>关于</span>
+                </button>
             </div>
-            <div class="settings-list">
-                <h3>现有链接</h3>
-				<br>
-                <ul id="existing-links">
-                    <!-- 这里显示当前的网址列表 -->
-                </ul>
+            
+            <!-- 标签页内容 -->
+            <div class="settings-content">
+                <!-- 添加/编辑链接标签页 -->
+                <div class="tab-content active" id="add-link-tab">
+                    <div class="tab-header">
+                        <i class="ri-edit-2-line"></i>
+                        <h3>添加/编辑链接</h3>
+                    </div>
+                    <form id="settings-form">
+                        <div id="edit-form">
+                            <div class="form-grid">
+                                <div class="form-item">
+                                    <label for="edit-name">
+                                        <i class="ri-file-text-line"></i>
+                                        <span>网站名称</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-file-text-line input-icon"></i>
+                                        <input type="text" id="edit-name" name="edit-name" placeholder="例如：GitHub">
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="edit-url">
+                                        <i class="ri-link"></i>
+                                        <span>网站地址</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-global-line input-icon"></i>
+                                        <input type="text" id="edit-url" name="edit-url" placeholder="https://example.com">
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="edit-category">
+                                        <i class="ri-folder-line"></i>
+                                        <span>所属分类</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-folder-line input-icon"></i>
+                                        <input type="text" id="edit-category" name="edit-category" placeholder="例如：开发工具" list="category-list">
+                                        <datalist id="category-list">
+                                            <!-- 动态填充现有分类 -->
+                                        </datalist>
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="edit-tag">
+                                        <i class="ri-price-tag-3-line"></i>
+                                        <span>标签</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-price-tag-3-line input-icon"></i>
+                                        <input type="text" id="edit-tag" name="edit-tag" placeholder="例如：代码、工具">
+                                    </div>
+                                </div>
+                                <div class="form-item full-width">
+                                    <label for="edit-thumbnail">
+                                        <i class="ri-image-line"></i>
+                                        <span>缩略图</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-image-line input-icon"></i>
+                                        <input type="text" id="edit-thumbnail" name="edit-thumbnail" placeholder="输入图片 URL，留空则自动生成">
+                                    </div>
+                                    <div class="thumbnail-preview" id="thumbnail-preview">
+                                        <i class="ri-image-add-line"></i>
+                                        <span>预览</span>
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="edit-id">
+                                        <i class="ri-id-card-line"></i>
+                                        <span>链接 ID</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-id-card-line input-icon"></i>
+                                        <input type="text" id="edit-id" name="edit-id" disabled placeholder="自动生成">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" id="cancel-button" class="btn-secondary">
+                                    <i class="ri-close-line"></i>
+                                    <span>取消</span>
+                                </button>
+                                <button type="button" id="save-button" class="btn-primary">
+                                    <i class="ri-save-3-line"></i>
+                                    <span>保存</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="add-link-placeholder">
+                            <div class="empty-state">
+                                <i class="ri-add-circle-line"></i>
+                                <p>点击下方按钮添加新链接</p>
+                                <span class="empty-state-hint">支持快速添加常用网站</span>
+                            </div>
+                        </div>
+                        <div class="form-item">
+                            <button type="button" id="edit-link" style="display: none;">编辑</button>
+                            <button type="button" id="add-link-button" class="btn-primary full-width">
+                                <i class="ri-add-line"></i>
+                                <span>添加新链接</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- 管理链接标签页 -->
+                <div class="tab-content" id="manage-links-tab">
+                    <div class="tab-header">
+                        <i class="ri-links-line"></i>
+                        <h3>管理链接</h3>
+                    </div>
+                    <div class="links-toolbar">
+                        <div class="links-search">
+                            <i class="ri-search-line"></i>
+                            <input type="text" id="links-search" placeholder="搜索链接名称或 URL...">
+                        </div>
+                        <div class="links-filter">
+                            <select id="category-filter">
+                                <option value="">全部分类</option>
+                            </select>
+                            <button class="filter-sort-btn" id="sort-links" title="排序">
+                                <i class="ri-sort-asc"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="links-stats">
+                        <div class="stat-item">
+                            <i class="ri-links-line"></i>
+                            <span class="stat-value" id="total-links">0</span>
+                            <span class="stat-label">总链接数</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="ri-folder-line"></i>
+                            <span class="stat-value" id="total-categories">0</span>
+                            <span class="stat-label">分类数</span>
+                        </div>
+                    </div>
+                    <ul id="existing-links">
+                        <!-- 这里显示当前的网址列表 -->
+                    </ul>
+                    <div class="links-empty" id="links-empty" style="display: none;">
+                        <i class="ri-inbox-line"></i>
+                        <p>暂无链接</p>
+                        <span>点击"添加链接"标签页添加新链接</span>
+                    </div>
+                </div>
+                
+                <!-- 外观设置标签页 -->
+                <div class="tab-content" id="appearance-tab">
+                    <div class="tab-header">
+                        <i class="ri-palette-line"></i>
+                        <h3>外观设置</h3>
+                    </div>
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-sun-line"></i>
+                            <span>主题模式</span>
+                        </div>
+                        <div class="theme-selector">
+                            <div class="theme-option" data-theme="light">
+                                <div class="theme-preview light-preview">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content"></div>
+                                </div>
+                                <span class="theme-name">浅色模式</span>
+                                <i class="ri-check-line theme-check"></i>
+                            </div>
+                            <div class="theme-option" data-theme="dark">
+                                <div class="theme-preview dark-preview">
+                                    <div class="preview-header"></div>
+                                    <div class="preview-content"></div>
+                                </div>
+                                <span class="theme-name">深色模式</span>
+                                <i class="ri-check-line theme-check"></i>
+                            </div>
+                            <div class="theme-option" data-theme="auto">
+                                <div class="theme-preview auto-preview">
+                                    <div class="preview-icon"><i class="ri-macbook-line"></i></div>
+                                </div>
+                                <span class="theme-name">跟随系统</span>
+                                <i class="ri-check-line theme-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-layout-grid-line"></i>
+                            <span>布局设置</span>
+                        </div>
+                        <div class="layout-options">
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-compact-disc-line"></i>
+                                    <span>紧凑模式</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="compact-mode">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-image-line"></i>
+                                    <span>显示缩略图</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-thumbnails" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-magic-line"></i>
+                                    <span>动画效果</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="enable-animations" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 数据管理标签页 -->
+                <div class="tab-content" id="data-tab">
+                    <div class="tab-header">
+                        <i class="ri-database-2-line"></i>
+                        <h3>数据管理</h3>
+                    </div>
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-download-line"></i>
+                            <span>导出与导入</span>
+                        </div>
+                        <div class="data-actions">
+                            <button class="data-action-btn" id="export-data">
+                                <i class="ri-download-cloud-2-line"></i>
+                                <span>导出数据</span>
+                                <small>将链接数据导出为 JSON 文件</small>
+                            </button>
+                            <button class="data-action-btn" id="import-data">
+                                <i class="ri-upload-cloud-2-line"></i>
+                                <span>导入数据</span>
+                                <small>从 JSON 文件导入链接</small>
+                            </button>
+                            <input type="file" id="import-file" accept=".json" style="display: none;">
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-shield-keyhole-line"></i>
+                            <span>数据安全</span>
+                        </div>
+                        <div class="data-actions">
+                            <button class="data-action-btn danger" id="clear-cache">
+                                <i class="ri-delete-bin-line"></i>
+                                <span>清除缓存</span>
+                                <small>清除本地缓存数据</small>
+                            </button>
+                            <button class="data-action-btn danger" id="reset-all">
+                                <i class="ri-refresh-line"></i>
+                                <span>重置所有</span>
+                                <small>恢复默认设置和数据</small>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-storage-line"></i>
+                            <span>存储信息</span>
+                        </div>
+                        <div class="storage-info">
+                            <div class="storage-item">
+                                <span class="storage-label">链接数量</span>
+                                <span class="storage-value" id="storage-links-count">0</span>
+                            </div>
+                            <div class="storage-item">
+                                <span class="storage-label">数据大小</span>
+                                <span class="storage-value" id="storage-size">0 KB</span>
+                            </div>
+                            <div class="storage-item">
+                                <span class="storage-label">最后更新</span>
+                                <span class="storage-value" id="storage-last-update">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 关于标签页 -->
+                <div class="tab-content" id="about-tab">
+                    <div class="tab-header">
+                        <i class="ri-information-line"></i>
+                        <h3>关于</h3>
+                    </div>
+                    <div class="about-content">
+                        <div class="about-logo">
+                            <i class="ri-compass-3-line"></i>
+                            <h2>导航页</h2>
+                            <span class="about-version">Version 1.0.0</span>
+                        </div>
+                        <p class="about-description">
+                            一个简洁、高效的本地导航页面，帮助您快速访问常用网站。
+                        </p>
+                        <div class="about-features">
+                            <div class="feature-item">
+                                <i class="ri-palette-line"></i>
+                                <span>昼夜模式切换</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="ri-search-line"></i>
+                                <span>多引擎搜索</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="ri-folder-line"></i>
+                                <span>分类管理</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="ri-device-line"></i>
+                                <span>响应式设计</span>
+                            </div>
+                        </div>
+                        <div class="about-links">
+                            <a href="https://github.com/LceAn/LocalNavigationPage" target="_blank" class="about-link">
+                                <i class="ri-github-line"></i>
+                                <span>GitHub 仓库</span>
+                            </a>
+                            <a href="https://github.com/LceAn/LocalNavigationPage/issues" target="_blank" class="about-link">
+                                <i class="ri-bug-line"></i>
+                                <span>问题反馈</span>
+                            </a>
+                        </div>
+                        <div class="about-copyright">
+                            <p>Made with <i class="ri-heart-fill"></i> by LceAn</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
