@@ -20,6 +20,24 @@
         { "ID":1, "url": "https://example4.com", "name": "网页4", "category": "分类3", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
         { "ID":6, "url": "https://example4.com", "name": "网页4", "category": "分类3", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
         { "ID":7, "url": "https://example4.com", "name": "网页4", "category": "分类4", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
-        { "ID":8, "url": "https://example4.com", "name": "网页4", "category": "分类5", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"}
+        {
+            "ID": 8,
+            "name": "网页4",
+            "category": "分类5",
+            "tag": "参考",
+            "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240",
+            "urls": [
+              {
+                "address": "https://example4.com",
+                "label": "默认",
+                "priority": 1
+              },
+              {
+                "address": "https://example4.com",
+                "label": "默认123",
+                "priority": 2
+              }
+            ]
+          }
     ]
 }

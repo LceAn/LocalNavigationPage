@@ -329,7 +329,7 @@ body {
   }
 }
 
-/* 修改分类容器样式 */
+/* 修改分类容器样式 - 优化版 */
 .category-container {
   background-color: var(--bg-card);
   border-radius: var(--rounded-xl);
@@ -343,11 +343,12 @@ body {
   position: relative;
   transform: translateZ(0);
   height: fit-content;
+  will-change: transform, box-shadow;
 }
 
 .category-container:hover {
   box-shadow: var(--shadow-xl);
-  transform: translateY(-8px);
+  transform: translateY(-4px);
 }
 
 .category-container::before {
@@ -366,12 +367,23 @@ body {
   opacity: 1;
 }
 
+/* 展开状态的高亮边框 */
+.category-container.expanded {
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-xl);
+}
+
+.category-container.expanded::before {
+  opacity: 1;
+}
+
 /* 确保链接列表能够自适应 */
 .category-container .link-list {
   display: flex;
   flex-wrap: wrap;
   max-height: 280px;
   overflow-y: auto;
+  overflow-x: hidden;
   justify-content: center;
   padding: var(--space-4);
   gap: var(--space-4);
@@ -379,22 +391,39 @@ body {
   scrollbar-color: rgba(93, 95, 239, 0.2) transparent;
   background-color: var(--bg-card);
   position: relative;
-  transition: max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  /* 使用 grid 布局实现更流畅的展开动画 */
+  transition: 
+    max-height 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.25s ease,
+    padding 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 展开/收起动画 */
+/* 展开/收起动画 - 优化版 */
 .category-container.collapsed .link-list {
   max-height: 0;
   padding-top: 0;
   padding-bottom: 0;
   opacity: 0;
+  visibility: hidden;
 }
 
 .category-container:not(.collapsed) .link-list {
-  max-height: 280px;
+  max-height: 500px;
   padding-top: var(--space-4);
   padding-bottom: var(--space-4);
   opacity: 1;
+  visibility: visible;
+}
+
+/* 紧凑模式下的链接列表 */
+body.compact-mode .category-container .link-list {
+  max-height: 200px;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+body.compact-mode .category-container:not(.collapsed) .link-list {
+  max-height: 350px;
 }
 
 /* 自定义滚动条样式 - Webkit浏览器 */
@@ -451,21 +480,6 @@ body {
   border-bottom: 1px solid var(--bg-tertiary);
 }
 
-.category-header::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(to right, var(--primary-color), var(--accent-color));
-  opacity: 0;
-  transition: opacity var(--transition-normal) ease;
-}
-
-.category-header:hover::after {
-  opacity: 1;
-}
 
 .category-header:hover {
   background-color: var(--bg-tertiary);

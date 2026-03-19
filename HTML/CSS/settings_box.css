@@ -1925,39 +1925,15 @@
     border-radius: 4px;
 }
 
-/* 链接卡片多 URL 下拉菜单 */
+/* 链接卡片多 URL 下拉菜单容器 */
 .link-card-urls {
-    position: relative;
-}
-
-.url-dropdown {
     position: absolute;
-    top: calc(100% + 8px);
+    bottom: 0;
+    left: 0;
     right: 0;
-    min-width: 220px;
-    background: var(--bg-secondary);
-    border-radius: var(--rounded-lg);
-    box-shadow: var(--shadow-xl);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    height: 100%;
+    pointer-events: none;
     z-index: 100;
-    display: none;
-    overflow: hidden;
-    animation: dropdownSlide 0.2s ease;
-}
-
-@keyframes dropdownSlide {
-    from {
-        opacity: 0;
-        transform: translateY(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.url-dropdown.show {
-    display: block;
 }
 
 .url-dropdown-header {
@@ -2140,24 +2116,26 @@
 /* 多 URL 卡片上的地址数量标签 */
 .url-count-badge {
     position: absolute;
-    top: 8px;
-    right: 8px;
+    bottom: 8px;
+    left: 8px;
     display: flex;
     align-items: center;
     gap: 4px;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(8px);
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: var(--rounded-full);
     font-size: 11px;
     color: white;
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition-fast) ease;
+    z-index: 101;
+    pointer-events: auto;
 }
 
 .url-count-badge:hover {
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     transform: scale(1.05);
 }
 
@@ -2167,6 +2145,83 @@
     border-radius: 50%;
     background: #52c41a;
     animation: pulse-green 2s infinite;
+}
+
+/* URL 下拉按钮 - 移到左下角 */
+.url-dropdown-btn {
+    position: absolute;
+    bottom: 8px;
+    left: 70px;
+    width: 28px;
+    height: 28px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 101;
+    pointer-events: auto;
+}
+
+.url-dropdown-btn:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+/* URL 下拉菜单 - 从左下角向上展开（使用 fixed 定位避免被遮挡） */
+.url-dropdown {
+    position: fixed;
+    min-width: 220px;
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--bg-secondary);
+    border-radius: var(--rounded-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    z-index: 9999;
+    display: none;
+    animation: dropdownSlideUp 0.2s ease;
+    /* 不设置 left/bottom，由 JS 动态计算位置 */
+    padding: 0;
+    /* 确保下拉菜单可见 */
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+}
+
+.url-dropdown.show {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@keyframes dropdownSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.url-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.url-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.url-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(93, 95, 239, 0.2);
+    border-radius: 10px;
 }
 
 /* 在线状态指示器 */

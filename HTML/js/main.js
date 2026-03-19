@@ -1453,7 +1453,11 @@ document.addEventListener("DOMContentLoaded", function () {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // 一键收起/展开分组按钮功能
+    // ================================
+    // 分类展开/收缩功能 - 优化版
+    // ================================
+    
+    // 一键收起/展开分组按钮功能 - 使用新的 toggleAllCategories 函数
     const toggleAllGroupsBtn = document.createElement('button');
     toggleAllGroupsBtn.id = 'toggle-all-groups';
     toggleAllGroupsBtn.className = 'icon-button';
@@ -1465,43 +1469,145 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let allCollapsed = false;
     toggleAllGroupsBtn.addEventListener('click', () => {
-        const groupContainers = document.querySelectorAll('.category-container');
-        groupContainers.forEach(container => {
-            const linkList = container.querySelector('.link-list');
-            const toggleBtn = container.querySelector('.toggle-button');
-            if (!allCollapsed) {
-                linkList.style.display = 'none';
-                toggleBtn.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-                container.classList.add('collapsed');
-            } else {
-                linkList.style.display = 'flex';
-                toggleBtn.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-                container.classList.remove('collapsed');
-            }
-        });
         allCollapsed = !allCollapsed;
+        toggleAllCategories(!allCollapsed); // expand = !allCollapsed
         showMessage(allCollapsed ? '已收起所有分组' : '已展开所有分组');
     });
-
-    // 分类展开/收缩功能
-    function setupCategoryToggle() {
-        const categoryContainers = document.querySelectorAll('.category-container');
-        categoryContainers.forEach(container => {
+    
+    // 存储展开状态的键
+    const EXPANDED_CATEGORIES_KEY = 'expandedCategories';
+    
+    // 获取已展开的分类列表
+    function getExpandedCategories() {
+        const stored = localStorage.getItem(EXPANDED_CATEGORIES_KEY);
+        return stored ? JSON.parse(stored) : [];
+    }
+    
+    // 保存展开状态
+    function saveExpandedCategories(categories) {
+        localStorage.setItem(EXPANDED_CATEGORIES_KEY, JSON.stringify(categories));
+    }
+    
+    // 切换分类展开状态
+    function toggleCategory(container, saveState = true) {
+        const category = container.dataset.category;
+        const linkList = container.querySelector('.link-list');
+        const toggleButton = container.querySelector('.toggle-button');
+        
+        if (!linkList || !toggleButton) return;
+        
+        const isExpanded = !container.classList.contains('collapsed');
+        
+        if (isExpanded) {
+            // 收起
             container.classList.add('collapsed');
-            const categoryHeader = container.querySelector('.category-header');
-            categoryHeader.addEventListener('click', function() {
-                container.classList.toggle('collapsed');
-            });
+            container.classList.remove('expanded');
+            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+            
+            // 从存储中移除
+            if (saveState) {
+                const expanded = getExpandedCategories();
+                const index = expanded.indexOf(category);
+                if (index > -1) {
+                    expanded.splice(index, 1);
+                    saveExpandedCategories(expanded);
+                }
+            }
+        } else {
+            // 展开
+            container.classList.remove('collapsed');
+            container.classList.add('expanded');
+            toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+            
+            // 添加到存储
+            if (saveState) {
+                const expanded = getExpandedCategories();
+                if (!expanded.includes(category)) {
+                    expanded.push(category);
+                    saveExpandedCategories(expanded);
+                }
+            }
+        }
+    }
+    
+    // 初始化分类展开状态
+    function initCategoryToggles() {
+        const expandedCategories = getExpandedCategories();
+        const categoryContainers = document.querySelectorAll('.category-container');
+        
+        categoryContainers.forEach(container => {
+            const category = container.dataset.category;
+            const linkList = container.querySelector('.link-list');
             const toggleButton = container.querySelector('.toggle-button');
+            const categoryHeader = container.querySelector('.category-header');
+            
+            if (!linkList || !toggleButton) return;
+            
+            // 根据存储状态初始化
+            if (expandedCategories.includes(category)) {
+                container.classList.remove('collapsed');
+                container.classList.add('expanded');
+                toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+            } else {
+                container.classList.add('collapsed');
+                container.classList.remove('expanded');
+                toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+            }
+            
+            // 点击标题切换展开状态
+            if (categoryHeader) {
+                categoryHeader.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleCategory(container, true);
+                });
+            }
+            
+            // 点击按钮切换展开状态
             if (toggleButton) {
                 toggleButton.addEventListener('click', function(event) {
                     event.stopPropagation();
-                    container.classList.toggle('collapsed');
+                    event.preventDefault();
+                    toggleCategory(container, true);
                 });
             }
         });
     }
-    setupCategoryToggle();
+    
+    // 一键展开/收起所有分类
+    function toggleAllCategories(expand) {
+        const categoryContainers = document.querySelectorAll('.category-container');
+        const allCategories = [];
+        
+        categoryContainers.forEach(container => {
+            const category = container.dataset.category;
+            allCategories.push(category);
+            
+            const linkList = container.querySelector('.link-list');
+            const toggleButton = container.querySelector('.toggle-button');
+            
+            if (!linkList || !toggleButton) return;
+            
+            if (expand) {
+                container.classList.remove('collapsed');
+                container.classList.add('expanded');
+                toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+            } else {
+                container.classList.add('collapsed');
+                container.classList.remove('expanded');
+                toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+            }
+        });
+        
+        // 保存状态
+        if (expand) {
+            saveExpandedCategories(allCategories);
+        } else {
+            saveExpandedCategories([]);
+        }
+    }
+    
+    // 初始化分类展开功能
+    initCategoryToggles();
 
     // 创建垂直位置调整按钮
     const createVerticalPositionControls = () => {
@@ -1619,7 +1725,7 @@ document.addEventListener("DOMContentLoaded", function () {
     createVerticalPositionControls();
 });
 
-// 渲染链接的函数（按照分类）
+// 渲染链接的函数（按照分类）- 修复版
 function renderLinksByCategory(links) {
     const linkContainer = document.getElementById('link-container');
     linkContainer.innerHTML = '';
@@ -1646,22 +1752,22 @@ function renderLinksByCategory(links) {
 
     for (const [category, categoryLinks] of sortedCategories) {
         const categoryContainer = document.createElement('div');
-        categoryContainer.className = 'category-container collapsed';
+        categoryContainer.className = 'category-container';
         categoryContainer.dataset.category = category;
 
         const categoryHeader = document.createElement('div');
         categoryHeader.className = 'category-header';
 
         const categoryTitle = document.createElement('h2');
-        categoryTitle.textContent = category;
+        categoryTitle.innerHTML = '<i class="ri-folder-2-line"></i> ' + category;
 
         const cardCount = document.createElement('span');
         cardCount.className = 'card-count';
-        cardCount.textContent = categoryLinks.length;
+        cardCount.innerHTML = '<i class="ri-links-line"></i> ' + categoryLinks.length;
 
         const toggleButton = document.createElement('button');
         toggleButton.className = 'toggle-button';
-        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
         toggleButton.title = '展开/折叠';
 
         categoryHeader.appendChild(categoryTitle);
@@ -1671,7 +1777,7 @@ function renderLinksByCategory(links) {
 
         const linkList = document.createElement('ul');
         linkList.className = 'link-list';
-        linkList.style.display = 'none';
+        // 不再设置 display: none，由 CSS 的 collapsed 类控制
         categoryContainer.appendChild(linkList);
 
         categoryLinks.forEach(link => {
@@ -1714,117 +1820,7 @@ function renderLinksByCategory(links) {
             
             // 如果有多 URL，添加下拉菜单
             if (urls.length > 1) {
-                const urlsContainer = document.createElement('div');
-                urlsContainer.className = 'link-card-urls';
-                
-                // 地址数量标签（带呼吸灯效果）
-                const urlCountBadge = document.createElement('div');
-                urlCountBadge.className = 'url-count-badge';
-                urlCountBadge.innerHTML = `
-                    <span class="badge-dot"></span>
-                    <span>${urls.length}个地址</span>
-                `;
-                urlCountBadge.title = '点击选择地址';
-                
-                const urlsButton = document.createElement('button');
-                urlsButton.className = 'icon-button';
-                urlsButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-                urlsButton.title = '选择地址';
-                urlsButton.style.cssText = 'position: absolute; top: 8px; right: 45px; width: 28px; height: 28px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;';
-                
-                const urlsDropdown = document.createElement('div');
-                urlsDropdown.className = 'url-dropdown';
-                
-                // 下拉菜单头部
-                const dropdownHeader = document.createElement('div');
-                dropdownHeader.className = 'url-dropdown-header';
-                dropdownHeader.innerHTML = `
-                    <span>选择地址</span>
-                    <span class="url-count">${urls.length}个</span>
-                `;
-                urlsDropdown.appendChild(dropdownHeader);
-                
-                // URL 列表项
-                urls.forEach((urlObj, idx) => {
-                    const urlItem = document.createElement('div');
-                    urlItem.className = 'url-dropdown-item';
-                    urlItem.dataset.url = urlObj.address;
-                    urlItem.dataset.index = idx;
-                    
-                    // 状态指示器（预留在线检测功能）
-                    const statusClass = idx === 0 ? 'online' : 'checking';
-                    const statusText = idx === 0 ? '在线' : '检测中';
-                    
-                    urlItem.innerHTML = `
-                        <div class="status-wrapper">
-                            <span class="status-dot ${statusClass}" title="${statusText}"></span>
-                        </div>
-                        <div class="url-info">
-                            <div class="url-label">${urlObj.label || '地址' + (idx + 1)}</div>
-                            <div class="url-address">${urlObj.address}</div>
-                        </div>
-                        <div class="url-meta">
-                            ${idx === 0 ? '<span class="check-icon selected"><i class="ri-check-line"></i></span>' : ''}
-                            <span class="priority-badge">优先级${urlObj.priority || idx + 1}</span>
-                            <i class="ri-external-link-line external-link"></i>
-                        </div>
-                    `;
-                    urlsDropdown.appendChild(urlItem);
-                });
-                
-                urlsContainer.appendChild(urlCountBadge);
-                urlsContainer.appendChild(urlsButton);
-                urlsContainer.appendChild(urlsDropdown);
-                linkCard.appendChild(urlsContainer);
-                
-                // 鼠标悬停显示下拉按钮
-                linkCard.addEventListener('mouseenter', () => {
-                    urlsButton.style.opacity = '1';
-                });
-                linkCard.addEventListener('mouseleave', () => {
-                    urlsButton.style.opacity = '0';
-                });
-                
-                // 绑定下拉按钮事件
-                urlsButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    urlsDropdown.classList.toggle('show');
-                });
-                
-                // 绑定地址数量标签点击事件
-                urlCountBadge.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    urlsDropdown.classList.toggle('show');
-                });
-                
-                // 绑定 URL 选择事件
-                urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const url = item.dataset.url;
-                        window.open(url, '_blank');
-                        urlsDropdown.classList.remove('show');
-                    });
-                    
-                    // 外部链接图标点击
-                    const externalLink = item.querySelector('.external-link');
-                    if (externalLink) {
-                        externalLink.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            const url = item.dataset.url;
-                            window.open(url, '_blank');
-                        });
-                    }
-                });
-                
-                // 点击外部关闭下拉菜单
-                document.addEventListener('click', function closeDropdown(e) {
-                    if (!urlsContainer.contains(e.target)) {
-                        urlsDropdown.classList.remove('show');
-                    }
-                });
+                setupMultiUrlDropdown(linkCard, urls);
             }
             
             // 点击卡片跳转
@@ -1838,19 +1834,72 @@ function renderLinksByCategory(links) {
             linkList.appendChild(linkElement);
         });
 
-        categoryHeader.addEventListener('click', (event) => {
-            const isExpanded = linkList.style.display !== 'none';
-            toggleCategoryDisplay(categoryContainer, linkList, toggleButton, !isExpanded);
+        // 绑定点击事件到分类头部
+        categoryHeader.addEventListener('click', function(event) {
+            event.stopPropagation();
+            event.preventDefault();
+            
+            const category = categoryContainer.dataset.category;
+            const isExpanded = !categoryContainer.classList.contains('collapsed');
+            
+            if (isExpanded) {
+                // 收起
+                categoryContainer.classList.add('collapsed');
+                categoryContainer.classList.remove('expanded');
+                toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+                
+                // 从存储中移除
+                const expanded = getExpandedCategories();
+                const index = expanded.indexOf(category);
+                if (index > -1) {
+                    expanded.splice(index, 1);
+                    saveExpandedCategories(expanded);
+                }
+            } else {
+                // 展开
+                categoryContainer.classList.remove('collapsed');
+                categoryContainer.classList.add('expanded');
+                toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+                
+                // 添加到存储
+                const expanded = getExpandedCategories();
+                if (!expanded.includes(category)) {
+                    expanded.push(category);
+                    saveExpandedCategories(expanded);
+                }
+            }
         });
 
-        toggleButton.addEventListener('click', (event) => {
+        // 绑定点击事件到展开/收起按钮
+        toggleButton.addEventListener('click', function(event) {
             event.stopPropagation();
-            const isExpanded = linkList.style.display !== 'none';
-            toggleCategoryDisplay(categoryContainer, linkList, toggleButton, !isExpanded);
+            event.preventDefault();
+            
+            // 触发父元素的点击事件
+            categoryHeader.click();
         });
 
         linkContainer.appendChild(categoryContainer);
     }
+    
+    // 重新初始化展开状态（确保事件正确绑定）
+    requestAnimationFrame(() => {
+        const expandedCategories = getExpandedCategories();
+        document.querySelectorAll('.category-container').forEach(container => {
+            const category = container.dataset.category;
+            const toggleBtn = container.querySelector('.toggle-button');
+            
+            if (expandedCategories.includes(category)) {
+                container.classList.remove('collapsed');
+                container.classList.add('expanded');
+                if (toggleBtn) toggleBtn.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+            } else {
+                container.classList.add('collapsed');
+                container.classList.remove('expanded');
+                if (toggleBtn) toggleBtn.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+            }
+        });
+    });
 }
 
 // 获取链接的 URL 列表（支持新旧格式）
@@ -1865,17 +1914,152 @@ function getLinkUrls(link) {
     return [];
 }
 
-function toggleCategoryDisplay(container, linkList, toggleButton, isExpand) {
-    if (isExpand) {
-        linkList.style.display = 'flex';
-        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-        container.classList.remove('collapsed');
-    } else {
-        linkList.style.display = 'none';
-        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-        container.classList.add('collapsed');
+// 设置多 URL 下拉菜单
+function setupMultiUrlDropdown(linkCard, urls) {
+    // 创建容器
+    const urlsContainer = document.createElement('div');
+    urlsContainer.className = 'link-card-urls';
+    urlsContainer.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; height: 100%; pointer-events: none;';
+    
+    // 地址数量标签
+    const urlCountBadge = document.createElement('div');
+    urlCountBadge.className = 'url-count-badge';
+    urlCountBadge.innerHTML = `
+        <span class="badge-dot"></span>
+        <span>${urls.length}个地址</span>
+    `;
+    urlCountBadge.title = '点击选择地址';
+    urlCountBadge.style.pointerEvents = 'auto';
+    
+    // 下拉按钮
+    const urlsButton = document.createElement('button');
+    urlsButton.className = 'url-dropdown-btn';
+    urlsButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+    urlsButton.title = '选择地址';
+    urlsButton.style.pointerEvents = 'auto';
+    
+    // URL 下拉菜单
+    const urlsDropdown = document.createElement('div');
+    urlsDropdown.className = 'url-dropdown';
+    urlsDropdown.id = 'url-dropdown-' + Date.now();
+    
+    // 下拉菜单头部
+    const dropdownHeader = document.createElement('div');
+    dropdownHeader.className = 'url-dropdown-header';
+    dropdownHeader.innerHTML = `
+        <span>选择地址</span>
+        <span class="url-count">${urls.length}个</span>
+    `;
+    urlsDropdown.appendChild(dropdownHeader);
+    
+    // URL 列表项
+    urls.forEach((urlObj, idx) => {
+        const urlItem = document.createElement('div');
+        urlItem.className = 'url-dropdown-item';
+        urlItem.dataset.url = urlObj.address;
+        urlItem.dataset.index = idx;
+        
+        const statusClass = idx === 0 ? 'online' : 'checking';
+        const statusText = idx === 0 ? '在线' : '检测中';
+        
+        urlItem.innerHTML = `
+            <div class="status-wrapper">
+                <span class="status-dot ${statusClass}" title="${statusText}"></span>
+            </div>
+            <div class="url-info">
+                <div class="url-label">${urlObj.label || '地址' + (idx + 1)}</div>
+                <div class="url-address">${urlObj.address}</div>
+            </div>
+            <div class="url-meta">
+                ${idx === 0 ? '<span class="check-icon selected"><i class="ri-check-line"></i></span>' : ''}
+                <span class="priority-badge">优先级${urlObj.priority || idx + 1}</span>
+                <i class="ri-external-link-line external-link"></i>
+            </div>
+        `;
+        urlsDropdown.appendChild(urlItem);
+    });
+    
+    urlsContainer.appendChild(urlCountBadge);
+    urlsContainer.appendChild(urlsButton);
+    urlsContainer.appendChild(urlsDropdown);
+    linkCard.appendChild(urlsContainer);
+    
+    // 将下拉菜单添加到 body，避免被父元素的 overflow 隐藏
+    document.body.appendChild(urlsDropdown);
+    
+    // 鼠标悬停显示下拉按钮
+    linkCard.addEventListener('mouseenter', () => {
+        urlsButton.style.opacity = '1';
+    });
+    linkCard.addEventListener('mouseleave', () => {
+        urlsButton.style.opacity = '0';
+    });
+    
+    // 显示下拉菜单的函数
+    function showDropdown(e) {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        
+        // 关闭其他所有下拉菜单
+        document.querySelectorAll('.url-dropdown.show').forEach(d => {
+            if (d !== urlsDropdown) d.classList.remove('show');
+        });
+        
+        // 计算卡片位置
+        const cardRect = linkCard.getBoundingClientRect();
+        const badgeRect = urlCountBadge.getBoundingClientRect();
+        
+        // 设置下拉菜单位置（在卡片上方，从左下角向上展开）
+        // 使用 fixed 定位，相对于视口
+        urlsDropdown.style.position = 'fixed';
+        urlsDropdown.style.left = badgeRect.left + 'px';
+        // bottom 设置为从视口底部到卡片顶部的距离，这样下拉菜单会从卡片顶部往上展开
+        urlsDropdown.style.bottom = (window.innerHeight - cardRect.top + 8) + 'px';
+        urlsDropdown.style.zIndex = '9999';
+        
+        // 强制重绘确保位置正确
+        urlsDropdown.offsetHeight;
+        
+        urlsDropdown.classList.add('show');
     }
+    
+    // 绑定下拉按钮事件
+    urlsButton.addEventListener('click', showDropdown);
+    
+    // 绑定地址数量标签点击事件
+    urlCountBadge.addEventListener('click', showDropdown);
+    
+    // 绑定 URL 选择事件
+    urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const url = item.dataset.url;
+            window.open(url, '_blank');
+            urlsDropdown.classList.remove('show');
+        });
+        
+        // 外部链接图标点击
+        const externalLink = item.querySelector('.external-link');
+        if (externalLink) {
+            externalLink.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = item.dataset.url;
+                window.open(url, '_blank');
+            });
+        }
+    });
+    
+    // 点击外部关闭下拉菜单
+    document.addEventListener('click', function closeDropdown(e) {
+        if (!urlsContainer.contains(e.target) && !urlsDropdown.contains(e.target)) {
+            urlsDropdown.classList.remove('show');
+        }
+    });
 }
+
+// 已弃用：toggleCategoryDisplay - 现在使用 toggleCategory 函数
 
 // 渲染链接到设置界面
 function renderLinksInSettings(links) {
