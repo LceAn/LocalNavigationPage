@@ -503,8 +503,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // 更新存储信息
     function updateStorageInfo() {
         const categories = [...new Set(links.map(l => l.category))];
-        document.getElementById('total-links').textContent = links.length;
-        document.getElementById('total-categories').textContent = categories.length;
+        
+        // 更新统计卡片
+        const totalLinksEl = document.getElementById('total-links');
+        const totalCategoriesEl = document.getElementById('total-categories');
+        if (totalLinksEl) totalLinksEl.textContent = links.length;
+        if (totalCategoriesEl) totalCategoriesEl.textContent = categories.length;
         
         // 更新迷你统计卡片
         const storageSizeMini = document.getElementById('storage-size-mini');
@@ -514,17 +518,27 @@ document.addEventListener("DOMContentLoaded", function () {
             storageSizeMini.textContent = sizeText;
         }
 
-        // 计算数据大小
-        const dataSize = new Blob([JSON.stringify(links)]).size;
-        const sizeText = dataSize < 1024 ? `${dataSize} B` : `${(dataSize / 1024).toFixed(2)} KB`;
-        document.getElementById('storage-size').textContent = sizeText;
+        // 更新存储信息面板的数据
+        const storageLinksCount = document.getElementById('storage-links-count');
+        const storageSize = document.getElementById('storage-size');
+        const storageLastUpdate = document.getElementById('storage-last-update');
+        
+        if (storageLinksCount) storageLinksCount.textContent = links.length;
+        
+        if (storageSize) {
+            const dataSize = new Blob([JSON.stringify(links)]).size;
+            const sizeText = dataSize < 1024 ? `${dataSize} B` : `${(dataSize / 1024).toFixed(2)} KB`;
+            storageSize.textContent = sizeText;
+        }
 
         // 最后更新时间
-        const lastUpdate = localStorage.getItem('lastUpdate');
-        if (lastUpdate) {
-            document.getElementById('storage-last-update').textContent = new Date(lastUpdate).toLocaleString('zh-CN');
-        } else {
-            document.getElementById('storage-last-update').textContent = '-';
+        if (storageLastUpdate) {
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            if (lastUpdate) {
+                storageLastUpdate.textContent = new Date(lastUpdate).toLocaleString('zh-CN');
+            } else {
+                storageLastUpdate.textContent = '-';
+            }
         }
     }
 
@@ -780,6 +794,511 @@ document.addEventListener("DOMContentLoaded", function () {
         enableAnimationsToggle.checked = localStorage.getItem('enableAnimations') !== 'false';
     }
 
+    // ================================
+    // 搜索引擎管理功能
+    // ================================
+    const searchEngineModal = document.getElementById('search-engine-modal');
+    const searchEngineModalTitle = document.getElementById('search-engine-modal-title');
+    const searchEngineModalCloseBtn = document.getElementById('search-engine-modal-close-btn');
+    const addSearchEngineBtn = document.getElementById('add-search-engine-btn');
+    const searchEngineSaveBtn = document.getElementById('search-engine-save-btn');
+    const searchEngineCancelBtn = document.getElementById('search-engine-cancel-btn');
+    const searchEngineNameInput = document.getElementById('search-engine-name');
+    const searchEngineUrlInput = document.getElementById('search-engine-url');
+    const searchEngineIconInput = document.getElementById('search-engine-icon');
+    const searchEngineList = document.getElementById('search-engine-list');
+    
+    // 默认搜索引擎列表
+    const defaultSearchEngines = [
+        { name: '百度', url: 'https://www.baidu.com/s?wd=%s', icon: '' },
+        { name: 'Google', url: 'https://www.google.com/search?q=%s', icon: '' },
+        { name: '必应', url: 'https://www.bing.com/search?q=%s', icon: '' }
+    ];
+    
+    // 加载搜索引擎
+    function loadSearchEngines() {
+        const saved = localStorage.getItem('searchEngines');
+        return saved ? JSON.parse(saved) : defaultSearchEngines;
+    }
+    
+    // 保存搜索引擎
+    function saveSearchEngines(engines) {
+        localStorage.setItem('searchEngines', JSON.stringify(engines));
+    }
+    
+    // 渲染搜索引擎列表
+    function renderSearchEngines() {
+        const engines = loadSearchEngines();
+        if (!searchEngineList) return;
+        
+        if (engines.length === 0) {
+            searchEngineList.innerHTML = `
+                <div class="categories-empty">
+                    <i class="ri-search-off-line"></i>
+                    <p>暂无搜索引擎</p>
+                </div>
+            `;
+            return;
+        }
+        
+        searchEngineList.innerHTML = engines.map((engine, index) => `
+            <div class="search-engine-item" data-index="${index}">
+                <div class="search-engine-drag-handle">
+                    <i class="ri-draggable"></i>
+                </div>
+                <div class="search-engine-icon">
+                    ${engine.icon ? `<img src="${engine.icon}" alt="${engine.name}">` : '<i class="ri-search-line"></i>'}
+                </div>
+                <div class="search-engine-info">
+                    <h4 class="search-engine-name">${engine.name}</h4>
+                    <p class="search-engine-url">${engine.url}</p>
+                </div>
+                <div class="search-engine-actions">
+                    <button class="search-engine-action-btn edit" data-index="${index}">
+                        <i class="ri-edit-line"></i>
+                    </button>
+                    <button class="search-engine-action-btn delete" data-index="${index}">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // 绑定编辑和删除事件
+        searchEngineList.querySelectorAll('.search-engine-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const index = btn.dataset.index;
+                if (btn.classList.contains('edit')) {
+                    editSearchEngine(index);
+                } else {
+                    deleteSearchEngine(index);
+                }
+            });
+        });
+    }
+    
+    // 打开添加搜索引擎弹窗
+    function openAddSearchEngineModal() {
+        searchEngineModalTitle.innerHTML = '<i class="ri-add-circle-line"></i><span>添加搜索引擎</span>';
+        searchEngineNameInput.value = '';
+        searchEngineUrlInput.value = '';
+        searchEngineIconInput.value = '';
+        window.editingSearchEngineIndex = null;
+        searchEngineModal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            searchEngineModal.classList.add('show');
+        });
+    }
+    
+    // 打开编辑搜索引擎弹窗
+    function openEditSearchEngineModal(index) {
+        const engines = loadSearchEngines();
+        const engine = engines[index];
+        searchEngineModalTitle.innerHTML = '<i class="ri-edit-circle-line"></i><span>编辑搜索引擎</span>';
+        searchEngineNameInput.value = engine.name;
+        searchEngineUrlInput.value = engine.url;
+        searchEngineIconInput.value = engine.icon || '';
+        window.editingSearchEngineIndex = index;
+        searchEngineModal.style.display = 'flex';
+        requestAnimationFrame(() => {
+            searchEngineModal.classList.add('show');
+        });
+    }
+    
+    // 关闭搜索引擎弹窗
+    function closeSearchEngineModal() {
+        searchEngineModal.classList.remove('show');
+        setTimeout(() => {
+            searchEngineModal.style.display = 'none';
+        }, 250);
+    }
+    
+    // 编辑搜索引擎
+    function editSearchEngine(index) {
+        openEditSearchEngineModal(index);
+    }
+    
+    // 删除搜索引擎
+    function deleteSearchEngine(index) {
+        const engines = loadSearchEngines();
+        if (engines.length <= 1) {
+            showMessage('至少保留一个搜索引擎');
+            return;
+        }
+        if (!confirm(`确定要删除 "${engines[index].name}" 吗？`)) return;
+        engines.splice(index, 1);
+        saveSearchEngines(engines);
+        renderSearchEngines();
+        updateSearchButtons();
+        showMessage('已删除搜索引擎');
+    }
+    
+    // 保存搜索引擎
+    function saveSearchEngine() {
+        const name = searchEngineNameInput.value.trim();
+        const url = searchEngineUrlInput.value.trim();
+        const icon = searchEngineIconInput.value.trim();
+        
+        if (!name || !url) {
+            showMessage('请填写名称和搜索 URL');
+            return;
+        }
+        
+        // 验证 URL 格式
+        if (!url.includes('%s')) {
+            showMessage('搜索 URL 中必须包含 %s 作为搜索词占位符');
+            return;
+        }
+        
+        const engines = loadSearchEngines();
+        const editIndex = window.editingSearchEngineIndex;
+        
+        if (editIndex !== null) {
+            engines[editIndex] = { name, url, icon };
+            showMessage('已更新搜索引擎');
+        } else {
+            engines.push({ name, url, icon });
+            showMessage('已添加搜索引擎');
+        }
+        
+        saveSearchEngines(engines);
+        closeSearchEngineModal();
+        renderSearchEngines();
+        updateSearchButtons();
+    }
+    
+    // 更新搜索框按钮
+    function updateSearchButtons() {
+        const engines = loadSearchEngines();
+        const buttons = document.querySelectorAll('.search-button');
+        const buttonContainer = document.querySelector('.search-buttons');
+        if (!buttonContainer) return;
+        
+        // 如果按钮数量不匹配，重新生成
+        if (buttons.length !== engines.length) {
+            buttonContainer.innerHTML = engines.map(engine => 
+                `<button class="search-button" data-engine="${engine.name}">${engine.name}</button>`
+            ).join('');
+            
+            // 重新绑定事件
+            document.querySelectorAll('.search-button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const searchTerm = document.getElementById('search-input').value;
+                    const engineName = btn.getAttribute('data-engine');
+                    const engine = engines.find(e => e.name === engineName);
+                    if (searchTerm && engine) {
+                        const searchURL = engine.url.replace('%s', encodeURIComponent(searchTerm));
+                        window.open(searchURL, '_blank');
+                    }
+                });
+            });
+        }
+    }
+    
+    // 添加搜索引擎按钮
+    if (addSearchEngineBtn) {
+        addSearchEngineBtn.addEventListener('click', openAddSearchEngineModal);
+    }
+    
+    // 关闭搜索引擎弹窗按钮
+    if (searchEngineModalCloseBtn) {
+        searchEngineModalCloseBtn.addEventListener('click', closeSearchEngineModal);
+    }
+    
+    // 取消按钮
+    if (searchEngineCancelBtn) {
+        searchEngineCancelBtn.addEventListener('click', closeSearchEngineModal);
+    }
+    
+    // 保存按钮
+    if (searchEngineSaveBtn) {
+        searchEngineSaveBtn.addEventListener('click', saveSearchEngine);
+    }
+    
+    // 点击弹窗背景关闭
+    if (searchEngineModal) {
+        searchEngineModal.addEventListener('click', (e) => {
+            if (e.target === searchEngineModal) {
+                closeSearchEngineModal();
+            }
+        });
+    }
+    
+    // 初始化搜索引擎列表
+    renderSearchEngines();
+    updateSearchButtons();
+
+    // ================================
+    // 显示设置功能（时间、日期、天气）
+    // ================================
+    
+    // 显示设置相关元素
+    const showTimeToggle = document.getElementById('show-time-toggle');
+    const showDateToggle = document.getElementById('show-date-toggle');
+    const showSecondsToggle = document.getElementById('show-seconds-toggle');
+    const show24HourToggle = document.getElementById('24hour-toggle');
+    const dateFormatSelect = document.getElementById('date-format-select');
+    const showWeatherToggle = document.getElementById('show-weather-toggle');
+    const weatherCityInput = document.getElementById('weather-city-input');
+    const weatherUnitSelect = document.getElementById('weather-unit-select');
+    
+    // 时间日期显示设置默认值
+    const defaultDisplaySettings = {
+        showTime: true,
+        showDate: true,
+        showSeconds: true,
+        use24Hour: true,
+        dateFormat: 'cn',
+        showWeather: true,
+        weatherCity: 'shanghai',
+        weatherUnit: 'C'
+    };
+    
+    // 加载显示设置
+    function loadDisplaySettings() {
+        const saved = localStorage.getItem('displaySettings');
+        return saved ? JSON.parse(saved) : defaultDisplaySettings;
+    }
+    
+    // 保存显示设置
+    function saveDisplaySettings(settings) {
+        localStorage.setItem('displaySettings', JSON.stringify(settings));
+    }
+    
+    // 格式化日期
+    function formatDate(date, format) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+        const weekDay = weekDays[date.getDay()];
+        
+        switch(format) {
+            case 'cn':
+                return `${year}年${month}月${day}日`;
+            case 'cn-short':
+                return `${month}月${day}日`;
+            case 'us':
+                return `${month}/${day}/${year}`;
+            case 'eu':
+                return `${day}/${month}/${year}`;
+            case 'iso':
+                return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            case 'cn-week':
+                return `${year}年${month}月${day}日 星期${weekDay}`;
+            default:
+                return `${year}年${month}月${day}日`;
+        }
+    }
+    
+    // 更新时间显示
+    function updateTimeDisplay() {
+        const settings = loadDisplaySettings();
+        const now = new Date();
+        
+        const timeElement = document.getElementById('current-time');
+        const dateElement = document.getElementById('current-date');
+        const weatherInfo = document.getElementById('weather-info');
+        const dateSeparator = document.querySelectorAll('.date-separator');
+        
+        // 更新时间
+        if (timeElement) {
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            if (!settings.use24Hour) {
+                hours = hours % 12 || 12;
+            }
+            hours = settings.use24Hour ? String(hours).padStart(2, '0') : String(hours);
+            
+            let timeText = settings.use24Hour 
+                ? `${hours}:${minutes}` 
+                : `${hours}:${minutes} ${ampm}`;
+            
+            if (settings.showSeconds) {
+                timeText = settings.use24Hour 
+                    ? `${hours}:${minutes}:${seconds}` 
+                    : `${hours}:${minutes}:${seconds} ${ampm}`;
+            }
+            
+            timeElement.textContent = timeText;
+            timeElement.style.display = settings.showTime ? 'inline' : 'none';
+        }
+        
+        // 更新日期
+        if (dateElement) {
+            dateElement.textContent = formatDate(now, settings.dateFormat);
+            dateElement.style.display = settings.showDate ? 'inline' : 'none';
+        }
+        
+        // 更新天气显示
+        if (weatherInfo) {
+            weatherInfo.style.display = settings.showWeather ? 'inline-flex' : 'none';
+        }
+        
+        // 更新分隔符显示
+        dateSeparator.forEach(sep => {
+            const prevElement = sep.previousElementSibling;
+            const nextElement = sep.nextElementSibling;
+            const prevVisible = prevElement && prevElement.style.display !== 'none';
+            const nextVisible = nextElement && nextElement.style.display !== 'none';
+            sep.style.display = (prevVisible && nextVisible) ? 'inline' : 'none';
+        });
+    }
+    
+    // 初始化显示设置 UI
+    function initDisplaySettings() {
+        const settings = loadDisplaySettings();
+        
+        if (showTimeToggle) showTimeToggle.checked = settings.showTime;
+        if (showDateToggle) showDateToggle.checked = settings.showDate;
+        if (showSecondsToggle) showSecondsToggle.checked = settings.showSeconds;
+        if (show24HourToggle) show24HourToggle.checked = settings.use24Hour;
+        if (dateFormatSelect) dateFormatSelect.value = settings.dateFormat;
+        if (showWeatherToggle) showWeatherToggle.checked = settings.showWeather;
+        if (weatherCityInput) weatherCityInput.value = settings.weatherCity;
+        if (weatherUnitSelect) weatherUnitSelect.value = settings.weatherUnit;
+        
+        // 绑定事件
+        if (showTimeToggle) {
+            showTimeToggle.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.showTime = this.checked;
+                saveDisplaySettings(settings);
+                updateTimeDisplay();
+                showMessage(this.checked ? '已显示时间' : '已隐藏时间');
+            });
+        }
+        
+        if (showDateToggle) {
+            showDateToggle.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.showDate = this.checked;
+                saveDisplaySettings(settings);
+                updateTimeDisplay();
+                showMessage(this.checked ? '已显示日期' : '已隐藏日期');
+            });
+        }
+        
+        if (showSecondsToggle) {
+            showSecondsToggle.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.showSeconds = this.checked;
+                saveDisplaySettings(settings);
+                updateTimeDisplay();
+                showMessage(this.checked ? '已显示秒数' : '已隐藏秒数');
+            });
+        }
+        
+        if (show24HourToggle) {
+            show24HourToggle.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.use24Hour = this.checked;
+                saveDisplaySettings(settings);
+                updateTimeDisplay();
+                showMessage(this.checked ? '已使用 24 小时制' : '已使用 12 小时制');
+            });
+        }
+        
+        if (dateFormatSelect) {
+            dateFormatSelect.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.dateFormat = this.value;
+                saveDisplaySettings(settings);
+                updateTimeDisplay();
+                showMessage('已更新日期格式');
+            });
+        }
+        
+        if (showWeatherToggle) {
+            showWeatherToggle.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.showWeather = this.checked;
+                saveDisplaySettings(settings);
+                updateTimeDisplay();
+                showMessage(this.checked ? '已显示天气' : '已隐藏天气');
+            });
+        }
+        
+        if (weatherCityInput) {
+            weatherCityInput.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.weatherCity = this.value.trim() || 'shanghai';
+                saveDisplaySettings(settings);
+                updateWeather();
+                showMessage('已更新城市设置');
+            });
+        }
+        
+        if (weatherUnitSelect) {
+            weatherUnitSelect.addEventListener('change', function() {
+                const settings = loadDisplaySettings();
+                settings.weatherUnit = this.value;
+                saveDisplaySettings(settings);
+                updateWeather();
+                showMessage(`已更新温度单位为${this.value === 'C' ? '摄氏度' : '华氏度'}`);
+            });
+        }
+    }
+    
+    // 更新天气功能（支持多地区）
+    function updateWeather() {
+        const settings = loadDisplaySettings();
+        const cities = settings.weatherCity.split(',').map(c => c.trim()).filter(c => c);
+        const unit = settings.weatherUnit === 'F' ? 'F' : 'C';
+        const weatherLocationsEl = document.getElementById('weather-locations');
+        const weatherLocationText = document.getElementById('weather-location-text');
+        
+        if (cities.length === 0) {
+            if (weatherLocationsEl) weatherLocationsEl.style.display = 'none';
+            return;
+        }
+        
+        // 如果只有一个城市，不显示地区名称
+        if (cities.length === 1) {
+            if (weatherLocationsEl) weatherLocationsEl.style.display = 'none';
+            fetchWeatherForCity(cities[0], unit, 'weather-text');
+        } else {
+            // 多城市：显示第一个城市的天气，并在后面显示所有城市名称
+            if (weatherLocationsEl) {
+                weatherLocationsEl.style.display = 'inline';
+                weatherLocationText.textContent = cities.join(' / ');
+            }
+            fetchWeatherForCity(cities[0], unit, 'weather-text');
+        }
+    }
+    
+    // 获取指定城市的天气
+    function fetchWeatherForCity(city, unit, elementId) {
+        fetch(`https://wttr.in/${encodeURIComponent(city)}?format=%C+%t&${unit === 'F' ? 'u' : 'm'}`)
+            .then(res => res.text())
+            .then(text => {
+                const weatherText = document.getElementById(elementId);
+                if (weatherText) {
+                    weatherText.textContent = text.trim();
+                }
+            })
+            .catch(() => {
+                const weatherText = document.getElementById(elementId);
+                if (weatherText) {
+                    weatherText.textContent = '获取失败';
+                }
+            });
+    }
+
+    // 初始化显示设置
+    initDisplaySettings();
+    updateTimeDisplay();
+    updateWeather();
+    
+    // 每秒更新一次时间和日期
+    setInterval(() => {
+        updateTimeDisplay();
+    }, 1000);
+
     // 控制搜索框在滚动时的行为
     const searchButtons = document.querySelectorAll('.search-button');
     const searchInput = document.getElementById('search-input');
@@ -850,20 +1369,6 @@ document.addEventListener("DOMContentLoaded", function () {
         allCollapsed = !allCollapsed;
         showMessage(allCollapsed ? '已收起所有分组' : '已展开所有分组');
     });
-
-    // 天气功能
-    function updateWeather() {
-        fetch('https://wttr.in/shanghai?format=%C+%t&m')
-            .then(res => res.text())
-            .then(text => {
-                document.getElementById('weather-text').textContent = text.trim();
-            })
-            .catch(() => {
-                document.getElementById('weather-text').textContent = '获取失败';
-            });
-    }
-    updateWeather();
-    setInterval(updateWeather, 1800000);
 
     // 分类展开/收缩功能
     function setupCategoryToggle() {

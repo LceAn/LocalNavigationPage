@@ -1649,6 +1649,182 @@
 }
 
 /* ================================
+   搜索引擎管理样式
+   ================================ */
+.search-engine-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.search-engine-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--rounded-md);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    transition: all var(--transition-fast) ease;
+    cursor: grab;
+}
+
+.search-engine-item:hover {
+    border-color: var(--primary-light);
+    transform: translateX(4px);
+}
+
+.search-engine-item:active {
+    cursor: grabbing;
+}
+
+.search-engine-drag-handle {
+    color: var(--text-tertiary);
+    font-size: 18px;
+    cursor: grab;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.search-engine-drag-handle:hover {
+    color: var(--primary-color);
+}
+
+.search-engine-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--rounded-md);
+    background: var(--primary-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.search-engine-icon img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.search-engine-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-engine-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.search-engine-url {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-engine-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.search-engine-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: var(--rounded-full);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all var(--transition-fast) ease;
+}
+
+.search-engine-action-btn.edit {
+    background: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+}
+
+.search-engine-action-btn.edit:hover {
+    background: #3498db;
+    color: white;
+}
+
+.search-engine-action-btn.delete {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+.search-engine-action-btn.delete:hover {
+    background: #e74c3c;
+    color: white;
+}
+
+.search-engine-add {
+    margin-top: 12px;
+}
+
+.search-hint {
+    background: var(--primary-light);
+    border-radius: var(--rounded-md);
+    padding: 16px;
+}
+
+.search-hint p {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.search-hint p:last-child {
+    margin-bottom: 0;
+}
+
+.search-hint code {
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--primary-color);
+}
+
+/* ================================
+   显示设置样式
+   ================================ */
+.date-format-selector {
+    margin-bottom: 16px;
+}
+
+.format-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--rounded-md);
+    font-size: 14px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast) ease;
+}
+
+.format-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+/* ================================
    响应式设计
    ================================ */
 @media (max-width: 768px) {

@@ -55,6 +55,10 @@
                     <i class="ri-cloud-line"></i>
                     <span id="weather-text">加载中…</span>
                 </span>
+                <span id="weather-locations" style="display: none;">
+                    <span class="date-separator">·</span>
+                    <span id="weather-location-text"></span>
+                </span>
             </div>
         </div>
         
@@ -98,7 +102,11 @@
                 </button>
                 <button class="tab-button" data-tab="appearance">
                     <i class="ri-palette-line"></i>
-                    <span>外观</span>
+                    <span>外观与显示</span>
+                </button>
+                <button class="tab-button" data-tab="search">
+                    <i class="ri-search-line"></i>
+                    <span>搜索引擎</span>
                 </button>
                 <button class="tab-button" data-tab="data">
                     <i class="ri-database-2-line"></i>
@@ -310,7 +318,7 @@
                 <div class="tab-content" id="appearance-tab">
                     <div class="tab-header">
                         <i class="ri-palette-line"></i>
-                        <h3>外观设置</h3>
+                        <h3>外观与显示</h3>
                     </div>
                     <div class="settings-section">
                         <div class="section-title">
@@ -396,6 +404,206 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-time-line"></i>
+                            <span>时间显示</span>
+                        </div>
+                        <div class="layout-options">
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-time-line"></i>
+                                    <span>显示时间</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-time-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-calendar-line"></i>
+                                    <span>显示日期</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-date-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-seconds-line"></i>
+                                    <span>显示秒数</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-seconds-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-time-zone-line"></i>
+                                    <span>24 小时制</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="24hour-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-calendar-line"></i>
+                            <span>日期格式</span>
+                        </div>
+                        <div class="date-format-selector">
+                            <select id="date-format-select" class="format-select">
+                                <option value="cn">YYYY 年 MM 月 DD 日</option>
+                                <option value="cn-short">MM 月 DD 日</option>
+                                <option value="us">MM/DD/YYYY</option>
+                                <option value="eu">DD/MM/YYYY</option>
+                                <option value="iso">YYYY-MM-DD</option>
+                                <option value="cn-week">YYYY 年 MM 月 DD 日 星期 W</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-cloud-line"></i>
+                            <span>天气显示</span>
+                        </div>
+                        <div class="layout-options">
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-cloud-line"></i>
+                                    <span>显示天气</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-weather-toggle" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-item" style="margin-top: 12px;">
+                            <label for="weather-city-input">
+                                <i class="ri-map-pin-line"></i>
+                                <span>城市名称</span>
+                            </label>
+                            <div class="input-wrapper">
+                                <i class="ri-map-pin-line input-icon"></i>
+                                <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
+                            </div>
+                            <small style="color: var(--text-tertiary); font-size: 12px; margin-top: 6px; display: block;">使用英文城市名称，多个城市用逗号分隔</small>
+                        </div>
+                        <div class="form-item" style="margin-top: 12px;">
+                            <label for="weather-unit-select">
+                                <i class="ri-temperature-line"></i>
+                                <span>温度单位</span>
+                            </label>
+                            <select id="weather-unit-select" class="format-select" style="width: 100%; padding: 10px 14px; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 8px; font-size: 14px; background: var(--bg-secondary); color: var(--text-primary);">
+                                <option value="C">摄氏度 (°C)</option>
+                                <option value="F">华氏度 (°F)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 搜索引擎管理标签页 -->
+                <div class="tab-content" id="search-tab">
+                    <div class="tab-header">
+                        <i class="ri-search-line"></i>
+                        <h3>搜索引擎管理</h3>
+                    </div>
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-list-settings-line"></i>
+                            <span>搜索引擎列表</span>
+                        </div>
+                        <div class="search-engine-list" id="search-engine-list">
+                            <!-- 动态填充分类列表 -->
+                        </div>
+                        <div class="search-engine-add">
+                            <button class="btn-primary" id="add-search-engine-btn">
+                                <i class="ri-add-line"></i>
+                                <span>添加搜索引擎</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <i class="ri-lightbulb-line"></i>
+                            <span>使用说明</span>
+                        </div>
+                        <div class="search-hint">
+                            <p>• 点击搜索引擎名称可编辑，修改名称和搜索 URL 模板</p>
+                            <p>• 拖动搜索引擎可调整顺序</p>
+                            <p>• 搜索 URL 模板中用 <code>%s</code> 表示搜索关键词</p>
+                            <p>• 例如：百度的搜索 URL 是 <code>https://www.baidu.com/s?wd=%s</code></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 添加/编辑搜索引擎弹窗 -->
+                <div class="modal-overlay" id="search-engine-modal">
+                    <div class="modal-content modal-sm">
+                        <div class="modal-header">
+                            <h3 id="search-engine-modal-title">
+                                <i class="ri-add-circle-line"></i>
+                                <span>添加搜索引擎</span>
+                            </h3>
+                            <button class="modal-close" id="search-engine-modal-close-btn">
+                                <i class="ri-close-line"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-grid" style="grid-template-columns: 1fr;">
+                                <div class="form-item">
+                                    <label for="search-engine-name">
+                                        <i class="ri-text"></i>
+                                        <span>引擎名称</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-text input-icon"></i>
+                                        <input type="text" id="search-engine-name" placeholder="例如：百度">
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="search-engine-url">
+                                        <i class="ri-global-line"></i>
+                                        <span>搜索 URL 模板</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-global-line input-icon"></i>
+                                        <input type="text" id="search-engine-url" placeholder="https://www.baidu.com/s?wd=%s">
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="search-engine-icon">
+                                        <i class="ri-image-line"></i>
+                                        <span>图标 URL（可选）</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-image-line input-icon"></i>
+                                        <input type="text" id="search-engine-icon" placeholder="https://...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" id="search-engine-cancel-btn" class="btn-secondary">
+                                <i class="ri-close-line"></i>
+                                <span>取消</span>
+                            </button>
+                            <button type="button" id="search-engine-save-btn" class="btn-primary">
+                                <i class="ri-save-3-line"></i>
+                                <span>保存</span>
+                            </button>
                         </div>
                     </div>
                 </div>
