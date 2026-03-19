@@ -171,15 +171,93 @@ document.addEventListener("DOMContentLoaded", function () {
     const modalCloseBtn = document.getElementById('modal-close-btn');
     const addLinkToolbarBtn = document.getElementById('add-link-toolbar-btn');
     const editForm = document.getElementById('edit-form');
+    const urlsList = document.getElementById('urls-list');
+    const addUrlBtn = document.getElementById('add-url-btn');
+    
+    // 当前编辑的 URL 列表
+    let currentUrls = [];
+    
+    // 渲染 URL 列表
+    function renderUrlsList() {
+        if (!urlsList) return;
+        
+        if (currentUrls.length === 0) {
+            urlsList.innerHTML = '<div class="empty-state" style="padding: 20px; text-align: center; color: var(--text-tertiary);"><i class="ri-link" style="font-size: 24px; margin-bottom: 8px;"></i><p>暂无地址，点击"添加地址"按钮添加</p></div>';
+            return;
+        }
+        
+        urlsList.innerHTML = currentUrls.map((urlObj, index) => `
+            <div class="url-item" data-index="${index}">
+                <div class="url-input-wrapper">
+                    <input type="text" class="url-label" placeholder="标签" value="${urlObj.label || ''}" data-field="label" data-index="${index}">
+                    <input type="text" class="url-address" placeholder="https://example.com" value="${urlObj.address || ''}" data-field="address" data-index="${index}">
+                    <input type="number" class="url-priority" placeholder="优先级" value="${urlObj.priority || index + 1}" min="1" data-field="priority" data-index="${index}" title="优先级">
+                </div>
+                <div class="url-actions">
+                    <button type="button" class="url-action-btn move" data-action="move-up" data-index="${index}" title="上移" ${index === 0 ? 'disabled' : ''}>
+                        <i class="ri-arrow-up-line"></i>
+                    </button>
+                    <button type="button" class="url-action-btn move" data-action="move-down" data-index="${index}" title="下移" ${index === currentUrls.length - 1 ? 'disabled' : ''}>
+                        <i class="ri-arrow-down-line"></i>
+                    </button>
+                    <button type="button" class="url-action-btn delete" data-action="delete" data-index="${index}" title="删除">
+                        <i class="ri-delete-bin-line"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        // 绑定 URL 项的事件
+        urlsList.querySelectorAll('.url-item input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const field = e.target.dataset.field;
+                const value = e.target.value;
+                currentUrls[index][field] = field === 'priority' ? parseInt(value) || 1 : value;
+            });
+        });
+        
+        urlsList.querySelectorAll('.url-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.action;
+                const index = parseInt(btn.dataset.index);
+                
+                if (action === 'move-up' && index > 0) {
+                    [currentUrls[index - 1], currentUrls[index]] = [currentUrls[index], currentUrls[index - 1]];
+                    renderUrlsList();
+                } else if (action === 'move-down' && index < currentUrls.length - 1) {
+                    [currentUrls[index], currentUrls[index + 1]] = [currentUrls[index + 1], currentUrls[index]];
+                    renderUrlsList();
+                } else if (action === 'delete') {
+                    currentUrls.splice(index, 1);
+                    renderUrlsList();
+                }
+            });
+        });
+    }
+    
+    // 添加 URL
+    function addUrl() {
+        currentUrls.push({ address: '', label: '', priority: currentUrls.length + 1 });
+        renderUrlsList();
+    }
+    
+    // 添加 URL 按钮事件
+    if (addUrlBtn) {
+        addUrlBtn.addEventListener('click', addUrl);
+    }
     
     // 打开添加链接弹窗
     function openAddModal() {
         // 清空表单
         document.getElementById('edit-name').value = '';
-        document.getElementById('edit-url').value = '';
         document.getElementById('edit-category').value = '';
         document.getElementById('edit-tag').value = '';
         document.getElementById('edit-thumbnail').value = '';
+        // 清空 URL 列表
+        currentUrls = [];
+        renderUrlsList();
         // 清空预览
         const thumbnailPreview = document.getElementById('thumbnail-preview');
         thumbnailPreview.innerHTML = '<i class="ri-image-add-line"></i><span>预览</span>';
@@ -194,13 +272,29 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     
     // 打开编辑链接弹窗
-    function openEditModal(link) {
+    window.openEditModal = function(link) {
         // 填充表单
         document.getElementById('edit-name').value = link.name;
-        document.getElementById('edit-url').value = link.url;
         document.getElementById('edit-category').value = link.category;
         document.getElementById('edit-tag').value = link.tag || '';
         document.getElementById('edit-thumbnail').value = link.thumbnail || '';
+        
+        // 填充 URL 列表 - 支持新旧格式兼容
+        if (link.urls && Array.isArray(link.urls)) {
+            // 新格式：多 URL
+            currentUrls = link.urls.map(u => ({...u}));
+        } else if (link.url) {
+            // 旧格式：单 URL
+            currentUrls = [{
+                address: link.url,
+                label: '默认',
+                priority: 1
+            }];
+        } else {
+            currentUrls = [];
+        }
+        renderUrlsList();
+        
         // 更新标题
         modalTitle.innerHTML = '<i class="ri-edit-circle-line"></i><span>编辑链接</span>';
         // 显示弹窗
@@ -432,26 +526,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
     saveButton.addEventListener('click', () => {
         const name = document.getElementById('edit-name').value.trim();
-        const url = document.getElementById('edit-url').value.trim();
         const category = document.getElementById('edit-category').value.trim();
         const tag = document.getElementById('edit-tag').value.trim();
         const thumbnail = document.getElementById('edit-thumbnail').value.trim();
 
-        if (!name || !url) {
-            showMessage('请填写名称和 URL');
+        // 获取 URL 列表，过滤掉空地址
+        const validUrls = currentUrls.filter(u => u.address && u.address.trim());
+        
+        if (!name || validUrls.length === 0) {
+            showMessage('请填写名称和至少一个 URL 地址');
             return;
         }
 
         const editingLinkId = window.editingLinkId;
+        // 获取第一个 URL 用于生成缩略图
+        const firstUrl = validUrls[0]?.address || '';
+        
         if (editingLinkId !== null) {
             // 编辑现有链接
             const linkIndex = links.findIndex(l => l.ID === editingLinkId);
             if (linkIndex !== -1) {
                 links[linkIndex].name = name;
-                links[linkIndex].url = url;
+                // 如果只有一个 URL，使用旧格式兼容
+                if (validUrls.length === 1) {
+                    links[linkIndex].url = validUrls[0].address;
+                    delete links[linkIndex].urls;
+                } else {
+                    // 多 URL 格式
+                    links[linkIndex].urls = validUrls;
+                    delete links[linkIndex].url;
+                }
                 links[linkIndex].category = category;
                 links[linkIndex].tag = tag;
-                links[linkIndex].thumbnail = thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=240&h=240`;
+                links[linkIndex].thumbnail = thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(firstUrl)}?w=240&h=240`;
             }
             showMessage('已更新链接');
         } else {
@@ -460,11 +567,17 @@ document.addEventListener("DOMContentLoaded", function () {
             const newLink = {
                 ID: newId,
                 name: name,
-                url: url,
                 category: category || '未分类',
                 tag: tag,
-                thumbnail: thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=240&h=240`
+                thumbnail: thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(firstUrl)}?w=240&h=240`
             };
+            // 如果只有一个 URL，使用旧格式兼容
+            if (validUrls.length === 1) {
+                newLink.url = validUrls[0].address;
+            } else {
+                // 多 URL 格式
+                newLink.urls = validUrls;
+            }
             links.push(newLink);
             showMessage('已添加链接');
         }
@@ -1563,10 +1676,13 @@ function renderLinksByCategory(links) {
 
         categoryLinks.forEach(link => {
             const linkElement = document.createElement('li');
-            const linkCard = document.createElement('a');
+            const linkCard = document.createElement('div');
             linkCard.setAttribute('class', 'link-card');
-            linkCard.setAttribute('href', link.url);
-            linkCard.setAttribute('target', '_blank');
+            linkCard.style.cssText = 'position: relative;';
+            
+            // 获取要显示的 URL（优先显示第一个）
+            const urls = getLinkUrls(link);
+            const displayUrl = urls[0]?.address || link.url || '#';
 
             if (link.thumbnail) {
                 const thumbnailDiv = document.createElement('div');
@@ -1575,7 +1691,7 @@ function renderLinksByCategory(links) {
                 linkCard.appendChild(thumbnailDiv);
             } else {
                 const thumbnailDiv = document.createElement('div');
-                const thumbnailUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(link.url)}?w=240&h=240`;
+                const thumbnailUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(displayUrl)}?w=240&h=240`;
                 thumbnailDiv.className = 'link-card-thumbnail';
                 thumbnailDiv.style.backgroundImage = `url(${thumbnailUrl})`;
                 linkCard.appendChild(thumbnailDiv);
@@ -1595,6 +1711,129 @@ function renderLinksByCategory(links) {
             cardContent.appendChild(cardTitle);
             linkCard.appendChild(cardContent);
             linkCard.appendChild(cardTag);
+            
+            // 如果有多 URL，添加下拉菜单
+            if (urls.length > 1) {
+                const urlsContainer = document.createElement('div');
+                urlsContainer.className = 'link-card-urls';
+                
+                // 地址数量标签（带呼吸灯效果）
+                const urlCountBadge = document.createElement('div');
+                urlCountBadge.className = 'url-count-badge';
+                urlCountBadge.innerHTML = `
+                    <span class="badge-dot"></span>
+                    <span>${urls.length}个地址</span>
+                `;
+                urlCountBadge.title = '点击选择地址';
+                
+                const urlsButton = document.createElement('button');
+                urlsButton.className = 'icon-button';
+                urlsButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+                urlsButton.title = '选择地址';
+                urlsButton.style.cssText = 'position: absolute; top: 8px; right: 45px; width: 28px; height: 28px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;';
+                
+                const urlsDropdown = document.createElement('div');
+                urlsDropdown.className = 'url-dropdown';
+                
+                // 下拉菜单头部
+                const dropdownHeader = document.createElement('div');
+                dropdownHeader.className = 'url-dropdown-header';
+                dropdownHeader.innerHTML = `
+                    <span>选择地址</span>
+                    <span class="url-count">${urls.length}个</span>
+                `;
+                urlsDropdown.appendChild(dropdownHeader);
+                
+                // URL 列表项
+                urls.forEach((urlObj, idx) => {
+                    const urlItem = document.createElement('div');
+                    urlItem.className = 'url-dropdown-item';
+                    urlItem.dataset.url = urlObj.address;
+                    urlItem.dataset.index = idx;
+                    
+                    // 状态指示器（预留在线检测功能）
+                    const statusClass = idx === 0 ? 'online' : 'checking';
+                    const statusText = idx === 0 ? '在线' : '检测中';
+                    
+                    urlItem.innerHTML = `
+                        <div class="status-wrapper">
+                            <span class="status-dot ${statusClass}" title="${statusText}"></span>
+                        </div>
+                        <div class="url-info">
+                            <div class="url-label">${urlObj.label || '地址' + (idx + 1)}</div>
+                            <div class="url-address">${urlObj.address}</div>
+                        </div>
+                        <div class="url-meta">
+                            ${idx === 0 ? '<span class="check-icon selected"><i class="ri-check-line"></i></span>' : ''}
+                            <span class="priority-badge">优先级${urlObj.priority || idx + 1}</span>
+                            <i class="ri-external-link-line external-link"></i>
+                        </div>
+                    `;
+                    urlsDropdown.appendChild(urlItem);
+                });
+                
+                urlsContainer.appendChild(urlCountBadge);
+                urlsContainer.appendChild(urlsButton);
+                urlsContainer.appendChild(urlsDropdown);
+                linkCard.appendChild(urlsContainer);
+                
+                // 鼠标悬停显示下拉按钮
+                linkCard.addEventListener('mouseenter', () => {
+                    urlsButton.style.opacity = '1';
+                });
+                linkCard.addEventListener('mouseleave', () => {
+                    urlsButton.style.opacity = '0';
+                });
+                
+                // 绑定下拉按钮事件
+                urlsButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    urlsDropdown.classList.toggle('show');
+                });
+                
+                // 绑定地址数量标签点击事件
+                urlCountBadge.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    urlsDropdown.classList.toggle('show');
+                });
+                
+                // 绑定 URL 选择事件
+                urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const url = item.dataset.url;
+                        window.open(url, '_blank');
+                        urlsDropdown.classList.remove('show');
+                    });
+                    
+                    // 外部链接图标点击
+                    const externalLink = item.querySelector('.external-link');
+                    if (externalLink) {
+                        externalLink.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const url = item.dataset.url;
+                            window.open(url, '_blank');
+                        });
+                    }
+                });
+                
+                // 点击外部关闭下拉菜单
+                document.addEventListener('click', function closeDropdown(e) {
+                    if (!urlsContainer.contains(e.target)) {
+                        urlsDropdown.classList.remove('show');
+                    }
+                });
+            }
+            
+            // 点击卡片跳转
+            linkCard.addEventListener('click', (e) => {
+                if (!e.target.closest('.url-dropdown-item') && !e.target.closest('.icon-button')) {
+                    window.open(displayUrl, '_blank');
+                }
+            });
+            
             linkElement.appendChild(linkCard);
             linkList.appendChild(linkElement);
         });
@@ -1612,6 +1851,18 @@ function renderLinksByCategory(links) {
 
         linkContainer.appendChild(categoryContainer);
     }
+}
+
+// 获取链接的 URL 列表（支持新旧格式）
+function getLinkUrls(link) {
+    if (link.urls && Array.isArray(link.urls)) {
+        // 新格式：多 URL，按优先级排序
+        return [...link.urls].sort((a, b) => (a.priority || 999) - (b.priority || 999));
+    } else if (link.url) {
+        // 旧格式：单 URL
+        return [{ address: link.url, label: '默认', priority: 1 }];
+    }
+    return [];
 }
 
 function toggleCategoryDisplay(container, linkList, toggleButton, isExpand) {
@@ -1706,10 +1957,21 @@ function createLinkItem(link) {
     linkName.textContent = link.name;
     linkName.style.cssText = 'margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
 
+    // 获取 URL 列表（支持多 URL）
+    const urls = getLinkUrls(link);
+    const mainUrl = urls[0]?.address || link.url || '#';
+    
     const linkUrl = document.createElement('a');
-    linkUrl.href = link.url;
+    linkUrl.href = mainUrl;
     linkUrl.target = '_blank';
-    linkUrl.textContent = link.url;
+    
+    // 显示 URL 信息
+    if (urls.length > 1) {
+        // 多 URL：显示数量和第一个 URL
+        linkUrl.textContent = `${urls[0]?.label || '地址 1'}: ${mainUrl} (+${urls.length - 1} 个地址)`;
+    } else {
+        linkUrl.textContent = mainUrl;
+    }
     linkUrl.style.cssText = 'font-size: 12px; color: var(--text-tertiary); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;';
     linkUrl.addEventListener('click', (e) => e.stopPropagation());
 

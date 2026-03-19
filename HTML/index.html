@@ -223,15 +223,18 @@
                                         <input type="text" id="edit-name" name="edit-name" placeholder="例如：GitHub">
                                     </div>
                                 </div>
-                                <div class="form-item">
-                                    <label for="edit-url">
+                                <div class="form-item full-width">
+                                    <label>
                                         <i class="ri-link"></i>
                                         <span>网站地址</span>
                                     </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-global-line input-icon"></i>
-                                        <input type="text" id="edit-url" name="edit-url" placeholder="https://example.com">
+                                    <div class="urls-list" id="urls-list">
+                                        <!-- 动态填充 URL 列表 -->
                                     </div>
+                                    <button type="button" class="btn-secondary" id="add-url-btn" style="margin-top: 8px; width: 100%;">
+                                        <i class="ri-add-line"></i>
+                                        <span>添加地址</span>
+                                    </button>
                                 </div>
                                 <div class="form-item">
                                     <label for="edit-category">

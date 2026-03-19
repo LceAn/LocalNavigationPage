@@ -1800,6 +1800,401 @@
 }
 
 /* ================================
+   多 URL 管理样式
+   ================================ */
+.urls-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.url-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--rounded-md);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    transition: all var(--transition-fast) ease;
+}
+
+.url-item:hover {
+    border-color: var(--primary-light);
+}
+
+.url-item .url-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.url-item input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--rounded-md);
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all var(--transition-fast) ease;
+}
+
+.url-item input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.url-item input[type="text"]::placeholder {
+    color: var(--text-tertiary);
+}
+
+.url-item input[type="number"] {
+    width: 50px;
+    padding: 8px 6px;
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: var(--rounded-md);
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.url-item input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.url-item input[type="text"].url-label {
+    width: 100px;
+    flex: none;
+}
+
+.url-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.url-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--rounded-full);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all var(--transition-fast) ease;
+}
+
+.url-action-btn.move {
+    background: rgba(93, 95, 239, 0.1);
+    color: var(--primary-color);
+}
+
+.url-action-btn.move:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.url-action-btn.delete {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+.url-action-btn.delete:hover {
+    background: #e74c3c;
+    color: white;
+}
+
+.url-labels {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.url-labels span {
+    padding: 2px 6px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+}
+
+/* 链接卡片多 URL 下拉菜单 */
+.link-card-urls {
+    position: relative;
+}
+
+.url-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 220px;
+    background: var(--bg-secondary);
+    border-radius: var(--rounded-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    z-index: 100;
+    display: none;
+    overflow: hidden;
+    animation: dropdownSlide 0.2s ease;
+}
+
+@keyframes dropdownSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.url-dropdown.show {
+    display: block;
+}
+
+.url-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.url-dropdown-header span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.url-dropdown-header .url-count {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: var(--rounded-full);
+}
+
+.url-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast) ease;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    position: relative;
+}
+
+.url-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.url-dropdown-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.url-dropdown-item .status-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.url-dropdown-item .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all var(--transition-fast) ease;
+}
+
+.url-dropdown-item .status-dot.online {
+    background: #52c41a;
+    box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 0 0 rgba(82, 196, 26, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(82, 196, 26, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(82, 196, 26, 0);
+    }
+}
+
+.url-dropdown-item .status-dot.offline {
+    background: #ff4d4f;
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4);
+    animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 6px rgba(255, 77, 79, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+    }
+}
+
+.url-dropdown-item .status-dot.checking {
+    background: #faad14;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.url-dropdown-item .url-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.url-dropdown-item .url-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.url-dropdown-item .url-address {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.url-dropdown-item .url-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.url-dropdown-item .priority-badge {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    background: var(--bg-tertiary);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.url-dropdown-item .check-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    transition: all var(--transition-fast) ease;
+}
+
+.url-dropdown-item .check-icon.selected {
+    background: var(--primary-color);
+    color: white;
+}
+
+.url-dropdown-item .external-link {
+    opacity: 0;
+    color: var(--text-tertiary);
+    font-size: 14px;
+    transition: all var(--transition-fast) ease;
+}
+
+.url-dropdown-item:hover .external-link {
+    opacity: 1;
+}
+
+.url-dropdown-item:hover .external-link:hover {
+    color: var(--primary-color);
+}
+
+/* 多 URL 卡片上的地址数量标签 */
+.url-count-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    padding: 4px 8px;
+    border-radius: var(--rounded-full);
+    font-size: 11px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast) ease;
+}
+
+.url-count-badge:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+}
+
+.url-count-badge .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #52c41a;
+    animation: pulse-green 2s infinite;
+}
+
+/* 在线状态指示器 */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-dot.online {
+    background: #52c41a;
+}
+
+.status-dot.offline {
+    background: #ff4d4f;
+}
+
+.status-dot.checking {
+    background: #faad14;
+}
+
+/* ================================
    显示设置样式
    ================================ */
 .date-format-selector {
