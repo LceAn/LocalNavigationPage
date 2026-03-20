@@ -342,8 +342,16 @@ body {
   overflow: hidden;
   position: relative;
   transform: translateZ(0);
-  height: fit-content;
   will-change: transform, box-shadow;
+}
+
+/* 收起状态下的容器高度 */
+.category-container.collapsed {
+  height: auto;
+}
+
+.category-container.collapsed .link-list {
+  min-height: 0;
 }
 
 .category-container:hover {
@@ -401,18 +409,19 @@ body {
 /* 展开/收起动画 - 优化版 */
 .category-container.collapsed .link-list {
   max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+  padding: 0;
   opacity: 0;
   visibility: hidden;
+  border: none;
+  display: none !important;
 }
 
 .category-container:not(.collapsed) .link-list {
   max-height: 500px;
-  padding-top: var(--space-4);
-  padding-bottom: var(--space-4);
+  padding: var(--space-4);
   opacity: 1;
   visibility: visible;
+  display: flex !important;
 }
 
 /* 紧凑模式下的链接列表 */

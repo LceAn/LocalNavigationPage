@@ -908,6 +908,117 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ================================
+    // 新增设置功能
+    // ================================
+    
+    // 页面位置设置
+    const pagePositionSelect = document.getElementById('page-position-select');
+    if (pagePositionSelect) {
+        const savedPosition = localStorage.getItem('contentPosition') || 'default';
+        pagePositionSelect.value = savedPosition;
+        
+        pagePositionSelect.addEventListener('change', function() {
+            const position = this.value;
+            localStorage.setItem('contentPosition', position);
+            
+            const container = document.querySelector('.container');
+            container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
+            container.classList.add(`content-position-${position}`);
+            
+            let message = '';
+            switch(position) {
+                case 'top': message = '内容已向上移动'; break;
+                case 'default': message = '内容已居中'; break;
+                case 'bottom': message = '内容已向下移动'; break;
+            }
+            showMessage(message);
+        });
+    }
+    
+    // 默认展开所有分类设置
+    const defaultExpandAllToggle = document.getElementById('default-expand-all');
+    if (defaultExpandAllToggle) {
+        defaultExpandAllToggle.checked = localStorage.getItem('defaultExpandAll') === 'true';
+        
+        defaultExpandAllToggle.addEventListener('change', function() {
+            localStorage.setItem('defaultExpandAll', this.checked);
+            if (this.checked) {
+                // 展开所有分类
+                toggleAllCategories(true);
+                showMessage('已展开所有分类');
+            } else {
+                // 收起所有分类
+                toggleAllCategories(false);
+                showMessage('已收起所有分类');
+            }
+        });
+    }
+    
+    // 右上角按钮管理
+    const showToggleAllBtn = document.getElementById('show-toggle-all-btn');
+    const showPositionBtn = document.getElementById('show-position-btn');
+    const showThemeBtn = document.getElementById('show-theme-btn');
+    
+    // 加载按钮显示设置
+    function loadButtonVisibility() {
+        const saved = JSON.parse(localStorage.getItem('buttonVisibility') || '{"toggleAll":true,"position":true}');
+        if (showToggleAllBtn) showToggleAllBtn.checked = saved.toggleAll !== false;
+        if (showPositionBtn) showPositionBtn.checked = saved.position !== false;
+        updateButtonVisibility(saved);
+    }
+    
+    // 更新按钮显示
+    function updateButtonVisibility(saved) {
+        const toggleAllBtn = document.getElementById('toggle-all-groups');
+        const positionBtn = document.getElementById('position-button');
+        
+        if (toggleAllBtn) toggleAllBtn.style.display = saved.toggleAll !== false ? 'flex' : 'none';
+        if (positionBtn) positionBtn.style.display = saved.position !== false ? 'flex' : 'none';
+        // 昼夜模式按钮始终显示（由主题设置中的开关控制）
+    }
+    
+    if (showToggleAllBtn) {
+        showToggleAllBtn.addEventListener('change', function() {
+            const saved = JSON.parse(localStorage.getItem('buttonVisibility') || '{"toggleAll":true,"position":true}');
+            saved.toggleAll = this.checked;
+            localStorage.setItem('buttonVisibility', JSON.stringify(saved));
+            updateButtonVisibility(saved);
+            showMessage(this.checked ? '已显示展开/收起按钮' : '已隐藏展开/收起按钮');
+        });
+    }
+    
+    if (showPositionBtn) {
+        showPositionBtn.addEventListener('change', function() {
+            const saved = JSON.parse(localStorage.getItem('buttonVisibility') || '{"toggleAll":true,"position":true}');
+            saved.position = this.checked;
+            localStorage.setItem('buttonVisibility', JSON.stringify(saved));
+            updateButtonVisibility(saved);
+            showMessage(this.checked ? '已显示布局调整按钮' : '已隐藏布局调整按钮');
+        });
+    }
+    
+    if (showThemeBtn) {
+        showThemeBtn.addEventListener('change', function() {
+            localStorage.setItem('showThemeBtn', this.checked);
+            const themeBtn = document.getElementById('toggle-mode');
+            if (themeBtn) {
+                themeBtn.style.display = this.checked ? 'flex' : 'none';
+            }
+            showMessage(this.checked ? '已显示昼夜模式按钮' : '已隐藏昼夜模式按钮');
+        });
+        // 初始化昼夜模式按钮显示状态
+        const savedThemeBtn = localStorage.getItem('showThemeBtn');
+        showThemeBtn.checked = savedThemeBtn !== 'false';
+        const themeBtn = document.getElementById('toggle-mode');
+        if (themeBtn) {
+            themeBtn.style.display = showThemeBtn.checked ? 'flex' : 'none';
+        }
+    }
+    
+    // 初始化按钮可见性
+    loadButtonVisibility();
+
+    // ================================
     // 搜索引擎管理功能
     // ================================
     const searchEngineModal = document.getElementById('search-engine-modal');
@@ -1453,11 +1564,7 @@ document.addEventListener("DOMContentLoaded", function () {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // ================================
-    // 分类展开/收缩功能 - 优化版
-    // ================================
-    
-    // 一键收起/展开分组按钮功能 - 使用新的 toggleAllCategories 函数
+    // 创建一键收起/展开按钮
     const toggleAllGroupsBtn = document.createElement('button');
     toggleAllGroupsBtn.id = 'toggle-all-groups';
     toggleAllGroupsBtn.className = 'icon-button';
@@ -1470,145 +1577,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let allCollapsed = false;
     toggleAllGroupsBtn.addEventListener('click', () => {
         allCollapsed = !allCollapsed;
-        toggleAllCategories(!allCollapsed); // expand = !allCollapsed
+        window.toggleAllCategories(!allCollapsed);
         showMessage(allCollapsed ? '已收起所有分组' : '已展开所有分组');
     });
     
-    // 存储展开状态的键
-    const EXPANDED_CATEGORIES_KEY = 'expandedCategories';
-    
-    // 获取已展开的分类列表
-    function getExpandedCategories() {
-        const stored = localStorage.getItem(EXPANDED_CATEGORIES_KEY);
-        return stored ? JSON.parse(stored) : [];
-    }
-    
-    // 保存展开状态
-    function saveExpandedCategories(categories) {
-        localStorage.setItem(EXPANDED_CATEGORIES_KEY, JSON.stringify(categories));
-    }
-    
-    // 切换分类展开状态
-    function toggleCategory(container, saveState = true) {
-        const category = container.dataset.category;
-        const linkList = container.querySelector('.link-list');
-        const toggleButton = container.querySelector('.toggle-button');
-        
-        if (!linkList || !toggleButton) return;
-        
-        const isExpanded = !container.classList.contains('collapsed');
-        
-        if (isExpanded) {
-            // 收起
-            container.classList.add('collapsed');
-            container.classList.remove('expanded');
-            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-            
-            // 从存储中移除
-            if (saveState) {
-                const expanded = getExpandedCategories();
-                const index = expanded.indexOf(category);
-                if (index > -1) {
-                    expanded.splice(index, 1);
-                    saveExpandedCategories(expanded);
-                }
-            }
-        } else {
-            // 展开
-            container.classList.remove('collapsed');
-            container.classList.add('expanded');
-            toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-            
-            // 添加到存储
-            if (saveState) {
-                const expanded = getExpandedCategories();
-                if (!expanded.includes(category)) {
-                    expanded.push(category);
-                    saveExpandedCategories(expanded);
-                }
-            }
-        }
-    }
-    
-    // 初始化分类展开状态
-    function initCategoryToggles() {
-        const expandedCategories = getExpandedCategories();
-        const categoryContainers = document.querySelectorAll('.category-container');
-        
-        categoryContainers.forEach(container => {
-            const category = container.dataset.category;
-            const linkList = container.querySelector('.link-list');
-            const toggleButton = container.querySelector('.toggle-button');
-            const categoryHeader = container.querySelector('.category-header');
-            
-            if (!linkList || !toggleButton) return;
-            
-            // 根据存储状态初始化
-            if (expandedCategories.includes(category)) {
-                container.classList.remove('collapsed');
-                container.classList.add('expanded');
-                toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-            } else {
-                container.classList.add('collapsed');
-                container.classList.remove('expanded');
-                toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-            }
-            
-            // 点击标题切换展开状态
-            if (categoryHeader) {
-                categoryHeader.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleCategory(container, true);
-                });
-            }
-            
-            // 点击按钮切换展开状态
-            if (toggleButton) {
-                toggleButton.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                    event.preventDefault();
-                    toggleCategory(container, true);
-                });
-            }
-        });
-    }
-    
-    // 一键展开/收起所有分类
-    function toggleAllCategories(expand) {
-        const categoryContainers = document.querySelectorAll('.category-container');
-        const allCategories = [];
-        
-        categoryContainers.forEach(container => {
-            const category = container.dataset.category;
-            allCategories.push(category);
-            
-            const linkList = container.querySelector('.link-list');
-            const toggleButton = container.querySelector('.toggle-button');
-            
-            if (!linkList || !toggleButton) return;
-            
-            if (expand) {
-                container.classList.remove('collapsed');
-                container.classList.add('expanded');
-                toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-            } else {
-                container.classList.add('collapsed');
-                container.classList.remove('expanded');
-                toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-            }
-        });
-        
-        // 保存状态
-        if (expand) {
-            saveExpandedCategories(allCategories);
-        } else {
-            saveExpandedCategories([]);
-        }
-    }
-    
-    // 初始化分类展开功能
-    initCategoryToggles();
-
     // 创建垂直位置调整按钮
     const createVerticalPositionControls = () => {
         const functionButtons = document.querySelector('.function-buttons');
@@ -1777,7 +1749,8 @@ function renderLinksByCategory(links) {
 
         const linkList = document.createElement('ul');
         linkList.className = 'link-list';
-        // 不再设置 display: none，由 CSS 的 collapsed 类控制
+        // 默认收起，由 CSS 的 collapsed 类控制
+        linkList.style.cssText = 'margin: 0; padding: 0; border: none;';
         categoryContainer.appendChild(linkList);
 
         categoryLinks.forEach(link => {
@@ -1834,71 +1807,12 @@ function renderLinksByCategory(links) {
             linkList.appendChild(linkElement);
         });
 
-        // 绑定点击事件到分类头部
-        categoryHeader.addEventListener('click', function(event) {
-            event.stopPropagation();
-            event.preventDefault();
-            
-            const category = categoryContainer.dataset.category;
-            const isExpanded = !categoryContainer.classList.contains('collapsed');
-            
-            if (isExpanded) {
-                // 收起
-                categoryContainer.classList.add('collapsed');
-                categoryContainer.classList.remove('expanded');
-                toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-                
-                // 从存储中移除
-                const expanded = getExpandedCategories();
-                const index = expanded.indexOf(category);
-                if (index > -1) {
-                    expanded.splice(index, 1);
-                    saveExpandedCategories(expanded);
-                }
-            } else {
-                // 展开
-                categoryContainer.classList.remove('collapsed');
-                categoryContainer.classList.add('expanded');
-                toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-                
-                // 添加到存储
-                const expanded = getExpandedCategories();
-                if (!expanded.includes(category)) {
-                    expanded.push(category);
-                    saveExpandedCategories(expanded);
-                }
-            }
-        });
-
-        // 绑定点击事件到展开/收起按钮
-        toggleButton.addEventListener('click', function(event) {
-            event.stopPropagation();
-            event.preventDefault();
-            
-            // 触发父元素的点击事件
-            categoryHeader.click();
-        });
-
         linkContainer.appendChild(categoryContainer);
     }
     
-    // 重新初始化展开状态（确保事件正确绑定）
+    // 在 DOM 加载完成后初始化展开状态（绑定事件并设置初始状态）
     requestAnimationFrame(() => {
-        const expandedCategories = getExpandedCategories();
-        document.querySelectorAll('.category-container').forEach(container => {
-            const category = container.dataset.category;
-            const toggleBtn = container.querySelector('.toggle-button');
-            
-            if (expandedCategories.includes(category)) {
-                container.classList.remove('collapsed');
-                container.classList.add('expanded');
-                if (toggleBtn) toggleBtn.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-            } else {
-                container.classList.add('collapsed');
-                container.classList.remove('expanded');
-                if (toggleBtn) toggleBtn.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-            }
-        });
+        initCategoryToggles();
     });
 }
 
@@ -2059,7 +1973,161 @@ function setupMultiUrlDropdown(linkCard, urls) {
     });
 }
 
-// 已弃用：toggleCategoryDisplay - 现在使用 toggleCategory 函数
+// ================================
+// 全局分类展开/收缩功能
+// ================================
+
+// 存储展开状态的键
+const EXPANDED_CATEGORIES_KEY = 'expandedCategories';
+
+// 获取已展开的分类列表
+function getExpandedCategories() {
+    const stored = localStorage.getItem(EXPANDED_CATEGORIES_KEY);
+    return stored ? JSON.parse(stored) : [];
+}
+
+// 保存展开状态
+function saveExpandedCategories(categories) {
+    localStorage.setItem(EXPANDED_CATEGORIES_KEY, JSON.stringify(categories));
+}
+
+// 切换分类展开状态
+function toggleCategory(container, saveState = true) {
+    const category = container.dataset.category;
+    const linkList = container.querySelector('.link-list');
+    const toggleButton = container.querySelector('.toggle-button');
+    
+    if (!linkList || !toggleButton) return;
+    
+    const isExpanded = !container.classList.contains('collapsed');
+    
+    if (isExpanded) {
+        // 收起
+        container.classList.add('collapsed');
+        container.classList.remove('expanded');
+        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        
+        // 从存储中移除
+        if (saveState) {
+            const expanded = getExpandedCategories();
+            const index = expanded.indexOf(category);
+            if (index > -1) {
+                expanded.splice(index, 1);
+                saveExpandedCategories(expanded);
+            }
+        }
+    } else {
+        // 展开
+        container.classList.remove('collapsed');
+        container.classList.add('expanded');
+        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+        
+        // 添加到存储
+        if (saveState) {
+            const expanded = getExpandedCategories();
+            if (!expanded.includes(category)) {
+                expanded.push(category);
+                saveExpandedCategories(expanded);
+            }
+        }
+    }
+}
+
+// 初始化分类展开状态
+function initCategoryToggles() {
+    const expandedCategories = getExpandedCategories();
+    const categoryContainers = document.querySelectorAll('.category-container');
+    
+    // 检查是否设置了默认展开所有分类
+    const defaultExpandAll = localStorage.getItem('defaultExpandAll') === 'true';
+    
+    // 检查是否是首次访问（localStorage 中没有任何展开状态记录）
+    const hasExpandedState = localStorage.getItem(EXPANDED_CATEGORIES_KEY) !== null;
+    
+    categoryContainers.forEach(container => {
+        const category = container.dataset.category;
+        const linkList = container.querySelector('.link-list');
+        const toggleButton = container.querySelector('.toggle-button');
+        const categoryHeader = container.querySelector('.category-header');
+        
+        if (!linkList || !toggleButton) return;
+        
+        // 根据存储状态初始化
+        // 如果设置了默认展开所有，则全部展开
+        // 如果是首次访问且没有设置默认展开，则全部收起
+        // 否则根据存储的状态初始化
+        let isExpanded;
+        if (defaultExpandAll) {
+            isExpanded = true;
+        } else if (!hasExpandedState) {
+            // 首次访问且没有设置默认展开，收起所有分类
+            isExpanded = false;
+        } else {
+            // 根据之前存储的状态
+            isExpanded = expandedCategories.includes(category);
+        }
+        
+        if (isExpanded) {
+            container.classList.remove('collapsed');
+            container.classList.add('expanded');
+            toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+        } else {
+            container.classList.add('collapsed');
+            container.classList.remove('expanded');
+            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        }
+        
+        // 点击标题切换展开状态
+        if (categoryHeader) {
+            categoryHeader.addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleCategory(container, true);
+            });
+        }
+        
+        // 点击按钮切换展开状态
+        if (toggleButton) {
+            toggleButton.addEventListener('click', function(event) {
+                event.stopPropagation();
+                event.preventDefault();
+                toggleCategory(container, true);
+            });
+        }
+    });
+}
+
+// 一键展开/收起所有分类
+window.toggleAllCategories = function(expand) {
+    const categoryContainers = document.querySelectorAll('.category-container');
+    const allCategories = [];
+    
+    categoryContainers.forEach(container => {
+        const category = container.dataset.category;
+        allCategories.push(category);
+        
+        const linkList = container.querySelector('.link-list');
+        const toggleButton = container.querySelector('.toggle-button');
+        
+        if (!linkList || !toggleButton) return;
+        
+        if (expand) {
+            container.classList.remove('collapsed');
+            container.classList.add('expanded');
+            toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
+        } else {
+            container.classList.add('collapsed');
+            container.classList.remove('expanded');
+            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        }
+    });
+    
+    // 保存状态
+    if (expand) {
+        saveExpandedCategories(allCategories);
+    } else {
+        saveExpandedCategories([]);
+    }
+};
 
 // 渲染链接到设置界面
 function renderLinksInSettings(links) {

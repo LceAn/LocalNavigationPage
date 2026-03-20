@@ -323,6 +323,8 @@
                         <i class="ri-palette-line"></i>
                         <h3>外观与显示</h3>
                     </div>
+                    
+                    <!-- 主题模式 -->
                     <div class="settings-section">
                         <div class="section-title">
                             <i class="ri-sun-line"></i>
@@ -355,6 +357,206 @@
                         </div>
                     </div>
                     
+                    <!-- 两列布局容器 -->
+                    <div class="appearance-grid">
+                        <!-- 左列：界面布局 -->
+                        <div class="appearance-column">
+                            <!-- 布局设置 -->
+                            <div class="settings-section">
+                                <div class="section-title">
+                                    <i class="ri-layout-grid-line"></i>
+                                    <span>布局设置</span>
+                                </div>
+                                <div class="layout-options">
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-compact-disc-line"></i>
+                                            <span>紧凑模式</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="compact-mode">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-image-line"></i>
+                                            <span>显示缩略图</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-thumbnails" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-magic-line"></i>
+                                            <span>动画效果</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="enable-animations" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 页面布局 -->
+                            <div class="settings-section">
+                                <div class="section-title">
+                                    <i class="ri-layout-top-line"></i>
+                                    <span>页面布局</span>
+                                </div>
+                                <div class="layout-options">
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-align-top"></i>
+                                            <span>页面内容位置</span>
+                                        </div>
+                                        <select id="page-position-select" class="format-select">
+                                            <option value="default">居中</option>
+                                            <option value="top">上方</option>
+                                            <option value="bottom">下方</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 分类展开 -->
+                            <div class="settings-section">
+                                <div class="section-title">
+                                    <i class="ri-folder-expand-line"></i>
+                                    <span>分类展开</span>
+                                </div>
+                                <div class="layout-options">
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-layout-expand-line"></i>
+                                            <span>默认展开所有分类</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="default-expand-all">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 右列：时间与天气 -->
+                        <div class="appearance-column">
+                            <!-- 时间显示 -->
+                            <div class="settings-section">
+                                <div class="section-title">
+                                    <i class="ri-time-line"></i>
+                                    <span>时间显示</span>
+                                </div>
+                                <div class="layout-options">
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-time-line"></i>
+                                            <span>显示时间</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-time-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-calendar-line"></i>
+                                            <span>显示日期</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-date-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-seconds-line"></i>
+                                            <span>显示秒数</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-seconds-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-time-zone-line"></i>
+                                            <span>24 小时制</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="24hour-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 日期格式 -->
+                            <div class="settings-section">
+                                <div class="section-title">
+                                    <i class="ri-calendar-line"></i>
+                                    <span>日期格式</span>
+                                </div>
+                                <div class="date-format-selector">
+                                    <select id="date-format-select" class="format-select">
+                                        <option value="cn">YYYY 年 MM 月 DD 日</option>
+                                        <option value="cn-short">MM 月 DD 日</option>
+                                        <option value="us">MM/DD/YYYY</option>
+                                        <option value="eu">DD/MM/YYYY</option>
+                                        <option value="iso">YYYY-MM-DD</option>
+                                        <option value="cn-week">YYYY 年 MM 月 DD 日 星期 W</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- 天气显示 -->
+                            <div class="settings-section">
+                                <div class="section-title">
+                                    <i class="ri-cloud-line"></i>
+                                    <span>天气显示</span>
+                                </div>
+                                <div class="weather-settings">
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-cloud-line"></i>
+                                            <span>显示天气</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-weather-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="form-item" style="margin-top: 12px;">
+                                        <label for="weather-city-input">
+                                            <i class="ri-map-pin-line"></i>
+                                            <span>城市名称</span>
+                                        </label>
+                                        <div class="input-wrapper">
+                                            <i class="ri-map-pin-line input-icon"></i>
+                                            <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
+                                        </div>
+                                        <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
+                                    </div>
+                                    <div class="form-item" style="margin-top: 12px;">
+                                        <label for="weather-unit-select">
+                                            <i class="ri-temperature-line"></i>
+                                            <span>温度单位</span>
+                                        </label>
+                                        <select id="weather-unit-select" class="format-select">
+                                            <option value="C">摄氏度 (°C)</option>
+                                            <option value="F">华氏度 (°F)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 全宽：网站设置 -->
                     <div class="settings-section">
                         <div class="section-title">
                             <i class="ri-edit-line"></i>
@@ -366,153 +568,48 @@
                                     <i class="ri-text"></i>
                                     <span>网站标题</span>
                                 </div>
-                                <input type="text" id="site-title-input" placeholder="我的导航" style="flex: 1; padding: 8px 12px; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 8px; font-size: 14px; background: var(--bg-secondary); color: var(--text-primary);">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-layout-grid-line"></i>
-                            <span>布局设置</span>
-                        </div>
-                        <div class="layout-options">
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-compact-disc-line"></i>
-                                    <span>紧凑模式</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="compact-mode">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-image-line"></i>
-                                    <span>显示缩略图</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="show-thumbnails" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-magic-line"></i>
-                                    <span>动画效果</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="enable-animations" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
+                                <input type="text" id="site-title-input" placeholder="我的导航" class="format-select">
                             </div>
                         </div>
                     </div>
                     
+                    <!-- 全宽：按钮显示设置 -->
                     <div class="settings-section">
                         <div class="section-title">
-                            <i class="ri-time-line"></i>
-                            <span>时间显示</span>
+                            <i class="ri-function-line"></i>
+                            <span>快捷按钮显示</span>
                         </div>
                         <div class="layout-options">
                             <div class="option-item">
                                 <div class="option-header">
-                                    <i class="ri-time-line"></i>
-                                    <span>显示时间</span>
+                                    <i class="ri-sun-line"></i>
+                                    <span>显示昼夜模式切换按钮</span>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="show-time-toggle" checked>
+                                    <input type="checkbox" id="show-theme-btn" checked>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
                             <div class="option-item">
                                 <div class="option-header">
-                                    <i class="ri-calendar-line"></i>
-                                    <span>显示日期</span>
+                                    <i class="ri-arrow-up-down-line"></i>
+                                    <span>显示展开/收起按钮</span>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="show-date-toggle" checked>
+                                    <input type="checkbox" id="show-toggle-all-btn" checked>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
                             <div class="option-item">
                                 <div class="option-header">
-                                    <i class="ri-seconds-line"></i>
-                                    <span>显示秒数</span>
+                                    <i class="ri-layout-line"></i>
+                                    <span>显示布局调整按钮</span>
                                 </div>
                                 <label class="toggle-switch">
-                                    <input type="checkbox" id="show-seconds-toggle" checked>
+                                    <input type="checkbox" id="show-position-btn" checked>
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-time-zone-line"></i>
-                                    <span>24 小时制</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="24hour-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-calendar-line"></i>
-                            <span>日期格式</span>
-                        </div>
-                        <div class="date-format-selector">
-                            <select id="date-format-select" class="format-select">
-                                <option value="cn">YYYY 年 MM 月 DD 日</option>
-                                <option value="cn-short">MM 月 DD 日</option>
-                                <option value="us">MM/DD/YYYY</option>
-                                <option value="eu">DD/MM/YYYY</option>
-                                <option value="iso">YYYY-MM-DD</option>
-                                <option value="cn-week">YYYY 年 MM 月 DD 日 星期 W</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-cloud-line"></i>
-                            <span>天气显示</span>
-                        </div>
-                        <div class="layout-options">
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-cloud-line"></i>
-                                    <span>显示天气</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="show-weather-toggle" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-item" style="margin-top: 12px;">
-                            <label for="weather-city-input">
-                                <i class="ri-map-pin-line"></i>
-                                <span>城市名称</span>
-                            </label>
-                            <div class="input-wrapper">
-                                <i class="ri-map-pin-line input-icon"></i>
-                                <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
-                            </div>
-                            <small style="color: var(--text-tertiary); font-size: 12px; margin-top: 6px; display: block;">使用英文城市名称，多个城市用逗号分隔</small>
-                        </div>
-                        <div class="form-item" style="margin-top: 12px;">
-                            <label for="weather-unit-select">
-                                <i class="ri-temperature-line"></i>
-                                <span>温度单位</span>
-                            </label>
-                            <select id="weather-unit-select" class="format-select" style="width: 100%; padding: 10px 14px; border: 1.5px solid rgba(0,0,0,0.08); border-radius: 8px; font-size: 14px; background: var(--bg-secondary); color: var(--text-primary);">
-                                <option value="C">摄氏度 (°C)</option>
-                                <option value="F">华氏度 (°F)</option>
-                            </select>
                         </div>
                     </div>
                 </div>
