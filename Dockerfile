@@ -15,7 +15,7 @@ COPY HTML/ /usr/share/nginx/html/
 RUN mkdir -p /usr/share/nginx/html/data
 
 # 提供默认配置文件（首次启动时使用）
-COPY HTML/data/links.json /usr/share/nginx/html/data/links.json.default
+COPY HTML/data/links.json.default /usr/share/nginx/html/data/links.json.default
 
 # 暴露端口
 EXPOSE 80
