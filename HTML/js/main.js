@@ -1522,6 +1522,54 @@ document.addEventListener("DOMContentLoaded", function () {
     setInterval(() => {
         updateTimeDisplay();
     }, 1000);
+    
+    // ================================
+    // 设置折叠面板功能
+    // ================================
+    window.toggleSection = function(sectionTitle) {
+        const section = sectionTitle.closest('.settings-section');
+        if (section) {
+            section.classList.toggle('collapsed');
+            
+            // 保存折叠状态
+            const sectionId = section.querySelector('.section-title-left span')?.textContent || '';
+            const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '[]');
+            
+            if (section.classList.contains('collapsed')) {
+                if (!collapsedSections.includes(sectionId)) {
+                    collapsedSections.push(sectionId);
+                }
+            } else {
+                const index = collapsedSections.indexOf(sectionId);
+                if (index > -1) {
+                    collapsedSections.splice(index, 1);
+                }
+            }
+            
+            localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+        }
+    };
+    
+    // 初始化折叠状态
+    function initSectionCollapseState() {
+        const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '[]');
+        document.querySelectorAll('.settings-section').forEach(section => {
+            const sectionId = section.querySelector('.section-title-left span')?.textContent || '';
+            if (collapsedSections.includes(sectionId)) {
+                section.classList.add('collapsed');
+            }
+        });
+    }
+    
+    // 在设置打开时初始化折叠状态
+    const openSettingsBtnOrig = document.getElementById('open-settings');
+    if (openSettingsBtnOrig) {
+        openSettingsBtnOrig.addEventListener('click', function() {
+            setTimeout(() => {
+                initSectionCollapseState();
+            }, 100);
+        });
+    }
 
     // 控制搜索框在滚动时的行为
     const searchButtons = document.querySelectorAll('.search-button');
@@ -2041,9 +2089,6 @@ function initCategoryToggles() {
     // 检查是否设置了默认展开所有分类
     const defaultExpandAll = localStorage.getItem('defaultExpandAll') === 'true';
     
-    // 检查是否是首次访问（localStorage 中没有任何展开状态记录）
-    const hasExpandedState = localStorage.getItem(EXPANDED_CATEGORIES_KEY) !== null;
-    
     categoryContainers.forEach(container => {
         const category = container.dataset.category;
         const linkList = container.querySelector('.link-list');
@@ -2052,18 +2097,11 @@ function initCategoryToggles() {
         
         if (!linkList || !toggleButton) return;
         
-        // 根据存储状态初始化
-        // 如果设置了默认展开所有，则全部展开
-        // 如果是首次访问且没有设置默认展开，则全部收起
-        // 否则根据存储的状态初始化
-        let isExpanded;
-        if (defaultExpandAll) {
-            isExpanded = true;
-        } else if (!hasExpandedState) {
-            // 首次访问且没有设置默认展开，收起所有分类
-            isExpanded = false;
-        } else {
-            // 根据之前存储的状态
+        // 默认收起所有分类，除非设置了"默认展开所有分类"
+        let isExpanded = defaultExpandAll;
+        
+        // 如果没有设置默认展开所有，则根据存储的状态初始化
+        if (!defaultExpandAll) {
             isExpanded = expandedCategories.includes(category);
         }
         

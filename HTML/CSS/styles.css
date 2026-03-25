@@ -465,13 +465,19 @@ body.compact-mode .category-container:not(.collapsed) .link-list {
   background-clip: padding-box;
 }
 
-/* 使链接列表项自适应 */
+/* 优化链接列表项布局 - 更好的网格展示 */
+.category-container .link-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 16px;
+  padding: 20px;
+}
+
 .category-container .link-list li {
-  flex: 0 0 calc(50% - 10px);
-  max-width: calc(50% - 10px);
   display: flex;
   justify-content: center;
   transition: all var(--transition-normal) ease;
+  list-style: none;
 }
 
 /* 优化分类标题样式 */
@@ -576,119 +582,97 @@ body.compact-mode .category-container:not(.collapsed) .link-list {
   transition: transform var(--transition-normal) ease;
 }
 
-/* 小卡片样式 */
+/* 优化后的卡片样式 - 网格布局 */
 .link-card {
   position: relative;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  width: calc(100% - 12px);
-  max-width: 200px;
-  min-width: 150px;
-  height: 80px;
-  margin: 6px;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: 140px;
+  margin: 0;
   background-color: var(--bg-secondary);
-  border-radius: var(--rounded-lg);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
+  border-radius: var(--rounded-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: visible;
   transition: all var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
   color: var(--text-primary);
-  border: 1px solid rgba(0,0,0,0.03);
-  padding: 0 15px;
+  border: 2px solid rgba(0,0,0,0.03);
+  padding: 16px 12px;
+  cursor: pointer;
 }
 
 .link-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--primary-light);
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-color);
   z-index: 10;
 }
 
 .link-card-thumbnail {
-  width: 50px;
-  height: 50px;
-  border-radius: var(--rounded-full);
+  width: 56px;
+  height: 56px;
+  border-radius: var(--rounded-lg);
   background-size: cover;
   background-position: center;
-  margin-right: 15px;
-  opacity: 0.9;
+  margin-bottom: 10px;
+  opacity: 1;
   flex-shrink: 0;
   transition: all var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   z-index: 1;
   overflow: hidden;
-  border: 2px solid var(--primary-light);
-}
-
-.link-card-thumbnail::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  border-radius: var(--rounded-full);
-  transition: all var(--transition-normal) ease;
-  opacity: 0;
-  transform: scale(1);
-  z-index: 2;
+  border: 2px solid var(--bg-tertiary);
+  box-shadow: var(--shadow-sm);
 }
 
 .link-card:hover .link-card-thumbnail {
-  border-radius: var(--rounded-md);
-  transform: scale(1.4);
-  z-index: 10;
+  transform: scale(1.1);
+  border-color: var(--primary-color);
   box-shadow: var(--shadow-md);
-}
-
-.link-card:hover .link-card-thumbnail::before {
-  opacity: 1;
-  transform: scale(1);
-  border-radius: var(--rounded-md);
-  z-index: 3;
 }
 
 .link-card-content {
   position: relative;
-  z-index: 4;
-  background: linear-gradient(to right, var(--bg-secondary), transparent);
-  padding: 5px 10px;
-  border-radius: var(--rounded-sm);
+  z-index: 2;
+  width: 100%;
+  text-align: center;
   transition: all var(--transition-normal) ease;
 }
 
-.link-card:hover .link-card-content {
-  background: linear-gradient(to right, var(--bg-secondary), var(--bg-card));
-}
-
 .link-card-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   margin: 0;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 120px;
+  width: 100%;
+  line-height: 1.3;
 }
 
 .link-card-tag {
   position: absolute;
-  bottom: 0;
-  right: 0;
+  top: 8px;
+  right: 8px;
   background-color: var(--accent-light);
   color: var(--accent-color);
-  font-size: 10px;
-  padding: 3px 8px;
-  border-bottom-right-radius: var(--rounded-md);
-  border-top-left-radius: var(--rounded-sm);
-  z-index: 5;
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: var(--rounded-full);
+  z-index: 3;
   font-weight: 600;
-  opacity: 0.9;
+  opacity: 0;
+  transition: opacity var(--transition-fast) ease;
+}
+
+.link-card:hover .link-card-tag {
+  opacity: 1;
 }
 
 /* 下拉菜单样式 */

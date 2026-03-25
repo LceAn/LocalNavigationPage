@@ -197,121 +197,121 @@
                             <span>点击右上角"添加链接"按钮开始管理您的导航</span>
                         </div>
                     </div>
-                </div>
-                
-                <!-- 添加/编辑链接弹窗 -->
-                <div class="modal-overlay" id="link-modal">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 id="modal-title">
-                                <i class="ri-add-circle-line"></i>
-                                <span>添加链接</span>
-                            </h3>
-                            <button class="modal-close" id="modal-close-btn">
-                                <i class="ri-close-line"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="form-grid">
-                                <div class="form-item">
-                                    <label for="edit-name">
-                                        <i class="ri-file-text-line"></i>
-                                        <span>网站名称</span>
-                                    </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-file-text-line input-icon"></i>
-                                        <input type="text" id="edit-name" name="edit-name" placeholder="例如：GitHub">
-                                    </div>
-                                </div>
-                                <div class="form-item full-width">
-                                    <label>
-                                        <i class="ri-link"></i>
-                                        <span>网站地址</span>
-                                    </label>
-                                    <div class="urls-list" id="urls-list">
-                                        <!-- 动态填充 URL 列表 -->
-                                    </div>
-                                    <button type="button" class="btn-secondary" id="add-url-btn" style="margin-top: 8px; width: 100%;">
-                                        <i class="ri-add-line"></i>
-                                        <span>添加地址</span>
-                                    </button>
-                                </div>
-                                <div class="form-item">
-                                    <label for="edit-category">
-                                        <i class="ri-folder-line"></i>
-                                        <span>所属分类</span>
-                                    </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-folder-line input-icon"></i>
-                                        <input type="text" id="edit-category" name="edit-category" placeholder="例如：开发工具" list="category-list">
-                                        <datalist id="category-list">
-                                            <!-- 动态填充现有分类 -->
-                                        </datalist>
-                                    </div>
-                                </div>
-                                <div class="form-item">
-                                    <label for="edit-tag">
-                                        <i class="ri-price-tag-3-line"></i>
-                                        <span>标签</span>
-                                    </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-price-tag-3-line input-icon"></i>
-                                        <input type="text" id="edit-tag" name="edit-tag" placeholder="例如：代码、工具">
-                                    </div>
-                                </div>
-                                <div class="form-item full-width">
-                                    <label for="edit-thumbnail">
-                                        <i class="ri-image-line"></i>
-                                        <span>缩略图</span>
-                                    </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-image-line input-icon"></i>
-                                        <input type="text" id="edit-thumbnail" name="edit-thumbnail" placeholder="输入图片 URL，留空则自动生成">
-                                    </div>
-                                    <div class="thumbnail-preview" id="thumbnail-preview">
-                                        <i class="ri-image-add-line"></i>
-                                        <span>预览</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" id="cancel-button" class="btn-secondary">
-                                <i class="ri-close-line"></i>
-                                <span>取消</span>
-                            </button>
-                            <button type="button" id="save-button" class="btn-primary">
-                                <i class="ri-save-3-line"></i>
-                                <span>保存</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 分类管理弹窗 -->
-                <div class="modal-overlay" id="category-modal">
-                    <div class="modal-content modal-sm">
-                        <div class="modal-header">
-                            <h3>
-                                <i class="ri-folder-settings-line"></i>
-                                <span>管理分类</span>
-                            </h3>
-                            <button class="modal-close" id="category-modal-close-btn">
-                                <i class="ri-close-line"></i>
-                            </button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="category-add-row">
-                                <div class="input-wrapper">
-                                    <i class="ri-folder-add-line input-icon"></i>
-                                    <input type="text" id="new-category-name" placeholder="输入新分类名称...">
-                                </div>
-                                <button class="btn-primary" id="add-category-btn">
-                                    <i class="ri-add-line"></i>
+                    
+                    <!-- 添加/编辑链接弹窗 -->
+                    <div class="modal-overlay" id="link-modal">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h3 id="modal-title">
+                                    <i class="ri-add-circle-line"></i>
+                                    <span>添加链接</span>
+                                </h3>
+                                <button class="modal-close" id="modal-close-btn">
+                                    <i class="ri-close-line"></i>
                                 </button>
                             </div>
-                            <div class="categories-list" id="categories-list">
-                                <!-- 动态填充分类列表 -->
+                            <div class="modal-body">
+                                <div class="form-grid">
+                                    <div class="form-item">
+                                        <label for="edit-name">
+                                            <i class="ri-file-text-line"></i>
+                                            <span>网站名称</span>
+                                        </label>
+                                        <div class="input-wrapper">
+                                            <i class="ri-file-text-line input-icon"></i>
+                                            <input type="text" id="edit-name" name="edit-name" placeholder="例如：GitHub">
+                                        </div>
+                                    </div>
+                                    <div class="form-item full-width">
+                                        <label>
+                                            <i class="ri-link"></i>
+                                            <span>网站地址</span>
+                                        </label>
+                                        <div class="urls-list" id="urls-list">
+                                            <!-- 动态填充 URL 列表 -->
+                                        </div>
+                                        <button type="button" class="btn-secondary" id="add-url-btn" style="margin-top: 8px; width: 100%;">
+                                            <i class="ri-add-line"></i>
+                                            <span>添加地址</span>
+                                        </button>
+                                    </div>
+                                    <div class="form-item">
+                                        <label for="edit-category">
+                                            <i class="ri-folder-line"></i>
+                                            <span>所属分类</span>
+                                        </label>
+                                        <div class="input-wrapper">
+                                            <i class="ri-folder-line input-icon"></i>
+                                            <input type="text" id="edit-category" name="edit-category" placeholder="例如：开发工具" list="category-list">
+                                            <datalist id="category-list">
+                                                <!-- 动态填充现有分类 -->
+                                            </datalist>
+                                        </div>
+                                    </div>
+                                    <div class="form-item">
+                                        <label for="edit-tag">
+                                            <i class="ri-price-tag-3-line"></i>
+                                            <span>标签</span>
+                                        </label>
+                                        <div class="input-wrapper">
+                                            <i class="ri-price-tag-3-line input-icon"></i>
+                                            <input type="text" id="edit-tag" name="edit-tag" placeholder="例如：代码、工具">
+                                        </div>
+                                    </div>
+                                    <div class="form-item full-width">
+                                        <label for="edit-thumbnail">
+                                            <i class="ri-image-line"></i>
+                                            <span>缩略图</span>
+                                        </label>
+                                        <div class="input-wrapper">
+                                            <i class="ri-image-line input-icon"></i>
+                                            <input type="text" id="edit-thumbnail" name="edit-thumbnail" placeholder="输入图片 URL，留空则自动生成">
+                                        </div>
+                                        <div class="thumbnail-preview" id="thumbnail-preview">
+                                            <i class="ri-image-add-line"></i>
+                                            <span>预览</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" id="cancel-button" class="btn-secondary">
+                                    <i class="ri-close-line"></i>
+                                    <span>取消</span>
+                                </button>
+                                <button type="button" id="save-button" class="btn-primary">
+                                    <i class="ri-save-3-line"></i>
+                                    <span>保存</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 分类管理弹窗 -->
+                    <div class="modal-overlay" id="category-modal">
+                        <div class="modal-content modal-sm">
+                            <div class="modal-header">
+                                <h3>
+                                    <i class="ri-folder-settings-line"></i>
+                                    <span>管理分类</span>
+                                </h3>
+                                <button class="modal-close" id="category-modal-close-btn">
+                                    <i class="ri-close-line"></i>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="category-add-row">
+                                    <div class="input-wrapper">
+                                        <i class="ri-folder-add-line input-icon"></i>
+                                        <input type="text" id="new-category-name" placeholder="输入新分类名称...">
+                                    </div>
+                                    <button class="btn-primary" id="add-category-btn">
+                                        <i class="ri-add-line"></i>
+                                    </button>
+                                </div>
+                                <div class="categories-list" id="categories-list">
+                                    <!-- 动态填充分类列表 -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -326,10 +326,14 @@
                     
                     <!-- 主题模式 -->
                     <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-sun-line"></i>
-                            <span>主题模式</span>
+                        <div class="section-title" onclick="toggleSection(this)">
+                            <div class="section-title-left">
+                                <i class="ri-sun-line"></i>
+                                <span>主题模式</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
+                        <div class="section-content">
                         <div class="theme-selector">
                             <div class="theme-option" data-theme="light">
                                 <div class="theme-preview light-preview">
@@ -355,19 +359,20 @@
                                 <i class="ri-check-line theme-check"></i>
                             </div>
                         </div>
+                        </div>
                     </div>
                     
-                    <!-- 两列布局容器 -->
-                    <div class="appearance-grid">
-                        <!-- 左列：界面布局 -->
-                        <div class="appearance-column">
-                            <!-- 布局设置 -->
-                            <div class="settings-section">
-                                <div class="section-title">
-                                    <i class="ri-layout-grid-line"></i>
-                                    <span>布局设置</span>
-                                </div>
-                                <div class="layout-options">
+                    <!-- 界面布局 -->
+                    <div class="settings-section">
+                        <div class="section-title" onclick="toggleSection(this)">
+                            <div class="section-title-left">
+                                <i class="ri-layout-grid-line"></i>
+                                <span>界面布局</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
                                     <div class="option-item">
                                         <div class="option-header">
                                             <i class="ri-compact-disc-line"></i>
@@ -398,60 +403,42 @@
                                             <span class="toggle-slider"></span>
                                         </label>
                                     </div>
-                                </div>
-                            </div>
-                            
-                            <!-- 页面布局 -->
-                            <div class="settings-section">
-                                <div class="section-title">
-                                    <i class="ri-layout-top-line"></i>
-                                    <span>页面布局</span>
-                                </div>
-                                <div class="layout-options">
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-align-top"></i>
-                                            <span>页面内容位置</span>
-                                        </div>
-                                        <select id="page-position-select" class="format-select">
-                                            <option value="default">居中</option>
-                                            <option value="top">上方</option>
-                                            <option value="bottom">下方</option>
-                                        </select>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-align-top"></i>
+                                        <span>页面内容位置</span>
                                     </div>
+                                    <select id="page-position-select" class="format-select">
+                                        <option value="default">居中</option>
+                                        <option value="top">上方</option>
+                                        <option value="bottom">下方</option>
+                                    </select>
                                 </div>
-                            </div>
-                            
-                            <!-- 分类展开 -->
-                            <div class="settings-section">
-                                <div class="section-title">
-                                    <i class="ri-folder-expand-line"></i>
-                                    <span>分类展开</span>
-                                </div>
-                                <div class="layout-options">
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-layout-expand-line"></i>
-                                            <span>默认展开所有分类</span>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="default-expand-all">
-                                            <span class="toggle-slider"></span>
-                                        </label>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-layout-expand-line"></i>
+                                        <span>默认展开所有分类</span>
                                     </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="default-expand-all">
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- 右列：时间与天气 -->
-                        <div class="appearance-column">
-                            <!-- 时间显示 -->
-                            <div class="settings-section">
-                                <div class="section-title">
-                                    <i class="ri-time-line"></i>
-                                    <span>时间显示</span>
-                                </div>
-                                <div class="layout-options">
+                    </div>
+                    
+                    <!-- 时间与日期 -->
+                    <div class="settings-section">
+                        <div class="section-title" onclick="toggleSection(this)">
+                            <div class="section-title-left">
+                                <i class="ri-time-line"></i>
+                                <span>时间与日期</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
                                     <div class="option-item">
                                         <div class="option-header">
                                             <i class="ri-time-line"></i>
@@ -491,17 +478,8 @@
                                             <input type="checkbox" id="24hour-toggle" checked>
                                             <span class="toggle-slider"></span>
                                         </label>
-                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- 日期格式 -->
-                            <div class="settings-section">
-                                <div class="section-title">
-                                    <i class="ri-calendar-line"></i>
-                                    <span>日期格式</span>
-                                </div>
-                                <div class="date-format-selector">
+                                <div class="date-format-selector" style="margin-top: 12px;">
                                     <select id="date-format-select" class="format-select">
                                         <option value="cn">YYYY 年 MM 月 DD 日</option>
                                         <option value="cn-short">MM 月 DD 日</option>
@@ -512,56 +490,65 @@
                                     </select>
                                 </div>
                             </div>
-                            
-                            <!-- 天气显示 -->
-                            <div class="settings-section">
-                                <div class="section-title">
-                                    <i class="ri-cloud-line"></i>
-                                    <span>天气显示</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 天气显示 -->
+                    <div class="settings-section">
+                        <div class="section-title" onclick="toggleSection(this)">
+                            <div class="section-title-left">
+                                <i class="ri-cloud-line"></i>
+                                <span>天气显示</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="weather-settings">
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-cloud-line"></i>
+                                        <span>显示天气</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="show-weather-toggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
-                                <div class="weather-settings">
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-cloud-line"></i>
-                                            <span>显示天气</span>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="show-weather-toggle" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
+                                <div class="form-item" style="margin-top: 12px;">
+                                    <label for="weather-city-input">
+                                        <i class="ri-map-pin-line"></i>
+                                        <span>城市名称</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-map-pin-line input-icon"></i>
+                                        <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
                                     </div>
-                                    <div class="form-item" style="margin-top: 12px;">
-                                        <label for="weather-city-input">
-                                            <i class="ri-map-pin-line"></i>
-                                            <span>城市名称</span>
-                                        </label>
-                                        <div class="input-wrapper">
-                                            <i class="ri-map-pin-line input-icon"></i>
-                                            <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
-                                        </div>
-                                        <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
-                                    </div>
-                                    <div class="form-item" style="margin-top: 12px;">
-                                        <label for="weather-unit-select">
-                                            <i class="ri-temperature-line"></i>
-                                            <span>温度单位</span>
-                                        </label>
-                                        <select id="weather-unit-select" class="format-select">
-                                            <option value="C">摄氏度 (°C)</option>
-                                            <option value="F">华氏度 (°F)</option>
-                                        </select>
-                                    </div>
+                                    <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
+                                </div>
+                                <div class="form-item" style="margin-top: 12px;">
+                                    <label for="weather-unit-select">
+                                        <i class="ri-temperature-line"></i>
+                                        <span>温度单位</span>
+                                    </label>
+                                    <select id="weather-unit-select" class="format-select">
+                                        <option value="C">摄氏度 (°C)</option>
+                                        <option value="F">华氏度 (°F)</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- 全宽：网站设置 -->
+                    <!-- 网站设置 -->
                     <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-edit-line"></i>
-                            <span>网站设置</span>
+                        <div class="section-title" onclick="toggleSection(this)">
+                            <div class="section-title-left">
+                                <i class="ri-edit-line"></i>
+                                <span>网站设置</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
+                        <div class="section-content">
                         <div class="layout-options">
                             <div class="option-item">
                                 <div class="option-header">
@@ -571,14 +558,19 @@
                                 <input type="text" id="site-title-input" placeholder="我的导航" class="format-select">
                             </div>
                         </div>
+                        </div>
                     </div>
                     
-                    <!-- 全宽：按钮显示设置 -->
+                    <!-- 快捷按钮显示 -->
                     <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-function-line"></i>
-                            <span>快捷按钮显示</span>
+                        <div class="section-title" onclick="toggleSection(this)">
+                            <div class="section-title-left">
+                                <i class="ri-function-line"></i>
+                                <span>快捷按钮</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
+                        <div class="section-content">
                         <div class="layout-options">
                             <div class="option-item">
                                 <div class="option-header">
@@ -610,6 +602,7 @@
                                     <span class="toggle-slider"></span>
                                 </label>
                             </div>
+                        </div>
                         </div>
                     </div>
                 </div>

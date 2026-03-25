@@ -1200,37 +1200,92 @@
 }
 
 /* ================================
-   外观设置标签页
+   外观设置标签页 - 优化折叠布局
    ================================ */
 .settings-section {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--rounded-lg);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    transition: all var(--transition-fast) ease;
 }
 
 .settings-section:last-child {
     margin-bottom: 0;
 }
 
+.settings-section:hover {
+    border-color: var(--primary-light);
+}
+
 .section-title {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 16px;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
+    color: var(--text-primary);
+    margin-bottom: 0;
+    padding: 14px 18px;
+    cursor: pointer;
+    background: var(--bg-tertiary);
+    transition: all var(--transition-fast) ease;
+    user-select: none;
 }
 
-.section-title i {
-    font-size: 16px;
+.section-title:hover {
+    background: var(--primary-light);
     color: var(--primary-color);
 }
 
-/* 主题选择器 */
+.section-title-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title i {
+    font-size: 18px;
+    color: var(--primary-color);
+}
+
+.section-collapse-icon {
+    font-size: 20px;
+    color: var(--text-tertiary);
+    transition: transform var(--transition-fast) ease;
+}
+
+.settings-section.collapsed .section-collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.section-content {
+    padding: 18px;
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+.settings-section.collapsed .section-content {
+    display: none;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 主题选择器 - 优化网格布局 */
 .theme-selector {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
 }
 
@@ -1349,17 +1404,23 @@
 .layout-options {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
 .option-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 16px;
-    background: var(--bg-secondary);
+    padding: 12px 14px;
+    background: var(--bg-primary);
     border-radius: var(--rounded-md);
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    transition: all var(--transition-fast) ease;
+}
+
+.option-item:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-light);
 }
 
 .option-header {
@@ -1800,27 +1861,61 @@
 }
 
 /* ================================
-   多 URL 管理样式
+   多 URL 管理样式 - 优化版
    ================================ */
 .urls-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.urls-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.urls-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.urls-list::-webkit-scrollbar-thumb {
+    background: rgba(93, 95, 239, 0.2);
+    border-radius: 10px;
 }
 
 .url-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 12px;
-    background: var(--bg-secondary);
-    border-radius: var(--rounded-md);
-    border: 1px solid rgba(0, 0, 0, 0.04);
+    padding: 12px 14px;
+    background: var(--bg-primary);
+    border-radius: var(--rounded-lg);
+    border: 2px solid rgba(0, 0, 0, 0.04);
     transition: all var(--transition-fast) ease;
+    position: relative;
 }
 
 .url-item:hover {
     border-color: var(--primary-light);
+    background: var(--bg-secondary);
+}
+
+.url-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--primary-color), var(--accent-color));
+    opacity: 0;
+    transition: opacity var(--transition-fast) ease;
+}
+
+.url-item:hover::before {
+    opacity: 1;
 }
 
 .url-item .url-input-wrapper {
