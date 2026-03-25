@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  local-navigation-page:
+    image: lcean/local-navigation-page:latest
+    # 或者使用本地构建:
+    # build: .
+    
+    container_name: local-navigation-page
+    
+    ports:
+      - "8080:80"  # 主机端口:容器端口，可自定义
+    
+    volumes:
+      # 持久化配置文件 - 推荐方式
+      - ./data:/usr/share/nginx/html/data
+      
+      # 或者只挂载 links.json 文件:
+      # - ./data/links.json:/usr/share/nginx/html/data/links.json
+      
+      # 如果需要自定义 nginx 配置:
+      # - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    
+    restart: unless-stopped
+    
+    # 可选：网络模式
+    # network_mode: host  # 使用主机网络，直接通过主机 IP 访问

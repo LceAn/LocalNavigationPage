@@ -5,7 +5,8 @@
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-4.3-7952b3)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.0.3-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.2.0-blue)]()
+[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 **本地静态导航页 | Local Static Navigation Page**
 
@@ -125,6 +126,70 @@ python3 -m http.server 8080
 3. 选择 `main` 分支，目录选择 `/HTML`
 4. 访问 `https://yourusername.github.io/LocalNavigationPage/HTML/`
 
+### 方式四：Docker 部署 | Docker Deployment
+
+**前置要求：** 安装 Docker 和 Docker Compose
+
+#### 快速启动（推荐）
+
+```bash
+# 1. 创建数据目录
+mkdir -p ~/local-navigation/data
+
+# 2. 复制默认配置文件
+docker run --rm lcean/local-navigation-page:latest cat /usr/share/nginx/html/data/links.json.default > ~/local-navigation/data/links.json
+
+# 3. 启动容器
+docker run -d \
+  --name local-navigation-page \
+  -p 8080:80 \
+  -v ~/local-navigation/data:/usr/share/nginx/html/data \
+  --restart unless-stopped \
+  lcean/local-navigation-page:latest
+
+# 访问 http://localhost:8080
+```
+
+#### 使用 Docker Compose
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/LceAn/LocalNavigationPage.git
+cd LocalNavigationPage
+
+# 2. 创建数据目录
+mkdir -p data
+
+# 3. 启动服务
+docker-compose up -d
+
+# 访问 http://localhost:8080
+```
+
+#### 配置文件持久化
+
+**重要：** 通过 volume 挂载 `data` 目录以持久化配置：
+
+```yaml
+volumes:
+  - ./data:/usr/share/nginx/html/data
+```
+
+- 容器重启后配置不会丢失
+- 可直接编辑 `data/links.json` 文件
+- 支持热更新（修改后刷新浏览器即可）
+
+#### 自定义端口
+
+修改 `-p` 参数或 `docker-compose.yml` 中的端口映射：
+
+```bash
+# 使用 3000 端口
+-p 3000:80
+
+# 访问 http://localhost:3000
+```
+
 ---
 
 ## ⚙️ 配置说明 | Configuration
@@ -206,6 +271,33 @@ const searchEngines = {
 ---
 
 ## 📝 更新日志 | Changelog
+
+### v1.2.0 (2026-03-25) - Docker 与多 URL 增强
+
+**✨ 新增功能：**
+- ✅ 多 URL 支持（一个网站可配置多个访问地址）
+- ✅ URL 标签和优先级设置
+- ✅ 前端显示页面开关控制
+- ✅ 搜索引擎自定义功能
+- ✅ Docker 容器化部署支持
+- ✅ 配置文件持久化方案
+
+**🔧 功能优化：**
+- ✅ 首页显示优化
+- ✅ 分组显示修复
+- ✅ 设置界面样式增强
+- ✅ 多 URL 菜单交互优化
+
+**📦 部署方式：**
+- ✅ 新增 Docker 部署方式
+- ✅ 提供 docker-compose.yml 示例
+- ✅ 支持 volume 挂载持久化配置
+
+**🐛 Bug 修复：**
+- ✅ 修复多 URL 功能相关 bug
+- ✅ 修复首页和分组显示问题
+
+---
 
 ### v1.1.0 (2026-03-18) - M1 Pro 更新
 

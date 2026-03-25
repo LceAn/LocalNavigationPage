@@ -1,0 +1,39 @@
+{
+    "links": [
+        {
+            "ID": 1,
+            "name": "路由器管理",
+            "url": "http://192.168.1.1",
+            "category": "网络设备",
+            "tag": "本地",
+            "thumbnail": "https://s0.wp.com/mshots/v1/192.168.1.1?w=240&h=240"
+        },
+        {
+            "ID": 2,
+            "name": "NAS 管理",
+            "urls": [
+                {
+                    "address": "http://192.168.1.100:5000",
+                    "label": "本地网络",
+                    "priority": 1
+                },
+                {
+                    "address": "https://your-nas.tailnet.ts.net",
+                    "label": "Tailscale",
+                    "priority": 2
+                }
+            ],
+            "category": "云服务",
+            "tag": "存储",
+            "thumbnail": "https://s0.wp.com/mshots/v1/example.com?w=240&h=240"
+        },
+        {
+            "ID": 3,
+            "name": "Google",
+            "url": "https://www.google.com",
+            "category": "常用网站",
+            "tag": "搜索",
+            "thumbnail": "https://s0.wp.com/mshots/v1/www.google.com?w=240&h=240"
+        }
+    ]
+}
