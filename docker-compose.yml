@@ -1,20 +1,14 @@
 services:
   local-navigation-page:
     build: .
-    image: local-navigation-page:latest
-    # 或者使用已发布镜像:
-    # image: lcean/local-navigation-page:latest
-    
+    image: lcean/local-navigation-page:latest
     container_name: local-navigation-page
-    
+
     ports:
       - "8080:80"  # 主机端口:容器端口，可自定义
-    
+
     volumes:
-      # 持久化配置文件，默认使用仓库内置示例数据，可直接编辑 HTML/data/links.json
+      # 持久化链接配置；首次启动若目录中没有 links.json，容器会自动生成默认文件
       - ./HTML/data:/usr/share/nginx/html/data
-    
+
     restart: unless-stopped
-    
-    # 可选：网络模式
-    # network_mode: host  # 使用主机网络，直接通过主机 IP 访问

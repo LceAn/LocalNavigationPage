@@ -88,6 +88,11 @@ LocalNavigationPage/
 │   │   └── main.js                 # 主逻辑
 │   └── data/                       # 数据文件
 │       └── links.json              # 链接配置
+├── docker/                         # Docker 启动脚本和 Nginx 配置
+│   ├── 10-init-links-json.sh       # 首次启动自动初始化 links.json
+│   └── nginx.conf                  # Nginx 静态服务配置
+├── Dockerfile                      # Docker 镜像构建文件
+├── docker-compose.yml              # Docker Compose 示例
 ├── README.md                       # 项目文档
 └── LICENSE                         # Apache-2.0 许可证
 ```
@@ -127,13 +132,10 @@ python3 -m http.server 8080
 #### 快速启动（推荐）
 
 ```bash
-# 1. 创建数据目录
+# 1. 创建本地数据目录
 mkdir -p ~/local-navigation/data
 
-# 2. 复制默认配置文件
-docker run --rm lcean/local-navigation-page:latest cat /usr/share/nginx/html/data/links.json.default > ~/local-navigation/data/links.json
-
-# 3. 启动容器
+# 2. 启动容器
 docker run -d \
   --name local-navigation-page \
   -p 8080:80 \
@@ -144,6 +146,12 @@ docker run -d \
 # 访问 http://localhost:8080
 ```
 
+首次启动时，如果 `~/local-navigation/data/links.json` 不存在，容器会自动生成默认配置文件。之后你可以直接编辑：
+
+```bash
+~/local-navigation/data/links.json
+```
+
 #### 使用 Docker Compose
 
 ```bash
@@ -152,7 +160,7 @@ git clone https://github.com/LceAn/LocalNavigationPage.git
 cd LocalNavigationPage
 
 # 2. 启动服务
-docker-compose up -d
+docker compose up -d
 
 # 访问 http://localhost:8080
 ```
@@ -167,8 +175,16 @@ volumes:
 ```
 
 - 容器重启后配置不会丢失
-- 可直接编辑 `HTML/data/links.json` 文件
+- 可直接编辑宿主机的 `HTML/data/links.json` 文件
+- 如果挂载目录中没有 `links.json`，容器会自动从内置模板创建
 - 支持热更新（修改后刷新浏览器即可）
+
+如果你不想把数据放在仓库目录中，也可以改成自己的路径：
+
+```yaml
+volumes:
+  - ~/local-navigation/data:/usr/share/nginx/html/data
+```
 
 #### 自定义端口
 
@@ -179,6 +195,18 @@ volumes:
 -p 3000:80
 
 # 访问 http://localhost:3000
+```
+
+#### 本地构建镜像
+
+```bash
+docker build -t local-navigation-page:latest .
+docker run -d \
+  --name local-navigation-page \
+  -p 8080:80 \
+  -v ~/local-navigation/data:/usr/share/nginx/html/data \
+  --restart unless-stopped \
+  local-navigation-page:latest
 ```
 
 ---

@@ -8,14 +8,16 @@ LABEL maintainer="LceAn <lcean@users.noreply.github.com>"
 LABEL version="1.2.0"
 LABEL description="Local Navigation Page - 个人本地网络导航页"
 
-# 复制静态文件到 nginx 目录
+# 复制静态文件到 nginx 目录；.dockerignore 会避免把本地 links.json 烘焙进镜像
 COPY HTML/ /usr/share/nginx/html/
 
-# 创建数据目录（用于 volume 挂载）
-RUN mkdir -p /usr/share/nginx/html/data
+# 提供独立默认配置，避免挂载空 data 目录时默认配置被 volume 遮住
+COPY HTML/data/links.json.default /opt/local-navigation-page/links.json.default
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/10-init-links-json.sh /docker-entrypoint.d/10-init-links-json.sh
 
-# 提供默认配置文件（首次启动时使用）
-COPY HTML/data/links.json.default /usr/share/nginx/html/data/links.json.default
+RUN mkdir -p /usr/share/nginx/html/data /opt/local-navigation-page \
+    && chmod +x /docker-entrypoint.d/10-init-links-json.sh
 
 # 暴露端口
 EXPOSE 80
