@@ -1,50 +1,54 @@
 // darkMode.js
 
-// 检查用户首选的主题模式
-const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
+function getSavedTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) return savedTheme;
+    return localStorage.getItem('darkMode') === 'enabled' ? 'dark' : 'light';
+}
+
+function shouldUseDarkMode(theme) {
+    if (theme === 'auto') {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return theme === 'dark';
+}
+
+function updateThemeIcon(isDark) {
+    const themeIcon = document.getElementById('theme-icon');
+    if (!themeIcon) return;
+
+    themeIcon.classList.toggle('ri-sun-line', !isDark);
+    themeIcon.classList.toggle('ri-moon-line', isDark);
+}
 
 // 设置初始主题模式
 function setInitialTheme() {
-    const themeIcon = document.getElementById('theme-icon');
-    
-    if (isDarkMode) {
-        document.body.classList.add('dark-mode');
-        if (themeIcon) {
-            themeIcon.classList.remove('ri-sun-line');
-            themeIcon.classList.add('ri-moon-line');
-        }
-    } else {
-        if (themeIcon) {
-            themeIcon.classList.remove('ri-moon-line');
-            themeIcon.classList.add('ri-sun-line');
-        }
-    }
+    const theme = getSavedTheme();
+    const isDark = shouldUseDarkMode(theme);
+    document.body.classList.toggle('dark-mode', isDark);
+    updateThemeIcon(isDark);
 }
 
 // 切换主题模式
 function toggleDarkMode() {
-    const themeIcon = document.getElementById('theme-icon');
-    
-    if (document.body.classList.contains('dark-mode')) {
-        document.body.classList.remove('dark-mode');
-        localStorage.setItem('darkMode', 'disabled');
-        if (themeIcon) {
-            themeIcon.classList.remove('ri-moon-line');
-            themeIcon.classList.add('ri-sun-line');
-        }
-    } else {
-        document.body.classList.add('dark-mode');
-        localStorage.setItem('darkMode', 'enabled');
-        if (themeIcon) {
-            themeIcon.classList.remove('ri-sun-line');
-            themeIcon.classList.add('ri-moon-line');
-        }
-    }
+    const isDark = !document.body.classList.contains('dark-mode');
+    document.body.classList.toggle('dark-mode', isDark);
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+    updateThemeIcon(isDark);
 }
 
 // 在页面加载时设置初始主题并绑定切换主题模式的事件处理程序
 document.addEventListener("DOMContentLoaded", function () {
     setInitialTheme();
     const toggleButton = document.getElementById('toggle-mode');
-    toggleButton.addEventListener('click', toggleDarkMode);
+    if (toggleButton) {
+        toggleButton.addEventListener('click', toggleDarkMode);
+    }
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (getSavedTheme() === 'auto') {
+            setInitialTheme();
+        }
+    });
 });

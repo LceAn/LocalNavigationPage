@@ -1,35 +1,267 @@
-document.addEventListener("DOMContentLoaded", function () {
-    // 存储链接数据的全局变量
-    let links = [];
+const LINKS_STORAGE_KEY = 'navigationLinks';
+const CUSTOM_CATEGORIES_KEY = 'customCategories';
+const LAST_USED_LINK_URLS_KEY = 'lastUsedLinkUrls';
+let links = [];
+let bundledLinks = [];
 
-    // 更新时间和日期
-    function updateDateTime() {
-        const now = new Date();
-        const timeElement = document.getElementById('current-time');
-        const dateElement = document.getElementById('current-date');
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        timeElement.textContent = `${hours}:${minutes}:${seconds}`;
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        const day = now.getDate();
-        dateElement.textContent = `${year}年${month}月${day}日`;
+const fallbackLinks = [
+    {
+        ID: 1,
+        name: '路由器管理',
+        url: 'http://192.168.1.1',
+        category: '网络设备',
+        tag: '本地',
+        thumbnail: 'https://s0.wp.com/mshots/v1/192.168.1.1?w=240&h=240'
+    },
+    {
+        ID: 2,
+        name: 'NAS 管理',
+        urls: [
+            { address: 'http://192.168.1.100:5000', label: '本地网络', priority: 1 },
+            { address: 'https://your-nas.tailnet.ts.net', label: 'Tailscale', priority: 2 }
+        ],
+        category: '云服务',
+        tag: '存储',
+        thumbnail: 'https://s0.wp.com/mshots/v1/example.com?w=240&h=240'
+    },
+    {
+        ID: 3,
+        name: 'Google',
+        url: 'https://www.google.com',
+        category: '常用网站',
+        tag: '搜索',
+        thumbnail: 'https://s0.wp.com/mshots/v1/www.google.com?w=240&h=240'
     }
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
+];
+
+function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[char]);
+}
+
+function readJSONStorage(key, fallbackValue) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallbackValue;
+    } catch (error) {
+        console.warn(`读取本地配置失败：${key}`, error);
+        return fallbackValue;
+    }
+}
+
+function isSafeUrl(value, allowedProtocols = ['http:', 'https:', 'mailto:', 'tel:', 'ftp:', 'file:']) {
+    const url = String(value ?? '').trim();
+    if (!url) return false;
+
+    try {
+        const parsed = new URL(url, window.location.href);
+        return allowedProtocols.includes(parsed.protocol);
+    } catch (error) {
+        return false;
+    }
+}
+
+function sanitizeUrl(value, fallback = '#', allowedProtocols) {
+    const url = String(value ?? '').trim();
+    return isSafeUrl(url, allowedProtocols) ? url : fallback;
+}
+
+function openSafeUrl(url) {
+    const safeUrl = sanitizeUrl(url);
+    if (safeUrl === '#') {
+        window.showMessage?.('链接地址无效');
+        return;
+    }
+    window.open(safeUrl, '_blank', 'noopener');
+}
+
+function getLastUsedLinkUrls() {
+    const saved = readJSONStorage(LAST_USED_LINK_URLS_KEY, {});
+    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+}
+
+function rememberLastUsedLinkUrl(link, url) {
+    if (!link?.ID || !isSafeUrl(url)) return;
+    const saved = getLastUsedLinkUrls();
+    saved[String(link.ID)] = url;
+    localStorage.setItem(LAST_USED_LINK_URLS_KEY, JSON.stringify(saved));
+}
+
+function getSafeLinkUrls(link) {
+    return getLinkUrls(link)
+        .map((url, index) => ({
+            ...url,
+            address: sanitizeUrl(url.address),
+            label: String(url.label || `地址 ${index + 1}`).trim()
+        }))
+        .filter(url => url.address !== '#');
+}
+
+function getPreferredUrlInfo(link, safeUrls = getSafeLinkUrls(link)) {
+    if (!safeUrls.length) return { address: '#', label: '默认' };
+    const savedUrl = getLastUsedLinkUrls()[String(link?.ID)];
+    return safeUrls.find(url => url.address === savedUrl) || safeUrls[0];
+}
+
+function getUrlDisplayLabel(urlObj, index) {
+    return String(urlObj?.label || `地址 ${index + 1}`).trim();
+}
+
+function isPrivateHost(hostname) {
+    const host = hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.lan')) return true;
+    const match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!match) return false;
+    const parts = match.slice(1).map(Number);
+    if (parts.some(part => part < 0 || part > 255)) return false;
+    return parts[0] === 10
+        || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
+        || (parts[0] === 192 && parts[1] === 168)
+        || (parts[0] === 127);
+}
+
+function getUrlChoiceMeta(urlObj) {
+    const label = String(urlObj?.label || '').toLowerCase();
+    let hostname = '';
+    try {
+        hostname = new URL(urlObj.address, window.location.href).hostname;
+    } catch (error) {
+        hostname = '';
+    }
+
+    const isLocal = isPrivateHost(hostname) || /内网|本地|局域|local|lan/.test(label);
+    if (isLocal) {
+        return { icon: 'ri-home-wifi-line', type: 'local' };
+    }
+
+    const isTunnel = /tailscale|zerotier|wireguard|vpn|隧道/.test(label);
+    if (isTunnel) {
+        return { icon: 'ri-shield-keyhole-line', type: 'tunnel' };
+    }
+
+    return { icon: 'ri-global-line', type: 'remote' };
+}
+
+function openLinkUrl(link, url) {
+    const safeUrl = sanitizeUrl(url);
+    if (safeUrl === '#') {
+        openSafeUrl(safeUrl);
+        return;
+    }
+    rememberLastUsedLinkUrl(link, safeUrl);
+    openSafeUrl(safeUrl);
+}
+
+function normalizeLinks(rawLinks) {
+    const usedIds = new Set();
+    let nextId = 1;
+
+    return (Array.isArray(rawLinks) ? rawLinks : []).map(link => {
+        let id = Number(link?.ID);
+        if (!Number.isInteger(id) || id <= 0 || usedIds.has(id)) {
+            while (usedIds.has(nextId)) nextId += 1;
+            id = nextId;
+        }
+
+        usedIds.add(id);
+        nextId = Math.max(nextId, id + 1);
+
+        const normalized = {
+            ...link,
+            ID: id,
+            name: String(link?.name || '未命名'),
+            category: String(link?.category || '未分类'),
+            tag: String(link?.tag || '')
+        };
+
+        if (Array.isArray(link?.urls)) {
+            normalized.urls = link.urls
+                .filter(url => url && String(url.address || '').trim())
+                .map((url, index) => ({
+                    address: String(url.address).trim(),
+                    label: String(url.label || `地址 ${index + 1}`),
+                    priority: Number.parseInt(url.priority, 10) || index + 1
+                }));
+            if (normalized.urls.length > 1) {
+                delete normalized.url;
+            } else if (normalized.urls.length === 1) {
+                normalized.url = normalized.urls[0].address;
+                delete normalized.urls;
+            }
+        } else if (link?.url) {
+            normalized.url = String(link.url).trim();
+        }
+
+        if (link?.thumbnail) {
+            normalized.thumbnail = String(link.thumbnail).trim();
+        }
+
+        return normalized;
+    });
+}
+
+function loadStoredLinks(defaultLinks) {
+    const stored = readJSONStorage(LINKS_STORAGE_KEY, null);
+    const storedLinks = Array.isArray(stored) ? stored : stored?.links;
+    return normalizeLinks(storedLinks || defaultLinks);
+}
+
+function persistLinks() {
+    localStorage.setItem(LINKS_STORAGE_KEY, JSON.stringify({ links }));
+    localStorage.setItem('lastUpdate', new Date().toISOString());
+}
+
+function getCustomCategories() {
+    const categories = readJSONStorage(CUSTOM_CATEGORIES_KEY, []);
+    return Array.isArray(categories)
+        ? categories.map(category => String(category).trim()).filter(Boolean)
+        : [];
+}
+
+function saveCustomCategories(categories) {
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify([...new Set(categories.filter(Boolean))]));
+}
+
+function getAllCategoryNames(sourceLinks = links) {
+    return [...new Set([
+        ...sourceLinks.map(link => link.category || '未分类'),
+        ...getCustomCategories()
+    ])].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+}
+
+document.addEventListener("DOMContentLoaded", function () {
 
     // 获取链接数据并渲染到页面
     fetch('data/links.json')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            links = data.links;
+            bundledLinks = normalizeLinks(data.links);
+            links = loadStoredLinks(bundledLinks);
             renderLinksByCategory(links);
-            renderLinksInSettings(links);
+            renderLinksInSettingsIfVisible(links);
             updateCategoryDatalist();
             updateStorageInfo();
         })
-        .catch(error => console.error('加载链接数据失败：', error));
+        .catch(error => {
+            console.error('加载链接数据失败：', error);
+            bundledLinks = normalizeLinks(fallbackLinks);
+            links = loadStoredLinks(bundledLinks);
+            renderLinksByCategory(links);
+            renderLinksInSettingsIfVisible(links);
+            updateCategoryDatalist();
+            updateStorageInfo();
+            showMessage('未能读取配置，已使用默认示例');
+        });
 
     // 全局消息容器
     const messageContainer = document.getElementById('message-container');
@@ -44,6 +276,8 @@ document.addEventListener("DOMContentLoaded", function () {
             hideMessage();
         }, 2000);
     }
+    window.showMessage = showMessage;
+    window.persistLinks = persistLinks;
 
     function hideMessage() {
         messageContainer.style.opacity = '0';
@@ -119,7 +353,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             // 如果切换到链接管理标签页，重新渲染链接
             if (targetTab === 'links') {
-                renderLinksInSettings(links);
+                renderLinksInSettingsIfVisible(links);
             }
         });
     });
@@ -137,7 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 // 使用 setTimeout 确保浏览器先渲染 display
                 requestAnimationFrame(() => {
                     settingsContainer.classList.add('show');
-                    renderLinksInSettings(links);
+                    renderLinksInSettingsIfVisible(links);
                     updateStorageInfo();
                 });
             }
@@ -189,9 +423,9 @@ document.addEventListener("DOMContentLoaded", function () {
         urlsList.innerHTML = currentUrls.map((urlObj, index) => `
             <div class="url-item" data-index="${index}">
                 <div class="url-input-wrapper">
-                    <input type="text" class="url-label" placeholder="标签" value="${urlObj.label || ''}" data-field="label" data-index="${index}">
-                    <input type="text" class="url-address" placeholder="https://example.com" value="${urlObj.address || ''}" data-field="address" data-index="${index}">
-                    <input type="number" class="url-priority" placeholder="优先级" value="${urlObj.priority || index + 1}" min="1" data-field="priority" data-index="${index}" title="优先级">
+                    <input type="text" class="url-label" placeholder="标签" value="${escapeHTML(urlObj.label || '')}" data-field="label" data-index="${index}">
+                    <input type="text" class="url-address" placeholder="https://example.com" value="${escapeHTML(urlObj.address || '')}" data-field="address" data-index="${index}">
+                    <input type="number" class="url-priority" placeholder="优先级" value="${escapeHTML(urlObj.priority || index + 1)}" min="1" data-field="priority" data-index="${index}" title="优先级">
                 </div>
                 <div class="url-actions">
                     <button type="button" class="url-action-btn move" data-action="move-up" data-index="${index}" title="上移" ${index === 0 ? 'disabled' : ''}>
@@ -250,6 +484,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 打开添加链接弹窗
     function openAddModal() {
+        window.editingLinkId = null;
         // 清空表单
         document.getElementById('edit-name').value = '';
         document.getElementById('edit-category').value = '';
@@ -259,9 +494,7 @@ document.addEventListener("DOMContentLoaded", function () {
         currentUrls = [];
         renderUrlsList();
         // 清空预览
-        const thumbnailPreview = document.getElementById('thumbnail-preview');
-        thumbnailPreview.innerHTML = '<i class="ri-image-add-line"></i><span>预览</span>';
-        thumbnailPreview.classList.remove('has-image');
+        renderThumbnailPreview('');
         // 更新标题
         modalTitle.innerHTML = '<i class="ri-add-circle-line"></i><span>添加链接</span>';
         // 显示弹窗
@@ -278,6 +511,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-category').value = link.category;
         document.getElementById('edit-tag').value = link.tag || '';
         document.getElementById('edit-thumbnail').value = link.thumbnail || '';
+        renderThumbnailPreview(link.thumbnail || '');
         
         // 填充 URL 列表 - 支持新旧格式兼容
         if (link.urls && Array.isArray(link.urls)) {
@@ -362,8 +596,12 @@ document.addEventListener("DOMContentLoaded", function () {
     // 渲染分类列表
     function renderCategoriesList() {
         const categories = {};
+        getAllCategoryNames(links).forEach(category => {
+            categories[category] = 0;
+        });
+
         links.forEach(link => {
-            const category = link.category;
+            const category = link.category || '未分类';
             if (!categories[category]) {
                 categories[category] = 0;
             }
@@ -383,19 +621,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         
         categoriesList.innerHTML = categoryNames.map(name => `
-            <div class="category-item" data-category="${name}">
+            <div class="category-item" data-category="${escapeHTML(name)}">
                 <div class="category-item-info">
                     <div class="category-item-icon">
                         <i class="ri-folder-line"></i>
                     </div>
-                    <span class="category-item-name">${name}</span>
+                    <span class="category-item-name">${escapeHTML(name)}</span>
                     <span class="category-item-count">${categories[name]} 个链接</span>
                 </div>
                 <div class="category-item-actions">
-                    <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${name}">
+                    <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${escapeHTML(name)}">
                         <i class="ri-edit-line"></i>
                     </button>
-                    <button class="category-action-btn delete" title="删除" data-action="delete" data-category="${name}">
+                    <button class="category-action-btn delete" title="删除" data-action="delete" data-category="${escapeHTML(name)}">
                         <i class="ri-delete-bin-line"></i>
                     </button>
                 </div>
@@ -425,12 +663,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         name = name.trim();
         
-        const categories = [...new Set(links.map(l => l.category))];
+        const categories = getAllCategoryNames(links);
         if (categories.includes(name)) {
             showMessage('分类已存在');
             return;
         }
-        
+
+        saveCustomCategories([...getCustomCategories(), name]);
+        localStorage.setItem('lastUpdate', new Date().toISOString());
         showMessage('已添加分类：' + name);
         renderCategoriesList();
         updateCategoryDatalist();
@@ -443,17 +683,23 @@ document.addEventListener("DOMContentLoaded", function () {
         const newName = prompt('请输入新的分类名称：', oldName);
         if (newName && newName.trim() && newName !== oldName) {
             const trimmedName = newName.trim();
+            const customCategories = getCustomCategories()
+                .map(category => category === oldName ? trimmedName : category);
+
             // 更新所有该分类的链接
             links.forEach(link => {
                 if (link.category === oldName) {
                     link.category = trimmedName;
                 }
             });
+            saveCustomCategories(customCategories);
+            persistLinks();
             showMessage('已重命名分类');
             renderCategoriesList();
-            renderLinksInSettings(links);
+            renderLinksInSettingsIfVisible(links);
             renderLinksByCategory(links);
             updateCategoryDatalist();
+            updateStorageInfo();
         }
     }
     
@@ -475,11 +721,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
         }
+        saveCustomCategories(getCustomCategories().filter(category => category !== name));
+        persistLinks();
         showMessage('已删除分类');
         renderCategoriesList();
-        renderLinksInSettings(links);
+        renderLinksInSettingsIfVisible(links);
         renderLinksByCategory(links);
         updateCategoryDatalist();
+        updateStorageInfo();
     }
     
     // 管理分类按钮
@@ -531,10 +780,26 @@ document.addEventListener("DOMContentLoaded", function () {
         const thumbnail = document.getElementById('edit-thumbnail').value.trim();
 
         // 获取 URL 列表，过滤掉空地址
-        const validUrls = currentUrls.filter(u => u.address && u.address.trim());
+        const validUrls = currentUrls
+            .map((url, index) => ({
+                address: String(url.address || '').trim(),
+                label: String(url.label || `地址 ${index + 1}`).trim(),
+                priority: Number.parseInt(url.priority, 10) || index + 1
+            }))
+            .filter(url => url.address);
         
         if (!name || validUrls.length === 0) {
             showMessage('请填写名称和至少一个 URL 地址');
+            return;
+        }
+
+        if (validUrls.some(url => !isSafeUrl(url.address))) {
+            showMessage('链接地址格式无效');
+            return;
+        }
+
+        if (thumbnail && !isSafeUrl(thumbnail, ['http:', 'https:'])) {
+            showMessage('缩略图地址只支持 HTTP 或 HTTPS');
             return;
         }
 
@@ -542,7 +807,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // 获取第一个 URL 用于生成缩略图
         const firstUrl = validUrls[0]?.address || '';
         
-        if (editingLinkId !== null) {
+        if (editingLinkId != null) {
             // 编辑现有链接
             const linkIndex = links.findIndex(l => l.ID === editingLinkId);
             if (linkIndex !== -1) {
@@ -556,7 +821,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     links[linkIndex].urls = validUrls;
                     delete links[linkIndex].url;
                 }
-                links[linkIndex].category = category;
+                links[linkIndex].category = category || '未分类';
                 links[linkIndex].tag = tag;
                 links[linkIndex].thumbnail = thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(firstUrl)}?w=240&h=240`;
             }
@@ -582,11 +847,12 @@ document.addEventListener("DOMContentLoaded", function () {
             showMessage('已添加链接');
         }
 
+        persistLinks();
         // 关闭弹窗
         closeModal();
         // 重新渲染
         renderLinksByCategory(links);
-        renderLinksInSettings(links);
+        renderLinksInSettingsIfVisible(links);
         updateCategoryDatalist();
         updateStorageInfo();
     });
@@ -595,27 +861,44 @@ document.addEventListener("DOMContentLoaded", function () {
     const thumbnailInput = document.getElementById('edit-thumbnail');
     const thumbnailPreview = document.getElementById('thumbnail-preview');
 
-    thumbnailInput.addEventListener('input', function() {
-        const url = this.value.trim();
-        if (url) {
-            thumbnailPreview.innerHTML = `<img src="${url}" alt="预览" onerror="this.parentElement.innerHTML='<i class=ri-image-off-line></i><span>图片加载失败</span>'">`;
-            thumbnailPreview.classList.add('has-image');
-        } else {
+    function renderThumbnailPreview(url) {
+        if (!thumbnailPreview) return;
+
+        thumbnailPreview.replaceChildren();
+        const safeUrl = sanitizeUrl(url, '', ['http:', 'https:']);
+
+        if (!safeUrl) {
             thumbnailPreview.innerHTML = '<i class="ri-image-add-line"></i><span>预览</span>';
             thumbnailPreview.classList.remove('has-image');
+            return;
         }
+
+        const img = document.createElement('img');
+        img.src = safeUrl;
+        img.alt = '预览';
+        img.addEventListener('error', () => {
+            thumbnailPreview.innerHTML = '<i class="ri-image-off-line"></i><span>图片加载失败</span>';
+            thumbnailPreview.classList.remove('has-image');
+        });
+        thumbnailPreview.appendChild(img);
+        thumbnailPreview.classList.add('has-image');
+    }
+
+    thumbnailInput.addEventListener('input', function() {
+        renderThumbnailPreview(this.value.trim());
     });
 
     // 更新分类数据列表
     function updateCategoryDatalist() {
         const datalist = document.getElementById('category-list');
-        const categories = [...new Set(links.map(l => l.category))];
-        datalist.innerHTML = categories.map(c => `<option value="${c}">`).join('');
+        const categories = getAllCategoryNames(links);
+        datalist.innerHTML = categories.map(c => `<option value="${escapeHTML(c)}">`).join('');
     }
+    window.updateCategoryDatalist = updateCategoryDatalist;
 
     // 更新存储信息
     function updateStorageInfo() {
-        const categories = [...new Set(links.map(l => l.category))];
+        const categories = getAllCategoryNames(links);
         
         // 更新统计卡片
         const totalLinksEl = document.getElementById('total-links');
@@ -654,39 +937,30 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
     }
+    window.updateStorageInfo = updateStorageInfo;
 
     // 搜索链接功能
     const linksSearch = document.getElementById('links-search');
+    const clearLinksSearch = document.getElementById('clear-links-search');
     if (linksSearch) {
-        linksSearch.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const linkItems = document.querySelectorAll('#existing-links li[data-link-id]');
-            linkItems.forEach(item => {
-                const name = item.querySelector('.link-details h4').textContent.toLowerCase();
-                const url = item.querySelector('.link-details a').textContent.toLowerCase();
-                if (name.includes(searchTerm) || url.includes(searchTerm)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+        linksSearch.addEventListener('input', () => {
+            renderLinksInSettingsIfVisible(links);
+        });
+    }
+    if (clearLinksSearch) {
+        clearLinksSearch.addEventListener('click', () => {
+            if (!linksSearch) return;
+            linksSearch.value = '';
+            linksSearch.focus();
+            renderLinksInSettingsIfVisible(links);
         });
     }
 
     // 分类筛选功能
     const categoryFilter = document.getElementById('category-filter');
     if (categoryFilter) {
-        categoryFilter.addEventListener('change', function() {
-            const selectedCategory = this.value;
-            const linkItems = document.querySelectorAll('#existing-links li[data-link-id]');
-            linkItems.forEach(item => {
-                const itemCategory = item.dataset.category;
-                if (!selectedCategory || itemCategory === selectedCategory) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+        categoryFilter.addEventListener('change', () => {
+            renderLinksInSettingsIfVisible(links);
         });
     }
 
@@ -722,12 +996,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 try {
                     const data = JSON.parse(event.target.result);
                     if (data.links && Array.isArray(data.links)) {
-                        links = data.links;
+                        links = normalizeLinks(data.links);
+                        persistLinks();
                         renderLinksByCategory(links);
-                        renderLinksInSettings(links);
+                        renderLinksInSettingsIfVisible(links);
                         updateCategoryDatalist();
                         updateStorageInfo();
-                        localStorage.setItem('lastUpdate', new Date().toISOString());
                         showMessage('数据已导入');
                     } else {
                         showMessage('无效的数据格式');
@@ -758,42 +1032,74 @@ document.addEventListener("DOMContentLoaded", function () {
         resetAllBtn.addEventListener('click', () => {
             if (confirm('确定要重置所有设置和数据吗？此操作不可恢复！')) {
                 localStorage.clear();
-                links = [];
+                links = normalizeLinks(bundledLinks.length ? bundledLinks : fallbackLinks);
                 renderLinksByCategory(links);
-                renderLinksInSettings(links);
+                renderLinksInSettingsIfVisible(links);
+                updateCategoryDatalist();
+                updateStorageInfo();
                 showMessage('已重置所有设置');
             }
         });
     }
 
     // 版本检测功能
-    const currentVersion = '1.0.0';
+    const currentVersion = '1.2.0';
     document.getElementById('current-version').textContent = currentVersion;
     
-    // 检查 GitHub 最新版本
-    fetch('https://api.github.com/repos/LceAn/LocalNavigationPage/releases/latest')
-        .then(response => response.json())
-        .then(data => {
-            const latestVersion = data.tag_name.replace('v', '');
-            const statusEl = document.getElementById('version-check-status');
-            
-            if (compareVersions(latestVersion, currentVersion) > 0) {
-                statusEl.innerHTML = `
-                    <a href="https://github.com/LceAn/LocalNavigationPage/releases/latest" target="_blank" 
-                       style="color: var(--accent-color); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-                        <i class="ri-arrow-up-line"></i>
-                        <span>发现新版本 ${latestVersion}，点击更新</span>
-                    </a>
-                `;
-            } else {
-                statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-check-line"></i> 已是最新版本</span>';
-            }
-        })
-        .catch(error => {
-            console.error('版本检测失败:', error);
-            const statusEl = document.getElementById('version-check-status');
-            statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-error-warning-line"></i> 检测失败</span>';
-        });
+    function renderVersionStatus(latestVersion) {
+        const statusEl = document.getElementById('version-check-status');
+        if (!statusEl || !latestVersion) return;
+
+        if (compareVersions(latestVersion, currentVersion) > 0) {
+            statusEl.innerHTML = `
+                <a href="https://github.com/LceAn/LocalNavigationPage/releases/latest" target="_blank"
+                   style="color: var(--accent-color); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    <i class="ri-arrow-up-line"></i>
+                    <span>发现新版本 ${escapeHTML(latestVersion)}，点击更新</span>
+                </a>
+            `;
+        } else {
+            statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-check-line"></i> 已是最新版本</span>';
+        }
+    }
+
+    function scheduleVersionCheck() {
+        const cached = readJSONStorage('versionCheckCache', null);
+        const sixHours = 6 * 60 * 60 * 1000;
+        if (cached?.latestVersion && Date.now() - cached.checkedAt < sixHours) {
+            renderVersionStatus(cached.latestVersion);
+            return;
+        }
+
+        const runCheck = () => {
+            fetch('https://api.github.com/repos/LceAn/LocalNavigationPage/releases/latest')
+                .then(response => response.json())
+                .then(data => {
+                    const latestVersion = String(data.tag_name || '').replace(/^v/i, '');
+                    if (!latestVersion) throw new Error('版本数据为空');
+                    localStorage.setItem('versionCheckCache', JSON.stringify({
+                        latestVersion,
+                        checkedAt: Date.now()
+                    }));
+                    renderVersionStatus(latestVersion);
+                })
+                .catch(error => {
+                    console.error('版本检测失败:', error);
+                    const statusEl = document.getElementById('version-check-status');
+                    if (statusEl) {
+                        statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-error-warning-line"></i> 检测失败</span>';
+                    }
+                });
+        };
+
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(runCheck, { timeout: 3000 });
+        } else {
+            window.setTimeout(runCheck, 1200);
+        }
+    }
+
+    scheduleVersionCheck();
     
     // 版本号比较函数
     function compareVersions(v1, v2) {
@@ -834,6 +1140,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     body.classList.remove('dark-mode');
                 }
             }
+            const isDark = body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+            const themeIcon = document.getElementById('theme-icon');
+            if (themeIcon) {
+                themeIcon.classList.toggle('ri-sun-line', !isDark);
+                themeIcon.classList.toggle('ri-moon-line', isDark);
+            }
             showMessage('主题已切换');
         });
     });
@@ -851,22 +1164,143 @@ document.addEventListener("DOMContentLoaded", function () {
         localStorage.setItem('siteTitle', title);
     });
 
+    // 首页视觉设置
+    const homeBackgroundStyleSelect = document.getElementById('home-background-style');
+    const homeGlassEffectToggle = document.getElementById('home-glass-effect');
+    const homeLiquidEffectToggle = document.getElementById('home-liquid-effect');
+    const homeDeepShadowToggle = document.getElementById('home-deep-shadow');
+    const homeBlurStrengthInput = document.getElementById('home-blur-strength');
+    const homeBlurValue = document.getElementById('home-blur-value');
+    const homeVisualClassNames = [
+        'homepage-background-clean',
+        'homepage-background-soft',
+        'homepage-background-mesh',
+        'homepage-background-focus',
+        'home-glass-enabled',
+        'home-liquid-enabled',
+        'home-shadow-deep'
+    ];
+    const defaultHomeVisualSettings = {
+        backgroundStyle: 'clean',
+        glassEffect: false,
+        liquidEffect: false,
+        deepShadow: false,
+        blurStrength: 8
+    };
+
+    function loadHomeVisualSettings() {
+        const saved = readJSONStorage('homeVisualSettings', {});
+        const settings = { ...defaultHomeVisualSettings, ...saved };
+        if (!['clean', 'soft', 'mesh', 'focus'].includes(settings.backgroundStyle)) {
+            settings.backgroundStyle = defaultHomeVisualSettings.backgroundStyle;
+        }
+        const blurStrength = Number.parseInt(settings.blurStrength, 10);
+        settings.blurStrength = Number.isFinite(blurStrength)
+            ? Math.min(24, Math.max(0, blurStrength))
+            : defaultHomeVisualSettings.blurStrength;
+        settings.glassEffect = settings.glassEffect !== false;
+        settings.liquidEffect = Boolean(settings.liquidEffect);
+        settings.deepShadow = Boolean(settings.deepShadow);
+        return settings;
+    }
+
+    function saveHomeVisualSettings(settings) {
+        localStorage.setItem('homeVisualSettings', JSON.stringify(settings));
+    }
+
+    function applyHomeVisualSettings(settings = loadHomeVisualSettings()) {
+        const body = document.body;
+        body.classList.remove(...homeVisualClassNames);
+        body.classList.add(`homepage-background-${settings.backgroundStyle}`);
+        body.classList.toggle('home-glass-enabled', settings.glassEffect);
+        body.classList.toggle('home-liquid-enabled', settings.liquidEffect);
+        body.classList.toggle('home-shadow-deep', settings.deepShadow);
+        document.documentElement.style.setProperty('--home-glass-blur', `${settings.blurStrength}px`);
+        if (homeBlurValue) {
+            homeBlurValue.textContent = `${settings.blurStrength}px`;
+        }
+    }
+
+    function syncHomeVisualControls(settings = loadHomeVisualSettings()) {
+        if (homeBackgroundStyleSelect) homeBackgroundStyleSelect.value = settings.backgroundStyle;
+        if (homeGlassEffectToggle) homeGlassEffectToggle.checked = settings.glassEffect;
+        if (homeLiquidEffectToggle) homeLiquidEffectToggle.checked = settings.liquidEffect;
+        if (homeDeepShadowToggle) homeDeepShadowToggle.checked = settings.deepShadow;
+        if (homeBlurStrengthInput) homeBlurStrengthInput.value = settings.blurStrength;
+        if (homeBlurValue) homeBlurValue.textContent = `${settings.blurStrength}px`;
+    }
+
+    function updateHomeVisualSettings(patch, message) {
+        const settings = { ...loadHomeVisualSettings(), ...patch };
+        saveHomeVisualSettings(settings);
+        applyHomeVisualSettings(settings);
+        syncHomeVisualControls(settings);
+        if (message) showMessage(message);
+    }
+
+    applyHomeVisualSettings();
+    syncHomeVisualControls();
+
+    if (homeBackgroundStyleSelect) {
+        homeBackgroundStyleSelect.addEventListener('change', function() {
+            updateHomeVisualSettings({ backgroundStyle: this.value }, '已更新首页背景');
+        });
+    }
+
+    if (homeGlassEffectToggle) {
+        homeGlassEffectToggle.addEventListener('change', function() {
+            updateHomeVisualSettings({ glassEffect: this.checked }, this.checked ? '已启用首页玻璃质感' : '已关闭首页玻璃质感');
+        });
+    }
+
+    if (homeLiquidEffectToggle) {
+        homeLiquidEffectToggle.addEventListener('change', function() {
+            updateHomeVisualSettings({ liquidEffect: this.checked }, this.checked ? '已启用液态背景' : '已关闭液态背景');
+        });
+    }
+
+    if (homeDeepShadowToggle) {
+        homeDeepShadowToggle.addEventListener('change', function() {
+            updateHomeVisualSettings({ deepShadow: this.checked }, this.checked ? '已增强首页阴影' : '已恢复柔和阴影');
+        });
+    }
+
+    if (homeBlurStrengthInput) {
+        homeBlurStrengthInput.addEventListener('input', function() {
+            const blurStrength = Number.parseInt(this.value, 10) || 0;
+            document.documentElement.style.setProperty('--home-glass-blur', `${blurStrength}px`);
+            if (homeBlurValue) {
+                homeBlurValue.textContent = `${blurStrength}px`;
+            }
+        });
+        homeBlurStrengthInput.addEventListener('change', function() {
+            updateHomeVisualSettings({ blurStrength: Number.parseInt(this.value, 10) || 0 }, '已更新玻璃模糊强度');
+        });
+    }
+
     // 布局选项功能
     const compactModeToggle = document.getElementById('compact-mode');
     const showThumbnailsToggle = document.getElementById('show-thumbnails');
     const enableAnimationsToggle = document.getElementById('enable-animations');
 
+    function applyCompactMode(enabled) {
+        document.body.classList.toggle('compact-mode', Boolean(enabled));
+    }
+
+    function applyAnimationSetting(enabled) {
+        document.body.classList.toggle('animations-off', !enabled);
+        document.body.style.setProperty('--transition-fast', enabled ? '0.15s' : '0s');
+        document.body.style.setProperty('--transition-normal', enabled ? '0.25s' : '0s');
+    }
+
     if (compactModeToggle) {
+        compactModeToggle.checked = localStorage.getItem('compactMode') === 'true';
+        applyCompactMode(compactModeToggle.checked);
         compactModeToggle.addEventListener('change', function() {
-            if (this.checked) {
-                document.body.classList.add('compact-mode');
-            } else {
-                document.body.classList.remove('compact-mode');
-            }
+            applyCompactMode(this.checked);
             localStorage.setItem('compactMode', this.checked);
             showMessage(this.checked ? '已启用紧凑模式' : '已禁用紧凑模式');
         });
-        compactModeToggle.checked = localStorage.getItem('compactMode') === 'true';
     }
 
     // 显示缩略图功能
@@ -893,18 +1327,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (enableAnimationsToggle) {
+        enableAnimationsToggle.checked = localStorage.getItem('enableAnimations') !== 'false';
+        applyAnimationSetting(enableAnimationsToggle.checked);
         enableAnimationsToggle.addEventListener('change', function() {
-            if (this.checked) {
-                document.body.style.setProperty('--transition-fast', '0.15s');
-                document.body.style.setProperty('--transition-normal', '0.25s');
-            } else {
-                document.body.style.setProperty('--transition-fast', '0s');
-                document.body.style.setProperty('--transition-normal', '0s');
-            }
+            applyAnimationSetting(this.checked);
             localStorage.setItem('enableAnimations', this.checked);
             showMessage(this.checked ? '已启用动画' : '已禁用动画');
         });
-        enableAnimationsToggle.checked = localStorage.getItem('enableAnimations') !== 'false';
     }
 
     // ================================
@@ -943,13 +1372,11 @@ document.addEventListener("DOMContentLoaded", function () {
         defaultExpandAllToggle.addEventListener('change', function() {
             localStorage.setItem('defaultExpandAll', this.checked);
             if (this.checked) {
-                // 展开所有分类
                 toggleAllCategories(true);
-                showMessage('已展开所有分类');
+                showMessage('已打开第一个分类面板');
             } else {
-                // 收起所有分类
                 toggleAllCategories(false);
-                showMessage('已收起所有分类');
+                showMessage('已关闭分类面板');
             }
         });
     }
@@ -961,7 +1388,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 加载按钮显示设置
     function loadButtonVisibility() {
-        const saved = JSON.parse(localStorage.getItem('buttonVisibility') || '{"toggleAll":true,"position":true}');
+        const saved = readJSONStorage('buttonVisibility', { toggleAll: true, position: true });
         if (showToggleAllBtn) showToggleAllBtn.checked = saved.toggleAll !== false;
         if (showPositionBtn) showPositionBtn.checked = saved.position !== false;
         updateButtonVisibility(saved);
@@ -979,7 +1406,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     if (showToggleAllBtn) {
         showToggleAllBtn.addEventListener('change', function() {
-            const saved = JSON.parse(localStorage.getItem('buttonVisibility') || '{"toggleAll":true,"position":true}');
+            const saved = readJSONStorage('buttonVisibility', { toggleAll: true, position: true });
             saved.toggleAll = this.checked;
             localStorage.setItem('buttonVisibility', JSON.stringify(saved));
             updateButtonVisibility(saved);
@@ -989,7 +1416,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     if (showPositionBtn) {
         showPositionBtn.addEventListener('change', function() {
-            const saved = JSON.parse(localStorage.getItem('buttonVisibility') || '{"toggleAll":true,"position":true}');
+            const saved = readJSONStorage('buttonVisibility', { toggleAll: true, position: true });
             saved.position = this.checked;
             localStorage.setItem('buttonVisibility', JSON.stringify(saved));
             updateButtonVisibility(saved);
@@ -1041,8 +1468,15 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 加载搜索引擎
     function loadSearchEngines() {
-        const saved = localStorage.getItem('searchEngines');
-        return saved ? JSON.parse(saved) : defaultSearchEngines;
+        const saved = readJSONStorage('searchEngines', null);
+        const engines = Array.isArray(saved) ? saved : defaultSearchEngines;
+        return engines
+            .filter(engine => engine && engine.name && engine.url)
+            .map(engine => ({
+                name: String(engine.name).trim(),
+                url: String(engine.url).trim(),
+                icon: String(engine.icon || '').trim()
+            }));
     }
     
     // 保存搜索引擎
@@ -1066,16 +1500,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         
         searchEngineList.innerHTML = engines.map((engine, index) => `
-            <div class="search-engine-item" data-index="${index}">
+            <div class="search-engine-item" data-index="${index}" draggable="true">
                 <div class="search-engine-drag-handle">
                     <i class="ri-draggable"></i>
                 </div>
                 <div class="search-engine-icon">
-                    ${engine.icon ? `<img src="${engine.icon}" alt="${engine.name}">` : '<i class="ri-search-line"></i>'}
+                    ${isSafeUrl(engine.icon, ['http:', 'https:']) ? `<img src="${escapeHTML(engine.icon)}" alt="${escapeHTML(engine.name)}">` : '<i class="ri-search-line"></i>'}
                 </div>
                 <div class="search-engine-info">
-                    <h4 class="search-engine-name">${engine.name}</h4>
-                    <p class="search-engine-url">${engine.url}</p>
+                    <h4 class="search-engine-name">${escapeHTML(engine.name)}</h4>
+                    <p class="search-engine-url">${escapeHTML(engine.url)}</p>
                 </div>
                 <div class="search-engine-actions">
                     <button class="search-engine-action-btn edit" data-index="${index}">
@@ -1098,6 +1532,44 @@ document.addEventListener("DOMContentLoaded", function () {
                 } else {
                     deleteSearchEngine(index);
                 }
+            });
+        });
+
+        bindSearchEngineDrag();
+    }
+
+    function bindSearchEngineDrag() {
+        let draggingIndex = null;
+
+        searchEngineList.querySelectorAll('.search-engine-item').forEach(item => {
+            item.addEventListener('dragstart', event => {
+                draggingIndex = Number(item.dataset.index);
+                item.classList.add('dragging');
+                event.dataTransfer.effectAllowed = 'move';
+            });
+
+            item.addEventListener('dragend', () => {
+                draggingIndex = null;
+                item.classList.remove('dragging');
+            });
+
+            item.addEventListener('dragover', event => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+            });
+
+            item.addEventListener('drop', event => {
+                event.preventDefault();
+                const targetIndex = Number(item.dataset.index);
+                if (draggingIndex === null || draggingIndex === targetIndex) return;
+
+                const engines = loadSearchEngines();
+                const [movedEngine] = engines.splice(draggingIndex, 1);
+                engines.splice(targetIndex, 0, movedEngine);
+                saveSearchEngines(engines);
+                renderSearchEngines();
+                updateSearchButtons();
+                showMessage('已更新搜索引擎顺序');
             });
         });
     }
@@ -1174,12 +1646,23 @@ document.addEventListener("DOMContentLoaded", function () {
             showMessage('搜索 URL 中必须包含 %s 作为搜索词占位符');
             return;
         }
+
+        const previewSearchUrl = url.replace('%s', encodeURIComponent('test'));
+        if (!isSafeUrl(previewSearchUrl, ['http:', 'https:'])) {
+            showMessage('搜索 URL 只支持 HTTP 或 HTTPS');
+            return;
+        }
+
+        if (icon && !isSafeUrl(icon, ['http:', 'https:'])) {
+            showMessage('图标 URL 只支持 HTTP 或 HTTPS');
+            return;
+        }
         
         const engines = loadSearchEngines();
         const editIndex = window.editingSearchEngineIndex;
         
         if (editIndex !== null) {
-            engines[editIndex] = { name, url, icon };
+            engines[Number(editIndex)] = { name, url, icon };
             showMessage('已更新搜索引擎');
         } else {
             engines.push({ name, url, icon });
@@ -1195,29 +1678,32 @@ document.addEventListener("DOMContentLoaded", function () {
     // 更新搜索框按钮
     function updateSearchButtons() {
         const engines = loadSearchEngines();
-        const buttons = document.querySelectorAll('.search-button');
         const buttonContainer = document.querySelector('.search-buttons');
         if (!buttonContainer) return;
-        
-        // 如果按钮数量不匹配，重新生成
-        if (buttons.length !== engines.length) {
-            buttonContainer.innerHTML = engines.map(engine => 
-                `<button class="search-button" data-engine="${engine.name}">${engine.name}</button>`
-            ).join('');
-            
-            // 重新绑定事件
-            document.querySelectorAll('.search-button').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const searchTerm = document.getElementById('search-input').value;
-                    const engineName = btn.getAttribute('data-engine');
-                    const engine = engines.find(e => e.name === engineName);
-                    if (searchTerm && engine) {
-                        const searchURL = engine.url.replace('%s', encodeURIComponent(searchTerm));
-                        window.open(searchURL, '_blank');
-                    }
-                });
+
+        buttonContainer.innerHTML = engines.map((engine, index) =>
+            `<button class="search-button" data-engine-index="${index}">${escapeHTML(engine.name)}</button>`
+        ).join('');
+
+        buttonContainer.querySelectorAll('.search-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const index = Number(btn.getAttribute('data-engine-index'));
+                performSearch(engines[index]);
             });
+        });
+    }
+
+    function performSearch(engine) {
+        const searchTerm = document.getElementById('search-input')?.value.trim();
+        if (!searchTerm || !engine) return;
+
+        const searchURL = engine.url.replace('%s', encodeURIComponent(searchTerm));
+        if (!isSafeUrl(searchURL, ['http:', 'https:'])) {
+            showMessage('搜索地址无效');
+            return;
         }
+
+        window.open(searchURL, '_blank', 'noopener');
     }
     
     // 添加搜索引擎按钮
@@ -1281,8 +1767,10 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 加载显示设置
     function loadDisplaySettings() {
-        const saved = localStorage.getItem('displaySettings');
-        return saved ? JSON.parse(saved) : defaultDisplaySettings;
+        return {
+            ...defaultDisplaySettings,
+            ...readJSONStorage('displaySettings', {})
+        };
     }
     
     // 保存显示设置
@@ -1316,61 +1804,81 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
     
+    const timeDisplayCache = {
+        timeElement: document.getElementById('current-time'),
+        dateElement: document.getElementById('current-date'),
+        weatherInfo: document.getElementById('weather-info'),
+        separators: [...document.querySelectorAll('.datetime-display > .date-separator')],
+        lastTimeText: '',
+        lastDateText: '',
+        lastVisibilityKey: ''
+    };
+
+    function setElementDisplay(element, value) {
+        if (element && element.style.display !== value) {
+            element.style.display = value;
+        }
+    }
+
+    function syncDateSeparators(settings) {
+        const visibility = [
+            Boolean(settings.showTime),
+            Boolean(settings.showDate),
+            Boolean(settings.showWeather)
+        ];
+        timeDisplayCache.separators.forEach((separator, index) => {
+            setElementDisplay(separator, visibility[index] && visibility[index + 1] ? 'inline' : 'none');
+        });
+    }
+
     // 更新时间显示
-    function updateTimeDisplay() {
+    function updateTimeDisplay(force = false) {
         const settings = loadDisplaySettings();
         const now = new Date();
+        let hours = now.getHours();
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
         
-        const timeElement = document.getElementById('current-time');
-        const dateElement = document.getElementById('current-date');
-        const weatherInfo = document.getElementById('weather-info');
-        const dateSeparator = document.querySelectorAll('.date-separator');
-        
-        // 更新时间
-        if (timeElement) {
-            let hours = now.getHours();
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            
-            if (!settings.use24Hour) {
-                hours = hours % 12 || 12;
-            }
-            hours = settings.use24Hour ? String(hours).padStart(2, '0') : String(hours);
-            
-            let timeText = settings.use24Hour 
-                ? `${hours}:${minutes}` 
-                : `${hours}:${minutes} ${ampm}`;
-            
-            if (settings.showSeconds) {
-                timeText = settings.use24Hour 
-                    ? `${hours}:${minutes}:${seconds}` 
-                    : `${hours}:${minutes}:${seconds} ${ampm}`;
-            }
-            
-            timeElement.textContent = timeText;
-            timeElement.style.display = settings.showTime ? 'inline' : 'none';
+        if (!settings.use24Hour) {
+            hours = hours % 12 || 12;
         }
+        hours = settings.use24Hour ? String(hours).padStart(2, '0') : String(hours);
         
-        // 更新日期
-        if (dateElement) {
-            dateElement.textContent = formatDate(now, settings.dateFormat);
-            dateElement.style.display = settings.showDate ? 'inline' : 'none';
+        let timeText = settings.use24Hour
+            ? `${hours}:${minutes}`
+            : `${hours}:${minutes} ${ampm}`;
+        
+        if (settings.showSeconds) {
+            timeText = settings.use24Hour
+                ? `${hours}:${minutes}:${seconds}`
+                : `${hours}:${minutes}:${seconds} ${ampm}`;
         }
-        
-        // 更新天气显示
-        if (weatherInfo) {
-            weatherInfo.style.display = settings.showWeather ? 'inline-flex' : 'none';
+
+        const dateText = formatDate(now, settings.dateFormat);
+        const visibilityKey = [
+            settings.showTime,
+            settings.showDate,
+            settings.showWeather
+        ].join('|');
+
+        if (timeDisplayCache.timeElement && (force || timeDisplayCache.lastTimeText !== timeText)) {
+            timeDisplayCache.timeElement.textContent = timeText;
+            timeDisplayCache.lastTimeText = timeText;
         }
-        
-        // 更新分隔符显示
-        dateSeparator.forEach(sep => {
-            const prevElement = sep.previousElementSibling;
-            const nextElement = sep.nextElementSibling;
-            const prevVisible = prevElement && prevElement.style.display !== 'none';
-            const nextVisible = nextElement && nextElement.style.display !== 'none';
-            sep.style.display = (prevVisible && nextVisible) ? 'inline' : 'none';
-        });
+
+        if (timeDisplayCache.dateElement && (force || timeDisplayCache.lastDateText !== dateText)) {
+            timeDisplayCache.dateElement.textContent = dateText;
+            timeDisplayCache.lastDateText = dateText;
+        }
+
+        if (force || timeDisplayCache.lastVisibilityKey !== visibilityKey) {
+            setElementDisplay(timeDisplayCache.timeElement, settings.showTime ? 'inline' : 'none');
+            setElementDisplay(timeDisplayCache.dateElement, settings.showDate ? 'inline' : 'none');
+            setElementDisplay(timeDisplayCache.weatherInfo, settings.showWeather ? 'inline-flex' : 'none');
+            syncDateSeparators(settings);
+            timeDisplayCache.lastVisibilityKey = visibilityKey;
+        }
     }
     
     // 初始化显示设置 UI
@@ -1497,18 +2005,78 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 获取指定城市的天气
     function fetchWeatherForCity(city, unit, elementId) {
-        fetch(`https://wttr.in/${encodeURIComponent(city)}?format=%C+%t&${unit === 'F' ? 'u' : 'm'}`)
-            .then(res => res.text())
-            .then(text => {
-                const weatherText = document.getElementById(elementId);
-                if (weatherText) {
-                    weatherText.textContent = text.trim();
+        const weatherText = document.getElementById(elementId);
+        if (weatherText) {
+            weatherText.textContent = '加载中...';
+            weatherText.classList.add('loading');
+            weatherText.classList.remove('loaded');
+        }
+
+        const shortTextParams = new URLSearchParams({
+            format: '%C %t',
+            [unit === 'F' ? 'u' : 'm']: ''
+        });
+        const jsonParams = new URLSearchParams({
+            format: 'j1',
+            [unit === 'F' ? 'u' : 'm']: ''
+        });
+
+        const jsonUrl = `https://wttr.in/${encodeURIComponent(city)}?${jsonParams.toString()}`;
+        const shortTextUrl = `https://wttr.in/${encodeURIComponent(city)}?${shortTextParams.toString()}`;
+
+        function renderWeatherText(text) {
+            const cleanedText = text.trim().replace(/\s+/g, ' ');
+            const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(cleanedText) || cleanedText.includes('<!DOCTYPE');
+            if (weatherText) {
+                weatherText.textContent = looksLikeHtml || cleanedText.length > 48
+                    ? '天气暂不可用'
+                    : cleanedText;
+                weatherText.classList.remove('loading');
+                weatherText.classList.add('loaded');
+            }
+        }
+
+        function fetchShortTextWeather() {
+            return fetch(shortTextUrl, {
+                headers: {
+                    Accept: 'text/plain'
                 }
             })
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+                    return res.text();
+                })
+                .then(renderWeatherText);
+        }
+
+        fetch(jsonUrl, {
+            headers: {
+                Accept: 'application/json'
+            }
+        })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                const current = data?.current_condition?.[0];
+                const description = current?.weatherDesc?.[0]?.value || '';
+                const temp = unit === 'F' ? current?.temp_F : current?.temp_C;
+                if (!description || temp === undefined) {
+                    throw new Error('天气数据不完整');
+                }
+                renderWeatherText(`${description} ${temp}°${unit}`);
+            })
+            .catch(() => fetchShortTextWeather())
             .catch(() => {
-                const weatherText = document.getElementById(elementId);
                 if (weatherText) {
                     weatherText.textContent = '获取失败';
+                    weatherText.classList.remove('loading');
+                    weatherText.classList.add('loaded');
                 }
             });
     }
@@ -1533,7 +2101,7 @@ document.addEventListener("DOMContentLoaded", function () {
             
             // 保存折叠状态
             const sectionId = section.querySelector('.section-title-left span')?.textContent || '';
-            const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '[]');
+            const collapsedSections = readJSONStorage('collapsedSections', []);
             
             if (section.classList.contains('collapsed')) {
                 if (!collapsedSections.includes(sectionId)) {
@@ -1549,10 +2117,19 @@ document.addEventListener("DOMContentLoaded", function () {
             localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
         }
     };
+
+    document.querySelectorAll('.settings-section .section-title').forEach(sectionTitle => {
+        const section = sectionTitle.closest('.settings-section');
+        if (!section?.querySelector(':scope > .section-content')) return;
+
+        sectionTitle.addEventListener('click', () => {
+            window.toggleSection(sectionTitle);
+        });
+    });
     
     // 初始化折叠状态
     function initSectionCollapseState() {
-        const collapsedSections = JSON.parse(localStorage.getItem('collapsedSections') || '[]');
+        const collapsedSections = readJSONStorage('collapsedSections', []);
         document.querySelectorAll('.settings-section').forEach(section => {
             const sectionId = section.querySelector('.section-title-left span')?.textContent || '';
             if (collapsedSections.includes(sectionId)) {
@@ -1571,33 +2148,14 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 控制搜索框在滚动时的行为
-    const searchButtons = document.querySelectorAll('.search-button');
     const searchInput = document.getElementById('search-input');
-
-    searchButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const searchTerm = searchInput.value;
-            const searchEngine = button.getAttribute('data-engine');
-            if (searchTerm && searchEngine) {
-                let searchURL = '';
-                switch (searchEngine) {
-                    case '百度':
-                        searchURL = `https://www.baidu.com/s?wd=${encodeURIComponent(searchTerm)}`;
-                        break;
-                    case 'Google':
-                        searchURL = `https://www.google.com/search?q=${encodeURIComponent(searchTerm)}`;
-                        break;
-                    case '必应':
-                        searchURL = `https://www.bing.com/search?q=${encodeURIComponent(searchTerm)}`;
-                        break;
-                }
-                if (searchURL) {
-                    window.open(searchURL, '_blank');
-                }
-            }
+    if (searchInput) {
+        searchInput.addEventListener('keydown', event => {
+            if (event.key !== 'Enter') return;
+            const [firstEngine] = loadSearchEngines();
+            performSearch(firstEngine);
         });
-    });
+    }
 
     // 置顶按钮功能
     const backToTopBtn = document.getElementById('back-to-top');
@@ -1622,11 +2180,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const functionButtons = document.querySelector('.function-buttons');
     functionButtons.appendChild(toggleAllGroupsBtn);
 
-    let allCollapsed = false;
     toggleAllGroupsBtn.addEventListener('click', () => {
-        allCollapsed = !allCollapsed;
-        window.toggleAllCategories(!allCollapsed);
-        showMessage(allCollapsed ? '已收起所有分组' : '已展开所有分组');
+        const hasExpandedCategory = Boolean(document.querySelector('.category-container.expanded'));
+        const shouldExpand = !hasExpandedCategory;
+        window.toggleAllCategories(shouldExpand);
+        showMessage(shouldExpand ? '已打开分类面板' : '已关闭分类面板');
     });
     
     // 创建垂直位置调整按钮
@@ -1743,16 +2301,27 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     createVerticalPositionControls();
+
+    document.addEventListener('click', event => {
+        if (event.target.closest('.link-card-urls') || event.target.closest('.url-dropdown')) {
+            return;
+        }
+        document.querySelectorAll('.url-dropdown.show').forEach(dropdown => {
+            dropdown.classList.remove('show');
+        });
+    });
 });
 
 // 渲染链接的函数（按照分类）- 修复版
 function renderLinksByCategory(links) {
     const linkContainer = document.getElementById('link-container');
+    document.querySelectorAll('.url-dropdown').forEach(dropdown => dropdown.remove());
+    closeCategoryPanel(false);
     linkContainer.innerHTML = '';
 
     const categories = {};
     links.forEach(link => {
-        const category = link.category;
+        const category = link.category || '未分类';
         if (!categories[category]) {
             categories[category] = [];
         }
@@ -1779,16 +2348,22 @@ function renderLinksByCategory(links) {
         categoryHeader.className = 'category-header';
 
         const categoryTitle = document.createElement('h2');
-        categoryTitle.innerHTML = '<i class="ri-folder-2-line"></i> ' + category;
+        const categoryIcon = document.createElement('i');
+        categoryIcon.className = 'ri-folder-2-line';
+        categoryTitle.appendChild(categoryIcon);
+        categoryTitle.appendChild(document.createTextNode(` ${category}`));
 
         const cardCount = document.createElement('span');
         cardCount.className = 'card-count';
-        cardCount.innerHTML = '<i class="ri-links-line"></i> ' + categoryLinks.length;
+        const cardCountIcon = document.createElement('i');
+        cardCountIcon.className = 'ri-links-line';
+        cardCount.appendChild(cardCountIcon);
+        cardCount.appendChild(document.createTextNode(` ${categoryLinks.length}`));
 
         const toggleButton = document.createElement('button');
         toggleButton.className = 'toggle-button';
-        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-        toggleButton.title = '展开/折叠';
+        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        toggleButton.title = '打开分类';
 
         categoryHeader.appendChild(categoryTitle);
         categoryHeader.appendChild(cardCount);
@@ -1798,70 +2373,97 @@ function renderLinksByCategory(links) {
         const linkList = document.createElement('ul');
         linkList.className = 'link-list';
         // 默认收起，由 CSS 的 collapsed 类控制
-        linkList.style.cssText = 'margin: 0; padding: 0; border: none;';
+        linkList.style.cssText = 'margin: 0; border: none;';
         categoryContainer.appendChild(linkList);
 
-        categoryLinks.forEach(link => {
-            const linkElement = document.createElement('li');
-            const linkCard = document.createElement('div');
-            linkCard.setAttribute('class', 'link-card');
-            linkCard.style.cssText = 'position: relative;';
-            
-            // 获取要显示的 URL（优先显示第一个）
-            const urls = getLinkUrls(link);
-            const displayUrl = urls[0]?.address || link.url || '#';
-
-            if (link.thumbnail) {
-                const thumbnailDiv = document.createElement('div');
-                thumbnailDiv.className = 'link-card-thumbnail';
-                thumbnailDiv.style.backgroundImage = `url(${link.thumbnail})`;
-                linkCard.appendChild(thumbnailDiv);
-            } else {
-                const thumbnailDiv = document.createElement('div');
-                const thumbnailUrl = `https://s0.wp.com/mshots/v1/${encodeURIComponent(displayUrl)}?w=240&h=240`;
-                thumbnailDiv.className = 'link-card-thumbnail';
-                thumbnailDiv.style.backgroundImage = `url(${thumbnailUrl})`;
-                linkCard.appendChild(thumbnailDiv);
-            }
-
-            const cardContent = document.createElement('div');
-            cardContent.setAttribute('class', 'link-card-content');
-
-            const cardTitle = document.createElement('h3');
-            cardTitle.setAttribute('class', 'link-card-title');
-            cardTitle.textContent = link.name;
-
-            const cardTag = document.createElement('span');
-            cardTag.setAttribute('class', 'link-card-tag');
-            cardTag.textContent = link.tag || '';
-
-            cardContent.appendChild(cardTitle);
-            linkCard.appendChild(cardContent);
-            linkCard.appendChild(cardTag);
-            
-            // 如果有多 URL，添加下拉菜单
-            if (urls.length > 1) {
-                setupMultiUrlDropdown(linkCard, urls);
-            }
-            
-            // 点击卡片跳转
-            linkCard.addEventListener('click', (e) => {
-                if (!e.target.closest('.url-dropdown-item') && !e.target.closest('.icon-button')) {
-                    window.open(displayUrl, '_blank');
-                }
-            });
-            
-            linkElement.appendChild(linkCard);
-            linkList.appendChild(linkElement);
-        });
-
         linkContainer.appendChild(categoryContainer);
+    }
+
+    if (localStorage.getItem('showThumbnails') === 'false') {
+        linkContainer.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
+            thumbnail.style.display = 'none';
+        });
     }
     
     // 在 DOM 加载完成后初始化展开状态（绑定事件并设置初始状态）
     requestAnimationFrame(() => {
         initCategoryToggles();
     });
+}
+
+function createHomeLinkElement(link) {
+    const listItem = document.createElement('li');
+    const safeUrls = getSafeLinkUrls(link);
+    const preferredUrlInfo = getPreferredUrlInfo(link, safeUrls);
+    if (safeUrls.length > 1) {
+        listItem.classList.add('multi-url-link-item');
+    }
+
+    const linkCard = document.createElement('a');
+    linkCard.href = preferredUrlInfo.address;
+    linkCard.className = 'link-card';
+    linkCard.dataset.linkId = link.ID;
+    linkCard.setAttribute('role', 'button');
+    linkCard.setAttribute('tabindex', '0');
+    linkCard.setAttribute('aria-label', `${link.name || '未命名'}，打开${preferredUrlInfo.label || '默认'}地址`);
+
+    const thumbnail = document.createElement('div');
+    thumbnail.className = 'link-card-thumbnail';
+    const thumbnailUrl = sanitizeUrl(link.thumbnail, '', ['http:', 'https:']);
+    if (thumbnailUrl) {
+        thumbnail.style.backgroundImage = `url("${thumbnailUrl.replace(/"/g, '\\"')}")`;
+    } else {
+        thumbnail.classList.add('placeholder');
+        thumbnail.innerHTML = '<i class="ri-links-line"></i>';
+    }
+    linkCard.appendChild(thumbnail);
+
+    const content = document.createElement('div');
+    content.className = 'link-card-content';
+
+    const title = document.createElement('div');
+    title.className = 'link-card-title';
+    title.textContent = link.name || '未命名';
+    content.appendChild(title);
+
+    if (safeUrls.length > 1) {
+        const subtitle = document.createElement('div');
+        subtitle.className = 'link-card-subtitle';
+        subtitle.textContent = `最近使用：${preferredUrlInfo.label || '默认'}`;
+        content.appendChild(subtitle);
+    }
+
+    linkCard.appendChild(content);
+
+    if (link.tag) {
+        const tag = document.createElement('span');
+        tag.className = 'link-card-tag';
+        tag.textContent = link.tag;
+        linkCard.appendChild(tag);
+    }
+
+    if (safeUrls.length > 1) {
+        setupMultiUrlDropdown(linkCard, link, safeUrls);
+    }
+
+    function openPreferredUrl(event) {
+        if (event.target.closest('.link-card-urls, .url-dropdown, button')) {
+            return;
+        }
+        event.preventDefault();
+        const currentPreferred = getPreferredUrlInfo(link, getSafeLinkUrls(link));
+        openLinkUrl(link, currentPreferred.address);
+    }
+
+    linkCard.addEventListener('click', openPreferredUrl);
+    linkCard.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            openPreferredUrl(event);
+        }
+    });
+
+    listItem.appendChild(linkCard);
+    return listItem;
 }
 
 // 获取链接的 URL 列表（支持新旧格式）
@@ -1876,89 +2478,107 @@ function getLinkUrls(link) {
     return [];
 }
 
-// 设置多 URL 下拉菜单
-function setupMultiUrlDropdown(linkCard, urls) {
-    // 创建容器
+// 设置多 URL 快捷切换
+function setupMultiUrlDropdown(linkCard, link, safeUrls) {
+    if (safeUrls.length <= 1) return;
+    linkCard.classList.add('has-multiple-urls');
+
     const urlsContainer = document.createElement('div');
     urlsContainer.className = 'link-card-urls';
-    urlsContainer.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; height: 100%; pointer-events: none;';
-    
-    // 地址数量标签
-    const urlCountBadge = document.createElement('div');
-    urlCountBadge.className = 'url-count-badge';
-    urlCountBadge.innerHTML = `
-        <span class="badge-dot"></span>
-        <span>${urls.length}个地址</span>
-    `;
-    urlCountBadge.title = '点击选择地址';
-    urlCountBadge.style.pointerEvents = 'auto';
-    
-    // 下拉按钮
-    const urlsButton = document.createElement('button');
-    urlsButton.className = 'url-dropdown-btn';
-    urlsButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-    urlsButton.title = '选择地址';
-    urlsButton.style.pointerEvents = 'auto';
-    
-    // URL 下拉菜单
+    const visibleUrls = safeUrls.length <= 4 ? safeUrls : safeUrls.slice(0, 3);
+
     const urlsDropdown = document.createElement('div');
     urlsDropdown.className = 'url-dropdown';
-    urlsDropdown.id = 'url-dropdown-' + Date.now();
+    urlsDropdown.id = `url-dropdown-${link.ID}-${Date.now()}`;
     
-    // 下拉菜单头部
     const dropdownHeader = document.createElement('div');
     dropdownHeader.className = 'url-dropdown-header';
     dropdownHeader.innerHTML = `
         <span>选择地址</span>
-        <span class="url-count">${urls.length}个</span>
+        <span class="url-count">${safeUrls.length}个</span>
     `;
     urlsDropdown.appendChild(dropdownHeader);
-    
-    // URL 列表项
-    urls.forEach((urlObj, idx) => {
+
+    function updateSelectedUrl(selectedUrl) {
+        const currentUrl = selectedUrl || getPreferredUrlInfo(link, safeUrls).address;
+        urlsContainer.querySelectorAll('.url-quick-choice').forEach(button => {
+            const selected = button.dataset.url === currentUrl;
+            button.classList.toggle('selected', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+        urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
+            item.classList.toggle('selected', item.dataset.url === currentUrl);
+        });
+        const subtitle = linkCard.querySelector('.link-card-subtitle');
+        const selectedInfo = safeUrls.find(url => url.address === currentUrl);
+        if (subtitle && selectedInfo) {
+            subtitle.textContent = `最近使用：${selectedInfo.label}`;
+        }
+    }
+
+    function openChoice(urlObj) {
+        rememberLastUsedLinkUrl(link, urlObj.address);
+        updateSelectedUrl(urlObj.address);
+        openSafeUrl(urlObj.address);
+    }
+
+    visibleUrls.forEach((urlObj, index) => {
+        const label = getUrlDisplayLabel(urlObj, index);
+        const meta = getUrlChoiceMeta(urlObj);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `url-quick-choice ${meta.type}`;
+        button.dataset.url = urlObj.address;
+        button.title = `${label}：${urlObj.address}`;
+        button.innerHTML = `<i class="${meta.icon}"></i><span>${escapeHTML(label)}</span>`;
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            event.preventDefault();
+            openChoice(urlObj);
+        });
+        urlsContainer.appendChild(button);
+    });
+
+    safeUrls.forEach((urlObj, idx) => {
         const urlItem = document.createElement('div');
         urlItem.className = 'url-dropdown-item';
         urlItem.dataset.url = urlObj.address;
         urlItem.dataset.index = idx;
-        
-        const statusClass = idx === 0 ? 'online' : 'checking';
-        const statusText = idx === 0 ? '在线' : '检测中';
+        const label = getUrlDisplayLabel(urlObj, idx);
+        const meta = getUrlChoiceMeta(urlObj);
         
         urlItem.innerHTML = `
             <div class="status-wrapper">
-                <span class="status-dot ${statusClass}" title="${statusText}"></span>
+                <span class="url-type-icon ${meta.type}"><i class="${meta.icon}"></i></span>
             </div>
             <div class="url-info">
-                <div class="url-label">${urlObj.label || '地址' + (idx + 1)}</div>
-                <div class="url-address">${urlObj.address}</div>
+                <div class="url-label">${escapeHTML(label)}</div>
+                <div class="url-address">${escapeHTML(urlObj.address)}</div>
             </div>
             <div class="url-meta">
-                ${idx === 0 ? '<span class="check-icon selected"><i class="ri-check-line"></i></span>' : ''}
-                <span class="priority-badge">优先级${urlObj.priority || idx + 1}</span>
+                <span class="priority-badge">优先级${escapeHTML(urlObj.priority || idx + 1)}</span>
                 <i class="ri-external-link-line external-link"></i>
             </div>
         `;
         urlsDropdown.appendChild(urlItem);
     });
-    
-    urlsContainer.appendChild(urlCountBadge);
-    urlsContainer.appendChild(urlsButton);
+
+    let urlsButton = null;
+    if (safeUrls.length > visibleUrls.length) {
+        urlsButton = document.createElement('button');
+        urlsButton.type = 'button';
+        urlsButton.className = 'url-overflow-btn';
+        urlsButton.innerHTML = `<i class="ri-more-line"></i><span>更多</span>`;
+        urlsButton.title = '选择更多地址';
+        urlsContainer.appendChild(urlsButton);
+    }
+
     urlsContainer.appendChild(urlsDropdown);
     linkCard.appendChild(urlsContainer);
     
-    // 将下拉菜单添加到 body，避免被父元素的 overflow 隐藏
     document.body.appendChild(urlsDropdown);
     
-    // 鼠标悬停显示下拉按钮
-    linkCard.addEventListener('mouseenter', () => {
-        urlsButton.style.opacity = '1';
-    });
-    linkCard.addEventListener('mouseleave', () => {
-        urlsButton.style.opacity = '0';
-    });
-    
-    // 显示下拉菜单的函数
-    function showDropdown(e) {
+    function showDropdown(e, anchor = urlsButton || urlsContainer) {
         if (e) {
             e.stopPropagation();
             e.preventDefault();
@@ -1969,56 +2589,48 @@ function setupMultiUrlDropdown(linkCard, urls) {
             if (d !== urlsDropdown) d.classList.remove('show');
         });
         
-        // 计算卡片位置
-        const cardRect = linkCard.getBoundingClientRect();
-        const badgeRect = urlCountBadge.getBoundingClientRect();
+        const anchorRect = anchor.getBoundingClientRect();
+        const dropdownHeight = Math.min(300, 48 + safeUrls.length * 58);
+        const hasRoomBelow = anchorRect.bottom + dropdownHeight + 12 < window.innerHeight;
         
-        // 设置下拉菜单位置（在卡片上方，从左下角向上展开）
-        // 使用 fixed 定位，相对于视口
         urlsDropdown.style.position = 'fixed';
-        urlsDropdown.style.left = badgeRect.left + 'px';
-        // bottom 设置为从视口底部到卡片顶部的距离，这样下拉菜单会从卡片顶部往上展开
-        urlsDropdown.style.bottom = (window.innerHeight - cardRect.top + 8) + 'px';
+        urlsDropdown.style.left = Math.max(8, Math.min(anchorRect.left, window.innerWidth - 240)) + 'px';
+        urlsDropdown.style.top = hasRoomBelow ? `${anchorRect.bottom + 8}px` : 'auto';
+        urlsDropdown.style.bottom = hasRoomBelow ? 'auto' : `${window.innerHeight - anchorRect.top + 8}px`;
         urlsDropdown.style.zIndex = '9999';
         
-        // 强制重绘确保位置正确
         urlsDropdown.offsetHeight;
-        
         urlsDropdown.classList.add('show');
     }
     
-    // 绑定下拉按钮事件
-    urlsButton.addEventListener('click', showDropdown);
+    if (urlsButton) {
+        urlsButton.addEventListener('click', event => showDropdown(event, urlsButton));
+    }
     
-    // 绑定地址数量标签点击事件
-    urlCountBadge.addEventListener('click', showDropdown);
-    
-    // 绑定 URL 选择事件
     urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
-            const url = item.dataset.url;
-            window.open(url, '_blank');
+            const selectedUrl = safeUrls.find(url => url.address === item.dataset.url);
+            if (selectedUrl) {
+                openChoice(selectedUrl);
+            }
             urlsDropdown.classList.remove('show');
         });
         
-        // 外部链接图标点击
         const externalLink = item.querySelector('.external-link');
         if (externalLink) {
             externalLink.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const url = item.dataset.url;
-                window.open(url, '_blank');
+                const selectedUrl = safeUrls.find(url => url.address === item.dataset.url);
+                if (selectedUrl) {
+                    openChoice(selectedUrl);
+                }
+                urlsDropdown.classList.remove('show');
             });
         }
     });
-    
-    // 点击外部关闭下拉菜单
-    document.addEventListener('click', function closeDropdown(e) {
-        if (!urlsContainer.contains(e.target) && !urlsDropdown.contains(e.target)) {
-            urlsDropdown.classList.remove('show');
-        }
-    });
+
+    updateSelectedUrl();
 }
 
 // ================================
@@ -2027,11 +2639,13 @@ function setupMultiUrlDropdown(linkCard, urls) {
 
 // 存储展开状态的键
 const EXPANDED_CATEGORIES_KEY = 'expandedCategories';
+let activeCategoryContainer = null;
+let categoryPanelElements = null;
 
 // 获取已展开的分类列表
 function getExpandedCategories() {
-    const stored = localStorage.getItem(EXPANDED_CATEGORIES_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const stored = readJSONStorage(EXPANDED_CATEGORIES_KEY, []);
+    return Array.isArray(stored) ? stored : [];
 }
 
 // 保存展开状态
@@ -2039,80 +2653,232 @@ function saveExpandedCategories(categories) {
     localStorage.setItem(EXPANDED_CATEGORIES_KEY, JSON.stringify(categories));
 }
 
+function resetCategoryContainer(container) {
+    if (!container) return;
+    const toggleButton = container.querySelector('.toggle-button');
+    const categoryHeader = container.querySelector('.category-header');
+
+    container.classList.add('collapsed');
+    container.classList.remove('expanded');
+    if (toggleButton) {
+        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        toggleButton.title = '打开分类';
+        toggleButton.setAttribute('aria-expanded', 'false');
+    }
+    if (categoryHeader) {
+        categoryHeader.setAttribute('aria-expanded', 'false');
+    }
+}
+
+function setCategoryContainerActive(container) {
+    if (!container) return;
+    const toggleButton = container.querySelector('.toggle-button');
+    const categoryHeader = container.querySelector('.category-header');
+
+    container.classList.add('collapsed', 'expanded');
+    if (toggleButton) {
+        toggleButton.innerHTML = '<i class="ri-close-line"></i>';
+        toggleButton.title = '关闭分类';
+        toggleButton.setAttribute('aria-expanded', 'true');
+    }
+    if (categoryHeader) {
+        categoryHeader.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function ensureCategoryPanel() {
+    if (categoryPanelElements) {
+        return categoryPanelElements;
+    }
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'category-panel-backdrop';
+    backdrop.setAttribute('aria-hidden', 'true');
+
+    const panel = document.createElement('aside');
+    panel.className = 'category-panel';
+    panel.id = 'category-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'false');
+    panel.setAttribute('aria-hidden', 'true');
+
+    panel.innerHTML = `
+        <div class="category-panel-header">
+            <div class="category-panel-title">
+                <span class="category-panel-icon"><i class="ri-folder-open-line"></i></span>
+                <div>
+                    <h3></h3>
+                    <p></p>
+                </div>
+            </div>
+            <button class="category-panel-close" type="button" aria-label="关闭分类">
+                <i class="ri-close-line"></i>
+            </button>
+        </div>
+        <ul class="category-panel-list"></ul>
+    `;
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(panel);
+
+    const closeButton = panel.querySelector('.category-panel-close');
+    backdrop.addEventListener('click', () => closeCategoryPanel(true));
+    closeButton.addEventListener('click', () => closeCategoryPanel(true));
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && activeCategoryContainer) {
+            closeCategoryPanel(true);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (activeCategoryContainer) {
+            positionCategoryPanel(activeCategoryContainer);
+        }
+    });
+
+    window.addEventListener('scroll', () => {
+        if (activeCategoryContainer && window.innerWidth > 768) {
+            positionCategoryPanel(activeCategoryContainer);
+        }
+    }, { passive: true });
+
+    categoryPanelElements = {
+        backdrop,
+        panel,
+        title: panel.querySelector('.category-panel-title h3'),
+        meta: panel.querySelector('.category-panel-title p'),
+        list: panel.querySelector('.category-panel-list')
+    };
+    return categoryPanelElements;
+}
+
+function getCategoryPanelLinks(category) {
+    return links
+        .filter(link => (link.category || '未分类') === category)
+        .sort((a, b) => b.ID - a.ID);
+}
+
+function positionCategoryPanel(container) {
+    const { panel } = ensureCategoryPanel();
+    const isMobile = window.innerWidth <= 768;
+    panel.classList.toggle('mobile', isMobile);
+
+    if (isMobile) {
+        panel.style.left = '';
+        panel.style.top = '';
+        panel.style.bottom = '';
+        panel.style.width = '';
+        return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const viewportPadding = 16;
+    const panelWidth = Math.min(560, window.innerWidth - viewportPadding * 2);
+    const panelHeight = Math.min(panel.scrollHeight || 520, window.innerHeight - viewportPadding * 2);
+
+    let left = rect.left + rect.width / 2 - panelWidth / 2;
+    left = Math.max(viewportPadding, Math.min(left, window.innerWidth - panelWidth - viewportPadding));
+
+    const belowTop = rect.bottom + 12;
+    const aboveTop = rect.top - panelHeight - 12;
+    const top = belowTop + panelHeight <= window.innerHeight - viewportPadding
+        ? belowTop
+        : Math.max(viewportPadding, aboveTop);
+
+    panel.style.width = `${panelWidth}px`;
+    panel.style.left = `${left}px`;
+    panel.style.top = `${top}px`;
+    panel.style.bottom = 'auto';
+}
+
+function openCategoryPanel(container, saveState = true) {
+    const category = container.dataset.category;
+    const categoryLinks = getCategoryPanelLinks(category);
+    const { backdrop, panel, title, meta, list } = ensureCategoryPanel();
+
+    document.querySelectorAll('.category-container.expanded').forEach(resetCategoryContainer);
+    activeCategoryContainer = container;
+    setCategoryContainerActive(container);
+
+    title.textContent = category || '未分类';
+    meta.textContent = `${categoryLinks.length} 个链接`;
+    list.replaceChildren();
+    categoryLinks.forEach(link => {
+        list.appendChild(createHomeLinkElement(link));
+    });
+
+    if (localStorage.getItem('showThumbnails') === 'false') {
+        list.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
+            thumbnail.style.display = 'none';
+        });
+    }
+
+    positionCategoryPanel(container);
+    requestAnimationFrame(() => {
+        backdrop.classList.add('show');
+        panel.classList.add('show');
+        panel.setAttribute('aria-hidden', 'false');
+    });
+
+    if (saveState) {
+        saveExpandedCategories([]);
+    }
+}
+
+function closeCategoryPanel(saveState = true) {
+    if (!categoryPanelElements) {
+        activeCategoryContainer = null;
+        return;
+    }
+
+    if (activeCategoryContainer) {
+        resetCategoryContainer(activeCategoryContainer);
+    }
+    activeCategoryContainer = null;
+
+    document.querySelectorAll('.url-dropdown.show').forEach(dropdown => {
+        dropdown.classList.remove('show');
+    });
+
+    categoryPanelElements.backdrop.classList.remove('show');
+    categoryPanelElements.panel.classList.remove('show', 'mobile');
+    categoryPanelElements.panel.setAttribute('aria-hidden', 'true');
+
+    if (saveState) {
+        saveExpandedCategories([]);
+    }
+}
+
 // 切换分类展开状态
 function toggleCategory(container, saveState = true) {
-    const category = container.dataset.category;
-    const linkList = container.querySelector('.link-list');
-    const toggleButton = container.querySelector('.toggle-button');
-    
-    if (!linkList || !toggleButton) return;
-    
-    const isExpanded = !container.classList.contains('collapsed');
-    
-    if (isExpanded) {
-        // 收起
-        container.classList.add('collapsed');
-        container.classList.remove('expanded');
-        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-        
-        // 从存储中移除
-        if (saveState) {
-            const expanded = getExpandedCategories();
-            const index = expanded.indexOf(category);
-            if (index > -1) {
-                expanded.splice(index, 1);
-                saveExpandedCategories(expanded);
-            }
-        }
-    } else {
-        // 展开
-        container.classList.remove('collapsed');
-        container.classList.add('expanded');
-        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-        
-        // 添加到存储
-        if (saveState) {
-            const expanded = getExpandedCategories();
-            if (!expanded.includes(category)) {
-                expanded.push(category);
-                saveExpandedCategories(expanded);
-            }
-        }
+    if (!container) return;
+
+    if (activeCategoryContainer === container) {
+        closeCategoryPanel(saveState);
+        return;
     }
+
+    openCategoryPanel(container, saveState);
 }
 
 // 初始化分类展开状态
 function initCategoryToggles() {
-    const expandedCategories = getExpandedCategories();
     const categoryContainers = document.querySelectorAll('.category-container');
-    
-    // 检查是否设置了默认展开所有分类
-    const defaultExpandAll = localStorage.getItem('defaultExpandAll') === 'true';
+    saveExpandedCategories([]);
     
     categoryContainers.forEach(container => {
-        const category = container.dataset.category;
         const linkList = container.querySelector('.link-list');
         const toggleButton = container.querySelector('.toggle-button');
         const categoryHeader = container.querySelector('.category-header');
         
         if (!linkList || !toggleButton) return;
         
-        // 默认收起所有分类，除非设置了"默认展开所有分类"
-        let isExpanded = defaultExpandAll;
-        
-        // 如果没有设置默认展开所有，则根据存储的状态初始化
-        if (!defaultExpandAll) {
-            isExpanded = expandedCategories.includes(category);
-        }
-        
-        if (isExpanded) {
-            container.classList.remove('collapsed');
-            container.classList.add('expanded');
-            toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-        } else {
-            container.classList.add('collapsed');
-            container.classList.remove('expanded');
-            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
+        resetCategoryContainer(container);
+        if (categoryHeader) {
+            categoryHeader.setAttribute('role', 'button');
+            categoryHeader.setAttribute('tabindex', '0');
+            categoryHeader.setAttribute('aria-expanded', 'false');
         }
         
         // 点击标题切换展开状态
@@ -2120,6 +2886,13 @@ function initCategoryToggles() {
             categoryHeader.addEventListener('click', function(e) {
                 e.stopPropagation();
                 toggleCategory(container, true);
+            });
+
+            categoryHeader.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleCategory(container, true);
+                }
             });
         }
         
@@ -2137,148 +2910,282 @@ function initCategoryToggles() {
 // 一键展开/收起所有分类
 window.toggleAllCategories = function(expand) {
     const categoryContainers = document.querySelectorAll('.category-container');
-    const allCategories = [];
-    
-    categoryContainers.forEach(container => {
-        const category = container.dataset.category;
-        allCategories.push(category);
-        
-        const linkList = container.querySelector('.link-list');
-        const toggleButton = container.querySelector('.toggle-button');
-        
-        if (!linkList || !toggleButton) return;
-        
-        if (expand) {
-            container.classList.remove('collapsed');
-            container.classList.add('expanded');
-            toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-        } else {
-            container.classList.add('collapsed');
-            container.classList.remove('expanded');
-            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-        }
-    });
-    
-    // 保存状态
+
     if (expand) {
-        saveExpandedCategories(allCategories);
-    } else {
-        saveExpandedCategories([]);
+        const firstCategory = categoryContainers[0];
+        if (firstCategory) {
+            openCategoryPanel(firstCategory, false);
+        }
+        return;
     }
+
+    categoryContainers.forEach(resetCategoryContainer);
+    closeCategoryPanel(false);
+    saveExpandedCategories([]);
 };
 
+function getLinksFilterState() {
+    return {
+        searchTerm: document.getElementById('links-search')?.value.trim().toLowerCase() || '',
+        category: document.getElementById('category-filter')?.value || ''
+    };
+}
+
+function getLinkSearchText(link) {
+    const urls = getLinkUrls(link);
+    return [
+        link.name,
+        link.category,
+        link.tag,
+        ...urls.flatMap(url => [url.address, url.label])
+    ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function linkMatchesSettingsFilters(link, filters) {
+    const matchesCategory = !filters.category || (link.category || '未分类') === filters.category;
+    const matchesSearch = !filters.searchTerm || getLinkSearchText(link).includes(filters.searchTerm);
+    return matchesCategory && matchesSearch;
+}
+
+function formatUrlForDisplay(url) {
+    try {
+        const parsed = new URL(url, window.location.href);
+        const path = parsed.pathname && parsed.pathname !== '/' ? parsed.pathname : '';
+        return `${parsed.hostname}${path}`;
+    } catch (error) {
+        return url;
+    }
+}
+
+function updateLinksEmptyState(linksEmpty, hasLinks, hasResults) {
+    if (!linksEmpty) return;
+
+    const emptyTitle = linksEmpty.querySelector('p');
+    const emptyDescription = linksEmpty.querySelector('span');
+    linksEmpty.style.display = hasResults ? 'none' : 'block';
+
+    if (hasResults) return;
+
+    if (emptyTitle) {
+        emptyTitle.textContent = hasLinks ? '没有匹配的链接' : '暂无链接';
+    }
+    if (emptyDescription) {
+        emptyDescription.textContent = hasLinks
+            ? '换个关键词或切换分类试试'
+            : '点击“添加链接”开始管理您的导航';
+    }
+}
+
+function renderLinksInSettingsIfVisible(sourceLinks) {
+    const settingsContainer = document.getElementById('settings-container');
+    const linksTab = document.getElementById('links-tab');
+    const settingsOpen = settingsContainer?.classList.contains('show');
+    const linksTabActive = linksTab?.classList.contains('active');
+
+    if (settingsOpen && linksTabActive) {
+        renderLinksInSettings(sourceLinks);
+    }
+}
+
+function updateLinksResultCount(filteredCount, totalCount) {
+    const resultCount = document.getElementById('links-result-count');
+    if (!resultCount) return;
+
+    resultCount.textContent = filteredCount === totalCount
+        ? `显示全部 ${totalCount} 个链接`
+        : `找到 ${filteredCount} / ${totalCount} 个链接`;
+}
+
 // 渲染链接到设置界面
-function renderLinksInSettings(links) {
+function renderLinksInSettings(sourceLinks) {
     const existingLinksList = document.getElementById('existing-links');
     const linksEmpty = document.getElementById('links-empty');
+    const clearLinksSearch = document.getElementById('clear-links-search');
 
     if (!existingLinksList) return;
 
     existingLinksList.innerHTML = '';
 
-    if (!links || links.length === 0) {
-        if (linksEmpty) linksEmpty.style.display = 'block';
-        return;
+    const allLinks = Array.isArray(sourceLinks) ? sourceLinks : [];
+
+    // 更新分类筛选下拉框
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter) {
+        const selectedCategory = categoryFilter.value;
+        const categoryNames = getAllCategoryNames(allLinks);
+        categoryFilter.innerHTML = '<option value="">全部分类</option>';
+        categoryNames.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categoryFilter.appendChild(option);
+        });
+        categoryFilter.value = categoryNames.includes(selectedCategory) ? selectedCategory : '';
     }
 
-    if (linksEmpty) linksEmpty.style.display = 'none';
+    const filters = getLinksFilterState();
+    const filteredLinks = allLinks.filter(link => linkMatchesSettingsFilters(link, filters));
+    if (clearLinksSearch) {
+        clearLinksSearch.classList.toggle('visible', Boolean(filters.searchTerm));
+    }
+    updateLinksResultCount(filteredLinks.length, allLinks.length);
+    updateLinksEmptyState(linksEmpty, allLinks.length > 0, filteredLinks.length > 0);
+    existingLinksList.style.display = filteredLinks.length > 0 ? 'flex' : 'none';
 
     const categories = {};
-    links.forEach(link => {
-        const category = link.category;
+    filteredLinks.forEach(link => {
+        const category = link.category || '未分类';
         if (!categories[category]) {
             categories[category] = [];
         }
         categories[category].push(link);
     });
 
-    // 更新分类筛选下拉框
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter) {
-        categoryFilter.innerHTML = '<option value="">全部分类</option>';
-        Object.keys(categories).forEach(category => {
-            const option = document.createElement('option');
-            option.value = category;
-            option.textContent = category;
-            categoryFilter.appendChild(option);
-        });
-    }
+    Object.keys(categories)
+        .sort((a, b) => a.localeCompare(b, 'zh-CN'))
+        .forEach(category => {
+            const group = document.createElement('section');
+            group.className = 'settings-link-group';
 
-    for (const category in categories) {
-        if (categories.hasOwnProperty(category)) {
-            const categoryLinks = categories[category];
+            const groupHeader = document.createElement('div');
+            groupHeader.className = 'settings-link-group-header';
 
-            const categoryTitle = document.createElement('h4');
-            categoryTitle.textContent = category;
-            categoryTitle.style.cssText = 'margin: 16px 0 8px 0; font-size: 13px; color: var(--text-secondary); font-weight: 600;';
-            existingLinksList.appendChild(categoryTitle);
+            const groupTitle = document.createElement('h4');
+            const groupIcon = document.createElement('i');
+            groupIcon.className = 'ri-folder-2-line';
+            groupTitle.appendChild(groupIcon);
+            groupTitle.appendChild(document.createTextNode(category));
 
-            const linkList = document.createElement('div');
-            linkList.style.cssText = 'display: flex; flex-direction: column; gap: 8px;';
-            existingLinksList.appendChild(linkList);
+            const groupCount = document.createElement('span');
+            groupCount.textContent = `${categories[category].length} 个`;
 
-            categoryLinks.forEach(link => {
+            groupHeader.appendChild(groupTitle);
+            groupHeader.appendChild(groupCount);
+            group.appendChild(groupHeader);
+
+            const groupList = document.createElement('div');
+            groupList.className = 'settings-link-group-list';
+
+            categories[category].forEach(link => {
                 const linkItem = createLinkItem(link);
                 linkItem.dataset.linkId = link.ID;
                 linkItem.dataset.category = category;
-                linkList.appendChild(linkItem);
+                groupList.appendChild(linkItem);
             });
-        }
-    }
+
+            group.appendChild(groupList);
+            existingLinksList.appendChild(group);
+        });
 }
 
 // 创建链接列表项
 function createLinkItem(link) {
-    const linkItem = document.createElement('li');
-    linkItem.style.cssText = 'display: flex; align-items: center; padding: 12px 14px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid rgba(0,0,0,0.04); transition: all 0.15s ease;';
+    const linkItem = document.createElement('div');
+    linkItem.className = 'settings-link-item';
+    linkItem.setAttribute('role', 'button');
+    linkItem.setAttribute('tabindex', '0');
+    linkItem.setAttribute('aria-label', `编辑 ${link.name || '链接'}`);
 
     const linkInfo = document.createElement('div');
     linkInfo.className = 'link-info';
-    linkInfo.style.cssText = 'flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0;';
 
     const favicon = document.createElement('div');
     favicon.className = 'link-favicon';
-    favicon.innerHTML = '<i class="ri-global-line"></i>';
+    const safeThumbnail = sanitizeUrl(link.thumbnail, '', ['http:', 'https:']);
+    if (safeThumbnail && localStorage.getItem('showThumbnails') !== 'false') {
+        favicon.classList.add('has-image');
+        favicon.style.backgroundImage = `url("${safeThumbnail}")`;
+    } else {
+        favicon.textContent = String(link.name || '?').trim().charAt(0).toUpperCase() || '?';
+    }
 
     const linkDetails = document.createElement('div');
     linkDetails.className = 'link-details';
 
     const linkName = document.createElement('h4');
     linkName.textContent = link.name;
-    linkName.style.cssText = 'margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
 
     // 获取 URL 列表（支持多 URL）
-    const urls = getLinkUrls(link);
-    const mainUrl = urls[0]?.address || link.url || '#';
+    const urls = getSafeLinkUrls(link);
+    const mainUrl = sanitizeUrl(urls[0]?.address || link.url || '#');
     
     const linkUrl = document.createElement('a');
     linkUrl.href = mainUrl;
     linkUrl.target = '_blank';
-    
-    // 显示 URL 信息
-    if (urls.length > 1) {
-        // 多 URL：显示数量和第一个 URL
-        linkUrl.textContent = `${urls[0]?.label || '地址 1'}: ${mainUrl} (+${urls.length - 1} 个地址)`;
-    } else {
-        linkUrl.textContent = mainUrl;
-    }
-    linkUrl.style.cssText = 'font-size: 12px; color: var(--text-tertiary); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;';
+    linkUrl.rel = 'noopener noreferrer';
+    linkUrl.textContent = formatUrlForDisplay(mainUrl);
+    linkUrl.title = mainUrl;
     linkUrl.addEventListener('click', (e) => e.stopPropagation());
+
+    const linkMeta = document.createElement('div');
+    linkMeta.className = 'link-meta-row';
+
+    [
+        { type: 'category', icon: 'ri-folder-line', text: link.category || '未分类' },
+        link.tag ? { type: 'tag', icon: 'ri-price-tag-3-line', text: link.tag } : null,
+        urls.length > 1 ? { type: 'count', icon: 'ri-links-line', text: `${urls.length} 个地址` } : null
+    ].filter(Boolean).forEach(item => {
+        const chip = document.createElement('span');
+        chip.className = `link-meta-chip ${item.type}`;
+        const icon = document.createElement('i');
+        icon.className = item.icon;
+        chip.appendChild(icon);
+        chip.appendChild(document.createTextNode(item.text));
+        linkMeta.appendChild(chip);
+    });
 
     linkDetails.appendChild(linkName);
     linkDetails.appendChild(linkUrl);
+    linkDetails.appendChild(linkMeta);
+
+    if (urls.length > 1) {
+        const urlChips = document.createElement('div');
+        urlChips.className = 'settings-url-chips';
+        urls.slice(0, 3).forEach((urlObj, index) => {
+            const meta = getUrlChoiceMeta(urlObj);
+            const chip = document.createElement('span');
+            chip.className = `settings-url-chip ${meta.type}`;
+            chip.title = urlObj.address;
+            const icon = document.createElement('i');
+            icon.className = meta.icon;
+            const text = document.createElement('span');
+            text.textContent = getUrlDisplayLabel(urlObj, index);
+            chip.appendChild(icon);
+            chip.appendChild(text);
+            urlChips.appendChild(chip);
+        });
+        if (urls.length > 3) {
+            const moreChip = document.createElement('span');
+            moreChip.className = 'settings-url-chip more';
+            moreChip.textContent = `+${urls.length - 3}`;
+            urlChips.appendChild(moreChip);
+        }
+        linkDetails.appendChild(urlChips);
+    }
+
     linkInfo.appendChild(favicon);
     linkInfo.appendChild(linkDetails);
     linkItem.appendChild(linkInfo);
 
     const linkActions = document.createElement('div');
     linkActions.className = 'link-actions';
-    linkActions.style.cssText = 'display: flex; gap: 8px; flex-shrink: 0;';
 
-    const editButton = document.createElement('button');
-    editButton.className = 'link-action-btn edit';
-    editButton.innerHTML = '<i class="ri-edit-line"></i>';
-    editButton.title = '编辑';
+    function createActionButton(type, iconClass, title) {
+        const button = document.createElement('button');
+        button.className = `link-action-btn ${type}`;
+        button.innerHTML = `<i class="${iconClass}"></i>`;
+        button.title = title;
+        button.type = 'button';
+        return button;
+    }
+
+    const openButton = createActionButton('open', 'ri-external-link-line', '打开');
+    openButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openSafeUrl(mainUrl);
+    });
+
+    const editButton = createActionButton('edit', 'ri-edit-line', '编辑');
     editButton.addEventListener('click', (e) => {
         e.stopPropagation();
         // 设置编辑状态并打开弹窗
@@ -2286,24 +3193,36 @@ function createLinkItem(link) {
         openEditModal(link);
     });
 
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'link-action-btn delete';
-    deleteButton.innerHTML = '<i class="ri-delete-bin-line"></i>';
-    deleteButton.title = '删除';
+    const deleteButton = createActionButton('delete', 'ri-delete-bin-line', '删除');
     deleteButton.addEventListener('click', (e) => {
         e.stopPropagation();
         if (confirm(`确定要删除 "${link.name}" 吗？`)) {
             const index = links.findIndex(l => l.ID === link.ID);
             if (index !== -1) {
                 links.splice(index, 1);
+                window.persistLinks?.();
                 renderLinksByCategory(links);
-                renderLinksInSettings(links);
-                updateStorageInfo();
-                showMessage('已删除链接');
+                renderLinksInSettingsIfVisible(links);
+                window.updateCategoryDatalist?.();
+                window.updateStorageInfo?.();
+                window.showMessage?.('已删除链接');
             }
         }
     });
 
+    linkItem.addEventListener('click', () => {
+        window.editingLinkId = link.ID;
+        openEditModal(link);
+    });
+    linkItem.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            window.editingLinkId = link.ID;
+            openEditModal(link);
+        }
+    });
+
+    linkActions.appendChild(openButton);
     linkActions.appendChild(editButton);
     linkActions.appendChild(deleteButton);
     linkItem.appendChild(linkActions);

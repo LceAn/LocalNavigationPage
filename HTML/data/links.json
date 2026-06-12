@@ -1,43 +1,39 @@
 {
     "links": [
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "123123123123123123", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":4, "url": "https://www.lcean.com", "name": "LceAn", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":6, "url": "https://www.lcean.com", "name": "LceAn6", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":7, "url": "https://www.lcean.com", "name": "LceAn2", "category": "云上", "tag": "www", "thumbnail": "https://s0.wp.com/mshots/v1/www.lcean.com?w=240&h=240"},
-        { "ID":3, "url": "https://example2.com", "name": "网页2", "category": "分类1", "tag": "示例", "thumbnail": "https://s0.wp.com/mshots/v1/example2.com?w=240&h=240"},
-		{ "ID":3, "url": "https://example2.com", "name": "网页1", "category": "分类1", "tag": "示例", "thumbnail": "https://s0.wp.com/mshots/v1/example2.com?w=240&h=240"},
-        { "ID":2, "url": "https://example3.com", "name": "网页3", "category": "分类2", "tag": "测试", "thumbnail": "https://s0.wp.com/mshots/v1/example3.com?w=240&h=240"},
-        { "ID":5, "url": "https://example4.com", "name": "网页4", "category": "分类3", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
-        { "ID":1, "url": "https://example4.com", "name": "网页4", "category": "分类3", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
-        { "ID":6, "url": "https://example4.com", "name": "网页4", "category": "分类3", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
-        { "ID":7, "url": "https://example4.com", "name": "网页4", "category": "分类4", "tag": "参考", "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240"},
         {
-            "ID": 8,
-            "name": "网页4",
-            "category": "分类5",
-            "tag": "参考",
-            "thumbnail": "https://s0.wp.com/mshots/v1/example4.com?w=240&h=240",
+            "ID": 1,
+            "name": "路由器管理",
+            "url": "http://192.168.1.1",
+            "category": "网络设备",
+            "tag": "本地",
+            "thumbnail": "https://s0.wp.com/mshots/v1/192.168.1.1?w=240&h=240"
+        },
+        {
+            "ID": 2,
+            "name": "NAS 管理",
             "urls": [
-              {
-                "address": "https://example4.com",
-                "label": "默认",
-                "priority": 1
-              },
-              {
-                "address": "https://example4.com",
-                "label": "默认123",
-                "priority": 2
-              }
-            ]
-          }
+                {
+                    "address": "http://192.168.1.100:5000",
+                    "label": "本地网络",
+                    "priority": 1
+                },
+                {
+                    "address": "https://your-nas.tailnet.ts.net",
+                    "label": "Tailscale",
+                    "priority": 2
+                }
+            ],
+            "category": "云服务",
+            "tag": "存储",
+            "thumbnail": "https://s0.wp.com/mshots/v1/example.com?w=240&h=240"
+        },
+        {
+            "ID": 3,
+            "name": "Google",
+            "url": "https://www.google.com",
+            "category": "常用网站",
+            "tag": "搜索",
+            "thumbnail": "https://s0.wp.com/mshots/v1/www.google.com?w=240&h=240"
+        }
     ]
 }

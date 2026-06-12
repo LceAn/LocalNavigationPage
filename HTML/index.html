@@ -1,14 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>导航页</title>
-    <link rel="stylesheet" href="css/styles.css">
-	<link rel="stylesheet" href="css/search_input.css">
-	<link rel="stylesheet" href="css/settings_box.css">
-	<script src="js/jquery-3.3.1.slim.min.js"></script>
-	<script src="js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="CSS/styles.css?v=20260612-performance">
+	<link rel="stylesheet" href="CSS/search_input.css?v=20260612-performance">
+	<link rel="stylesheet" href="CSS/settings_box.css?v=20260612-performance">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
     <meta name="theme-color" content="#4f6ef5">
@@ -122,9 +120,12 @@
             <div class="settings-content">
                 <!-- 链接管理标签页 -->
                 <div class="tab-content active" id="links-tab">
-                    <div class="tab-header">
+                    <div class="tab-header links-manager-header">
                         <i class="ri-links-line"></i>
-                        <h3>链接管理</h3>
+                        <div>
+                            <h3>链接管理</h3>
+                            <p>搜索、筛选、编辑和整理首页导航链接</p>
+                        </div>
                     </div>
                     
                     <!-- 统计卡片 -->
@@ -162,7 +163,10 @@
                     <div class="links-toolbar">
                         <div class="links-search">
                             <i class="ri-search-line"></i>
-                            <input type="text" id="links-search" placeholder="搜索链接名称或 URL...">
+                            <input type="text" id="links-search" placeholder="搜索名称、URL、分类或标签">
+                            <button type="button" class="links-search-clear" id="clear-links-search" title="清空搜索">
+                                <i class="ri-close-line"></i>
+                            </button>
                         </div>
                         <div class="links-filter">
                             <select id="category-filter">
@@ -181,14 +185,19 @@
                     <!-- 提示信息 -->
                     <div class="links-hint">
                         <i class="ri-information-line"></i>
-                        <span>添加链接时输入新的分类名称即可创建新分类，或直接点击"管理分类"按钮管理现有分类</span>
+                        <span>在添加链接时输入新分类即可创建分类；搜索会同时匹配名称、URL、分类和标签</span>
+                    </div>
+
+                    <div class="links-results-bar">
+                        <span id="links-result-count">显示 0 个链接</span>
+                        <span>按分类自动分组</span>
                     </div>
                     
                     <!-- 链接列表 -->
                     <div class="links-list-container">
-                        <ul id="existing-links">
+                        <div id="existing-links" class="links-groups">
                             <!-- 这里显示当前的网址列表 -->
-                        </ul>
+                        </div>
                         <div class="links-empty" id="links-empty">
                             <div class="empty-icon">
                                 <i class="ri-inbox-line"></i>
@@ -326,7 +335,7 @@
                     
                     <!-- 主题模式 -->
                     <div class="settings-section">
-                        <div class="section-title" onclick="toggleSection(this)">
+                        <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-sun-line"></i>
                                 <span>主题模式</span>
@@ -362,9 +371,76 @@
                         </div>
                     </div>
                     
+                    <!-- 首页视觉 -->
+                    <div class="settings-section">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-bubble-chart-line"></i>
+                                <span>首页视觉</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="visual-options-grid">
+                                <div class="option-item option-item-stacked">
+                                    <div class="option-header">
+                                        <i class="ri-landscape-line"></i>
+                                        <span>背景风格</span>
+                                    </div>
+                                    <select id="home-background-style" class="format-select">
+                                        <option value="clean">清爽纯色</option>
+                                        <option value="soft">柔和渐变</option>
+                                        <option value="mesh">流体网格</option>
+                                        <option value="focus">专注留白</option>
+                                    </select>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-blur-off-line"></i>
+                                        <span>首页玻璃质感</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="home-glass-effect" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-water-flash-line"></i>
+                                        <span>液态背景</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="home-liquid-effect">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-shadow-line"></i>
+                                        <span>增强阴影</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="home-deep-shadow">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="option-item option-item-stacked">
+                                    <div class="option-header">
+                                        <i class="ri-contrast-drop-line"></i>
+                                        <span>玻璃模糊强度</span>
+                                    </div>
+                                    <div class="range-control">
+                                        <input type="range" id="home-blur-strength" min="0" max="24" step="2" value="12">
+                                        <span id="home-blur-value">12px</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 界面布局 -->
                     <div class="settings-section">
-                        <div class="section-title" onclick="toggleSection(this)">
+                        <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-layout-grid-line"></i>
                                 <span>界面布局</span>
@@ -430,7 +506,7 @@
                     
                     <!-- 时间与日期 -->
                     <div class="settings-section">
-                        <div class="section-title" onclick="toggleSection(this)">
+                        <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-time-line"></i>
                                 <span>时间与日期</span>
@@ -495,7 +571,7 @@
                     
                     <!-- 天气显示 -->
                     <div class="settings-section">
-                        <div class="section-title" onclick="toggleSection(this)">
+                        <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-cloud-line"></i>
                                 <span>天气显示</span>
@@ -541,7 +617,7 @@
                     
                     <!-- 网站设置 -->
                     <div class="settings-section">
-                        <div class="section-title" onclick="toggleSection(this)">
+                        <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-edit-line"></i>
                                 <span>网站设置</span>
@@ -563,7 +639,7 @@
                     
                     <!-- 快捷按钮显示 -->
                     <div class="settings-section">
-                        <div class="section-title" onclick="toggleSection(this)">
+                        <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-function-line"></i>
                                 <span>快捷按钮</span>
@@ -827,7 +903,7 @@
     <i class="ri-arrow-up-line"></i>
 </button>
 
-<script src="js/main.js"></script>
-<script src="js/darkMode.js"></script>
+<script src="js/main.js?v=20260612-performance"></script>
+<script src="js/darkMode.js?v=20260612-performance"></script>
 </body>
 </html>

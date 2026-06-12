@@ -96,37 +96,31 @@ LocalNavigationPage/
 
 ## 🚀 快速开始 | Quick Start
 
-### 方式一：直接打开 | Direct Open
+### 方式一：本地服务器 | Local Server
 
 ```bash
 # 1. 克隆项目
 git clone https://github.com/LceAn/LocalNavigationPage.git
 
-# 2. 进入目录
+# 2. 进入页面目录
 cd LocalNavigationPage/HTML
 
-# 3. 直接用浏览器打开
-open index.html
-```
-
-### 方式二：本地服务器 | Local Server
-
-```bash
-# 使用 Python 启动本地服务器
-cd LocalNavigationPage/HTML
+# 3. 启动本地服务器
 python3 -m http.server 8080
 
 # 访问 http://localhost:8080
 ```
 
-### 方式三：GitHub Pages | GitHub Pages
+> 不推荐直接双击打开 `index.html`：部分浏览器会限制本地 JSON 读取，导致链接配置无法加载。
+
+### 方式二：GitHub Pages | GitHub Pages
 
 1. Fork 本项目
 2. 启用 GitHub Pages（Settings → Pages）
 3. 选择 `main` 分支，目录选择 `/HTML`
 4. 访问 `https://yourusername.github.io/LocalNavigationPage/HTML/`
 
-### 方式四：Docker 部署 | Docker Deployment
+### 方式三：Docker 部署 | Docker Deployment
 
 **前置要求：** 安装 Docker 和 Docker Compose
 
@@ -157,10 +151,7 @@ docker run -d \
 git clone https://github.com/LceAn/LocalNavigationPage.git
 cd LocalNavigationPage
 
-# 2. 创建数据目录
-mkdir -p data
-
-# 3. 启动服务
+# 2. 启动服务
 docker-compose up -d
 
 # 访问 http://localhost:8080
@@ -168,15 +159,15 @@ docker-compose up -d
 
 #### 配置文件持久化
 
-**重要：** 通过 volume 挂载 `data` 目录以持久化配置：
+**重要：** Compose 默认挂载仓库内的 `HTML/data` 目录以持久化配置：
 
 ```yaml
 volumes:
-  - ./data:/usr/share/nginx/html/data
+  - ./HTML/data:/usr/share/nginx/html/data
 ```
 
 - 容器重启后配置不会丢失
-- 可直接编辑 `data/links.json` 文件
+- 可直接编辑 `HTML/data/links.json` 文件
 - 支持热更新（修改后刷新浏览器即可）
 
 #### 自定义端口
@@ -196,7 +187,7 @@ volumes:
 
 ### 添加/编辑链接
 
-编辑 `data/links.json` 文件：
+可以在页面右上角设置中添加/编辑链接，也可以直接编辑 `HTML/data/links.json` 文件：
 
 ```json
 {
@@ -218,14 +209,14 @@ volumes:
 ```
 
 **字段说明：**
-- `ID` - 排序 ID（数字越小越靠前）
+- `ID` - 排序 ID（数字越大越靠前）
 - `url` - 网站地址
 - `name` - 网站名称
 - `category` - 所属分类
 
 ### 自定义主题颜色
 
-编辑 `CSS/styles.css`：
+编辑 `HTML/CSS/styles.css`：
 
 ```css
 :root {
@@ -238,15 +229,7 @@ volumes:
 
 ### 修改搜索引擎
 
-编辑 `index.html` 中的搜索配置：
-
-```javascript
-const searchEngines = {
-    baidu: 'https://www.baidu.com/s?wd=',
-    google: 'https://www.google.com/search?q=',
-    bing: 'https://www.bing.com/search?q='
-};
-```
+打开右上角设置 → 搜索引擎，可新增、编辑或删除搜索引擎；搜索 URL 模板中用 `%s` 表示搜索关键词。
 
 ---
 
@@ -257,8 +240,7 @@ const searchEngines = {
 
 ### 分类折叠/展开
 - 点击分类卡片右侧箭头可展开/收起
-- 左下角按钮可一键展开/收起所有分类
-- 同一行其他分类会自动收起
+- 右上角功能按钮可一键展开/收起所有分类
 
 ### 布局调整
 右上角功能按钮 → 布局调整 → 选择上移/居中/下移
