@@ -3,9 +3,8 @@
 [![HTML](https://img.shields.io/badge/HTML-5-e34c26)]()
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
-[![Bootstrap](https://img.shields.io/badge/Bootstrap-4.3-7952b3)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.2.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.4.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 **本地静态导航页 | Local Static Navigation Page**
@@ -40,6 +39,7 @@ A lightweight navigation page application based on local/LAN, no database or bac
 - **响应式设计** - 自适应桌面和移动设备
 - **流畅动画** - 卡片悬停、折叠展开等动效
 - **Remix 图标** - 现代化图标库
+- **首页个性化** - 支持背景、玻璃质感、显示密度和分类显示策略
 
 ### 🚀 功能丰富
 - **多搜索引擎** - 支持百度、Google、必应切换
@@ -47,7 +47,8 @@ A lightweight navigation page application based on local/LAN, no database or bac
 - **智能排序** - 按 ID 自动排序，分组按最大 ID 排序
 - **实时时钟** - 显示日期、时间（时分秒）、天气
 - **快速搜索** - 内置搜索框，快速查找链接
-- **布局调整** - 支持上移/居中/下移布局
+- **首页按钮管理** - 支持隐藏内置按钮，并添加自定义快捷按钮
+- **布局调整** - 支持标准/靠上/靠下布局
 - **置顶按钮** - 右下角快速回到顶部
 
 ### 📱 响应式支持
@@ -62,12 +63,11 @@ A lightweight navigation page application based on local/LAN, no database or bac
 | 技术 | 版本 | 用途 |
 |------|------|------|
 | **HTML** | HTML5 | 页面结构 |
-| **CSS** | CSS3 | 样式和动画 |
-| **JavaScript** | ES6 | 交互逻辑 |
-| **Bootstrap** | 4.3 | UI 框架 |
-| **jQuery** | 3.3.1 | DOM 操作 |
+| **CSS** | CSS3+（oklch / color-mix / 玻璃质感） | 样式、动效与设计令牌 |
+| **JavaScript** | ES6（原生，无框架/无 jQuery） | 交互逻辑 |
 | **Remix Icon** | 4.1.0 | 图标库 |
-| **Google Fonts** | Inter | 字体 |
+| **Google Fonts** | Inter（可变字体 400–800） | 字体 |
+| **PWA** | Web App Manifest | 可安装、自定义图标与主题色 |
 
 ---
 
@@ -77,20 +77,24 @@ A lightweight navigation page application based on local/LAN, no database or bac
 LocalNavigationPage/
 ├── HTML/                           # 前端文件目录
 │   ├── index.html                  # 主页面
+│   ├── manifest.webmanifest        # PWA 清单（图标/主题色/可安装）
 │   ├── CSS/                        # 样式文件
-│   │   ├── styles.css              # 主样式
+│   │   ├── styles.css              # 主样式（设计令牌：oklch/color-mix）
 │   │   ├── search_input.css        # 搜索框样式
 │   │   └── settings_box.css        # 设置框样式
-│   ├── js/                         # JavaScript 文件
-│   │   ├── jquery-3.3.1.slim.min.js  # jQuery
-│   │   ├── bootstrap.min.js        # Bootstrap
+│   ├── js/                         # JavaScript 文件（原生，无第三方库）
 │   │   ├── darkMode.js             # 夜间模式
 │   │   └── main.js                 # 主逻辑
 │   └── data/                       # 数据文件
-│       └── links.json              # 链接配置
+│       ├── links.json              # 链接配置（运行时生成/编辑）
+│       └── links.json.default      # 默认链接配置（Docker 首次启动模板）
 ├── docker/                         # Docker 启动脚本和 Nginx 配置
 │   ├── 10-init-links-json.sh       # 首次启动自动初始化 links.json
 │   └── nginx.conf                  # Nginx 静态服务配置
+├── docs/                           # 项目文档
+│   ├── CHANGELOG.md                # 更新日志
+│   ├── FEATURES_ROADMAP.md         # 功能路线图
+│   └── CONFIG_SAVE_UX.md           # 配置保存交互说明
 ├── Dockerfile                      # Docker 镜像构建文件
 ├── docker-compose.yml              # Docker Compose 示例
 ├── README.md                       # 项目文档
@@ -244,16 +248,22 @@ docker run -d \
 
 ### 自定义主题颜色
 
-编辑 `HTML/CSS/styles.css`：
+编辑 `HTML/CSS/styles.css` 顶部的 `:root`（浅色）与 `.dark-mode`（深色）令牌。颜色使用现代 `oklch()`，派生色由 `color-mix()` 自动生成，所以只需改主色即可联动：
 
 ```css
 :root {
-    --primary-color: #4f6ef5;      /* 主色调 */
-    --background-color: #f5f7fa;   /* 背景色 */
-    --text-color: #333333;         /* 文字颜色 */
-    --card-bg: #ffffff;            /* 卡片背景 */
+    --primary-color: oklch(62% 0.19 268);   /* 主色（靛蓝） */
+    --accent-color:  oklch(73% 0.17 45);    /* 强调色（橙）  */
+    --tertiary-color: oklch(72% 0.13 180);  /* 第三色（青）  */
+    /* —— 以下通常无需改动，会随主色派生 —— */
+    --primary-light: color-mix(in oklch, var(--primary-color) 12%, transparent);
+    --bg-primary: #F8FAFC;                  /* 页面背景      */
+    --text-primary: #1E293B;                /* 主要文字      */
+    --bg-card: #FFFFFF;                     /* 卡片背景      */
 }
 ```
+
+> 兼容旧用法：仍可直接写 hex，例如 `--primary-color: #5D5FEF;`。`--primary-rgb`（如 `93 95 239`）用于 `rgba(var(--primary-rgb), 0.x)` 形式的半透明色，改主色时一并更新即可。
 
 ### 修改搜索引擎
 
@@ -271,7 +281,7 @@ docker run -d \
 - 右上角功能按钮可一键展开/收起所有分类
 
 ### 布局调整
-右上角功能按钮 → 布局调整 → 选择上移/居中/下移
+右上角功能按钮 → 布局调整 → 选择标准/靠上/靠下；也可在设置 → 外观与显示中调整首页显示密度和分类显示方式。
 
 ### 快速搜索
 1. 在搜索框输入关键词
@@ -281,6 +291,63 @@ docker run -d \
 ---
 
 ## 📝 更新日志 | Changelog
+
+### v1.4.0 (2026-06-19) - 2026 现代化焕新
+
+**🎨 视觉焕新（中等力度，保留识别度）：**
+- ✅ 设计令牌升级为现代 CSS：主色用 `oklch()`、派生色用 `color-mix()`，新增第三色（青）
+- ✅ 修复深色模式阴影——原本 4 档阴影 alpha 完全相同导致卡片无层次，现按递进深度
+- ✅ 标题改用流式字号（`clamp()`），修复此前因字重未加载而静默回退的标题粗细
+- ✅ 链接卡片 hover 上浮更明显（`-4px`）、补 1px 内高光，玻璃质感更利落
+
+**⚙️ 技术与可访问性：**
+- ✅ 新增全局 `prefers-reduced-motion` 守护，尊重系统「减少动态效果」偏好
+- ✅ 删除约 128KB 死代码（未被引用的 jQuery / Bootstrap）与 macOS 资源叉文件
+- ✅ 修正 `theme-color` 与实际主色不符，并补深色模式变体
+- ✅ 清理 styles.css 中与 search_input.css 冲突的重复搜索框规则（约 -90 行）
+- ✅ 统一圆角令牌（消除散落的 `18px` 硬编码），新增 `--rounded-2xl`、`--ease-out-expo`
+
+**🚀 性能与 PWA：**
+- ✅ 字体改用可变字体区间（`400..800`），减重且覆盖此前缺失的字重
+- ✅ 新增 `preconnect`（Google Fonts / jsdelivr），省去首屏 TLS 往返
+- ✅ 脚本加 `defer`；首页缩略图改 `<img loading="lazy">`，跳过屏外远程截图请求
+- ✅ 新增 PWA 基础面：Web App Manifest + 内联 SVG favicon + apple-touch-icon
+
+**📚 文档：**
+- ✅ README 技术栈去除已不使用的 jQuery/Bootstrap，补充 PWA / docs 目录
+- ✅ 全局版本号对齐到 1.4.0（此前散落 1.0.3 / 1.0.0 / 1.2.0 / 1.3.1）
+
+---
+
+### v1.3.1 (2026-06-14) - 首页体验打磨
+
+**🎨 视觉优化：**
+- ✅ 首页默认使用柔和背景和玻璃质感，整体更轻盈
+- ✅ 分类卡新增链接预览，首屏信息更清晰
+- ✅ 右上角按钮区改为更干净的轻工具栏样式
+- ✅ 移动端时间、日期、天气显示更稳定
+
+**⚙️ 设置增强：**
+- ✅ 外观与显示新增首页显示密度：均衡、紧凑、舒展
+- ✅ 首页分类显示选项文案更明确：始终显示分类卡、点击后显示、隐藏分类区
+- ✅ 去除刷新时的欢迎弹窗，减少干扰
+
+---
+
+### v1.3.0 (2026-06-13) - 首页个性化增强
+
+**✨ 新增功能：**
+- ✅ 首页分类支持“始终显示 / 点击显示 / 隐藏”三种模式
+- ✅ 右上角内置按钮支持在设置中单独开启或关闭
+- ✅ 支持添加、编辑、删除和排序自定义首页按钮
+- ✅ 自定义按钮可配置名称、访问地址和 Remix 图标
+
+**🎨 界面优化：**
+- ✅ 优化首页分类入口和分类网格的整体显示
+- ✅ 调整分类网格为自适应布局，适配更多分类数量
+- ✅ 优化设置页按钮管理区域，减少挤压和混乱
+
+---
 
 ### v1.2.0 (2026-03-25) - Docker 与多 URL 增强
 
@@ -461,18 +528,18 @@ Apache-2.0 License - 详见 [LICENSE](LICENSE) 文件
 
 ## 🌟 特性路线图 | Roadmap
 
+- [x] 支持导入/导出配置（设置 → 数据管理）
+- [x] 支持自定义搜索引擎（设置 → 搜索引擎）
+- [x] 支持网站缩略图预览（首页卡片，懒加载）
+- [x] 支持快捷键操作（`Ctrl/Cmd + ,` 打开设置）
 - [ ] 支持拖拽排序
-- [ ] 支持导入/导出配置
-- [ ] 支持自定义搜索引擎
 - [ ] 支持多语言切换
-- [ ] 支持网站缩略图预览
 - [ ] 支持网站 favicon 自动获取
-- [ ] 支持快捷键操作
 
 ---
 
-**最后更新 | Last Updated:** 2026-03-18  
-**当前版本 | Current Version:** 1.0.3
+**最后更新 | Last Updated:** 2026-06-19  
+**当前版本 | Current Version:** 1.4.0
 
 ---
 

@@ -1,34 +1,28 @@
-#search-container {
-    display: flex;
-    align-items: center;
-    border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    overflow: hidden;
-    background-color: #fff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
-
 /* 固定搜索框的容器 */
 .search-container-wrapper {
     width: 100%;
-    max-width: 600px;
-    margin: 0 auto 30px;
+    max-width: 690px;
+    margin: 0 auto;
     position: relative;
+    z-index: 10;
 }
 
 /* 搜索框容器默认样式 */
 .search-container {
     background-color: var(--bg-secondary);
-    box-shadow: var(--shadow-md);
-    border-radius: var(--rounded-lg);
-    padding: 8px 15px;
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--rounded-xl);
+    padding: 7px;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     margin: 0 auto;
-    max-width: 600px;
+    max-width: 690px;
     transition: all var(--transition-fast) ease-out;
-    border: 1px solid rgba(0,0,0,0.04);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 /* 搜索框在固定状态下的样式 */
@@ -39,7 +33,7 @@
     right: 0;
     margin: 0 auto;
     z-index: 100;
-    max-width: 500px;
+    max-width: 550px;
     transform: translateY(0);
     box-shadow: var(--shadow-lg);
     animation: slideDown 0.3s ease-out;
@@ -62,35 +56,38 @@
     margin-bottom: 0;
     flex: 1;
     max-width: 400px;
-    border-radius: 20px;
+    border-radius: 0;
     font-size: 14px;
-    border: 1px solid #e6e8eb;
+    border: none;
+    background: transparent;
+    box-shadow: none;
 }
 
-/* 固定状态下搜索按钮样式调整 */
+/* 固定状态下搜索按钮样式调整（沿用胶囊，紧凑一点） */
 .search-container.fixed .search-buttons {
     opacity: 1;
     height: auto;
-    margin: 0 0 0 15px;
+    margin: 0 0 0 12px;
     flex-wrap: nowrap;
     display: flex;
+    padding: 3px;
 }
 
 .search-container.fixed .search-button {
-    padding: 7px 16px;
+    padding: 6px 14px;
     font-size: 13px;
-    margin: 0 6px;
-    border-radius: 18px;
-    background-color: #f5f7fa;
-    color: #5b7caa;
-    box-shadow: none;
-    border: 1px solid #e6e8eb;
+    margin: 0;
+}
+
+.search-container.fixed .search-button-icon {
+    width: 14px;
+    height: 14px;
 }
 
 .search-container.fixed .search-button:hover {
-    background-color: #e9f0f9;
-    transform: translateY(0);
-    color: #4a6890;
+    background-color: var(--primary-color);
+    transform: none;
+    color: #ffffff;
 }
 
 /* 搜索框样式 */
@@ -99,11 +96,12 @@
     border: none;
     padding: 12px 20px;
     font-size: 16px;
-    background: none;
+    background: transparent;
     color: var(--text-primary);
     outline: none;
     font-family: var(--font-sans);
-    min-width: 200px;
+    min-width: 0;
+    box-shadow: none;
 }
 
 #search-input::placeholder {
@@ -111,68 +109,119 @@
     opacity: 0.6;
 }
 
-/* 搜索按钮容器样式 */
+/* 搜索按钮容器：胶囊式分段控件，三个按钮等宽平分 */
 .search-buttons {
     display: flex;
-    gap: 8px;
     margin-left: auto;
+    padding: 4px;
+    gap: 2px;
+    background-color: color-mix(in oklch, var(--primary-color) 10%, transparent);
+    border-radius: var(--rounded-full);
+    flex-shrink: 0;
 }
 
-/* 搜索按钮样式 */
+/* 搜索按钮：等宽分段，继承胶囊圆角 */
 .search-button {
-    background-color: var(--primary-light);
-    color: var(--primary-color);
+    background-color: transparent;
+    color: var(--text-secondary);
     border: none;
-    padding: 10px 16px;
-    border-radius: var(--rounded-sm);
+    padding: 8px 18px;
+    border-radius: var(--rounded-full);
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
     font-size: 14px;
-    transition: all var(--transition-fast) ease;
+    transition:
+        background-color var(--transition-fast) ease,
+        color var(--transition-fast) ease;
     margin: 0;
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
 }
 
-/* 搜索按钮的 hover 样式 */
+/* 搜索按钮的 hover 样式：整格填充主色 + 白字 */
 .search-button:hover {
     background-color: var(--primary-color);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
+    color: #ffffff;
+    transform: none;
+    box-shadow: none;
 }
 
 /* 搜索按钮的点击样式 */
 .search-button:active {
-    transform: translateY(0);
+    transform: scale(0.97);
+}
+
+/* 搜索按钮图标（logo）定位 */
+.search-button-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    border-radius: 3px;
+    flex-shrink: 0;
+    pointer-events: none;
+    display: block;
+}
+
+/* 图标 + 文字：横向排列居中 */
+.search-button.search-button-has-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+/* 仅图标：内容居中 */
+.search-button.search-button-icon-only {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 图标加载失败时（onerror）回退，保持按钮不塌陷 */
+.search-button.icon-failed.search-button-icon-only::after {
+    content: attr(aria-label);
+    font-size: 13px;
 }
 
 /* 夜间模式的样式 */
+.dark-mode .search-container {
+    background-color: rgba(15, 23, 42, 0.72);
+    border-color: rgba(148, 163, 184, 0.18);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+}
+
 .dark-mode #search-input {
-    background-color: #2c3035;
-    color: #e9ecef;
-    border-color: #3d4249;
+    background: transparent;
+    color: var(--text-primary);
+    border: none;
+    box-shadow: none;
 }
 
 .dark-mode .search-button {
-    background-color: #3d4249;
-    color: #e9ecef;
-    border-color: #4d525b;
+    color: var(--text-secondary);
+    border: none;
+}
+
+.dark-mode .search-buttons {
+    background-color: color-mix(in oklch, var(--primary-color) 14%, transparent);
 }
 
 .dark-mode .search-button:hover {
-    background-color: #454c55;
+    background-color: var(--primary-color);
     color: #ffffff;
 }
 
 /* 夜间模式下的搜索框获取焦点时的样式 */
 .dark-mode #search-input:focus {
-    border-color: #5b7caa;
-    box-shadow: 0 0 0 3px rgba(91, 124, 170, 0.15);
+    border-color: transparent;
+    box-shadow: none;
 }
 
 /* 夜间模式下固定搜索框背景 */
 .dark-mode .search-container.fixed {
-    background-color: var(--bg-color, #212529);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background-color: rgba(15, 23, 42, 0.88);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
 }
 
 /* 响应式设计 */
@@ -186,16 +235,17 @@
         width: 100%;
         padding: 10px 15px;
         text-align: center;
+        min-width: 0;
     }
     
     .search-buttons {
         width: 100%;
-        margin: 8px 0;
-        justify-content: center;
+        margin: 8px 0 0;
+        justify-content: stretch;
     }
-    
+
     .search-button {
-        padding: 8px 14px;
+        padding: 8px 10px;
         font-size: 13px;
     }
 }
