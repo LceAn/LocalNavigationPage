@@ -544,3 +544,15 @@ Apache-2.0 License - 详见 [LICENSE](LICENSE) 文件
 ---
 
 [English](#local-navigation-page) | [中文](#local-navigation-page)
+
+---
+
+<!-- repo-readme-standard:v1 -->
+## 仓库维护信息
+
+- 项目类型：产品/工具
+- 当前状态：近期维护
+- 可见性：public
+- 维护节奏：每月只选 1-2 个小更新
+- 相关仓库：无已确认的重复仓库关系；如需合并请先核对功能边界。
+- 维护边界：普通文档和代码更新可直接提交；归档、删除、历史重写或强制推送需单独确认。
