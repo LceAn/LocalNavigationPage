@@ -1,0 +1,8 @@
+{
+  "name": "local-navigation-page",
+  "version": "1.4.0",
+  "private": true,
+  "scripts": {
+    "validate": "node scripts/validate.mjs"
+  }
+}
