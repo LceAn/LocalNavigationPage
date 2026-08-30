@@ -4427,7 +4427,7 @@ function renderViewTabs(allLinks) {
     const all = ['全部', ...categories];
     tabsEl.innerHTML = all.map(name => {
         const isActive = (name === '全部' && !currentViewCategory) || name === currentViewCategory;
-        return `<button type="button" class="view-tab ${isActive ? 'active' : ''}" data-view="${escapeHTML(name)}">${escapeHTML(name)}</button>`;
+        return `<button type="button" class="view-tab ${isActive ? 'active' : ''}" data-view="${escapeHTML(name)}" aria-pressed="${isActive}">${escapeHTML(name)}</button>`;
     }).join('');
     tabsEl.querySelectorAll('.view-tab').forEach(btn => {
         btn.addEventListener('click', (event) => {
