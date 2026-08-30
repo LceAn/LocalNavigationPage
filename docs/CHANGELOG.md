@@ -1,5 +1,30 @@
 # 更新日志 (CHANGELOG)
 
+## [1.5.2] - 2026-08-30
+
+### 🔒 安全
+
+- 数据规范化层强制 URL 协议白名单：导入/存储的链接地址在渲染过滤之外再加一道
+  http/https/mailto/tel/ftp/file 校验，地址全部非法的链接直接丢弃
+- 修复 nginx 安全响应头丢失：带自定义 Cache-Control 的路由（links.json、CSS/JS、
+  字体）此前因 add_header 继承规则拿不到 4 个安全头，改用 expires 并显式重复
+- robots.txt 全站 Disallow + 页面 noindex/nofollow（个人导航页不应被搜索引擎收录）
+
+### ✨ 新增
+
+- Service Worker 离线缓存：导航与 links.json 网络优先，静态资源缓存优先 +
+  后台更新；断网时页面与已缓存数据完整可用
+- 保存链接时检测重复地址并提示（不阻止保存）
+- 首页空状态引导（无链接时不再留白）
+- PWA manifest 增加 id 字段
+
+### ⚙️ 工程
+
+- SECURITY.md：私有数据处理约定与漏洞报告渠道
+- FEATURES_ROADMAP 勾选早已上线的历史条目
+- 链接设置搜索输入 180ms 防抖
+
+
 ## [1.5.1] - 2026-08-30
 
 ### 🎨 分组展示重做
