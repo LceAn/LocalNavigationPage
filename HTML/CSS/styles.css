@@ -539,6 +539,13 @@ body.home-glass-enabled .datetime-chip {
   outline-offset: 2px;
 }
 
+/* 分组头可键盘聚焦（tabindex=0），给出可见焦点环 */
+.category-header:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+  border-radius: var(--rounded-md);
+}
+
 .home-category-toggle-icon {
   width: 22px;
   height: 22px;
