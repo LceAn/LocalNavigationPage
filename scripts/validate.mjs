@@ -1,5 +1,5 @@
 import { readFileSync, statSync } from 'node:fs';
-import { dirname, join, normalize, resolve } from 'node:path';
+import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -67,7 +67,8 @@ for (const reference of references) {
   const cleanReference = reference.split(/[?#]/, 1)[0];
   if (!cleanReference) continue;
   const target = normalize(join(htmlRoot, cleanReference));
-  if (!target.startsWith(`${htmlRoot}/`)) {
+  const relFromRoot = relative(htmlRoot, target);
+  if (relFromRoot.startsWith('..') || isAbsolute(relFromRoot)) {
     errors.push(`HTML/index.html: 资源路径越界 ${reference}`);
     continue;
   }

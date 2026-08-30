@@ -12,9 +12,10 @@
     <meta property="og:description" content="轻量级个人本地网络导航页：自定义链接分类、多搜索引擎、时钟天气、深色模式。">
     <meta property="og:locale" content="zh_CN">
     <meta name="twitter:card" content="summary">
-    <link rel="stylesheet" href="CSS/styles.css?v=20260623-minfix">
-	<link rel="stylesheet" href="CSS/search_input.css?v=20260623-minfix">
-	<link rel="stylesheet" href="CSS/settings_box.css?v=20260623-minfix">
+    <link rel="stylesheet" href="CSS/tokens.css?v=20260627-settings-ia">
+    <link rel="stylesheet" href="CSS/styles.css?v=20260829-tiles3">
+	<link rel="stylesheet" href="CSS/search_input.css?v=20260627-settings-ia">
+	<link rel="stylesheet" href="CSS/settings_box.css?v=20260627-settings-ia">
     <!-- 提前建立第三方连接，省去首屏 3 次 TLS 往返 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,6 +30,21 @@
 </head>
 
 <body>
+    <script>
+        // 首帧前应用夜间主题，避免 darkMode.js 在 DOMContentLoaded 才执行导致的闪白
+        (function () {
+            var dark = false;
+            try {
+                var s = JSON.parse(localStorage.getItem('lnp:settings') || '{}');
+                var theme = s.theme || (s.darkMode === 'enabled' ? 'dark' : 'light');
+                if (theme === 'auto') {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                dark = theme === 'dark';
+            } catch (e) { /* 读不到设置按日间渲染 */ }
+            if (dark) document.body.classList.add('dark-mode');
+        })();
+    </script>
     <!-- 跳到主内容（键盘可访问性） -->
     <a href="#link-container" class="skip-link">跳到主内容</a>
 
@@ -51,13 +67,53 @@
 
     <!-- 显示闪现消息 -->
     <div id="message-container"	class="alert alert-success"></div>
+
+    <!-- 极简模式背景：侧边竖排时钟 + 底部层叠波浪（几枝风格：3 层正弦波，传统低饱和色） -->
+    <div id="minimal-clock-bg" class="minimal-clock-bg" hidden>
+        <div class="minimal-clock-time" id="minimal-clock-hm">00:00</div>
+        <div class="minimal-clock-seconds" id="minimal-clock-sec">00</div>
+    </div>
+    <div id="minimal-wave" class="minimal-wave" hidden aria-hidden="true">
+        <!-- 单个无缝循环正弦波：path 跨度 = 3 个视口宽，translateX 0→-33.333% 无缝循环。
+             顶部淡出用每层 SVG 内的 linearGradient（合成层友好，替代会卡顿的 mask-image）。 -->
+        <div class="minimal-wave-layer minimal-wave-layer--back">
+            <svg viewBox="0 0 3000 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                <defs><linearGradient id="wave-grad-back" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="oklch(72% 0.10 268)" stop-opacity="0"/>
+                    <stop offset="0.22" stop-color="oklch(72% 0.10 268)" stop-opacity="0.20"/>
+                    <stop offset="1" stop-color="oklch(72% 0.10 268)" stop-opacity="0.20"/>
+                </linearGradient></defs>
+                <path fill="url(#wave-grad-back)" d="M0,160 C 150,100 300,100 450,160 C 600,220 750,220 900,160 C 1050,100 1200,100 1350,160 C 1500,220 1650,220 1800,160 C 1950,100 2100,100 2250,160 C 2400,220 2550,220 2700,160 C 2850,100 3000,100 3000,160 L3000,320 L0,320 Z"/>
+            </svg>
+        </div>
+        <div class="minimal-wave-layer minimal-wave-layer--mid">
+            <svg viewBox="0 0 3000 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                <defs><linearGradient id="wave-grad-mid" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="oklch(75% 0.09 200)" stop-opacity="0"/>
+                    <stop offset="0.22" stop-color="oklch(75% 0.09 200)" stop-opacity="0.22"/>
+                    <stop offset="1" stop-color="oklch(75% 0.09 200)" stop-opacity="0.22"/>
+                </linearGradient></defs>
+                <path fill="url(#wave-grad-mid)" d="M0,180 C 150,120 300,120 450,180 C 600,240 750,240 900,180 C 1050,120 1200,120 1350,180 C 1500,240 1650,240 1800,180 C 1950,120 2100,120 2250,180 C 2400,240 2550,240 2700,180 C 2850,120 3000,120 3000,180 L3000,320 L0,320 Z"/>
+            </svg>
+        </div>
+        <div class="minimal-wave-layer minimal-wave-layer--front">
+            <svg viewBox="0 0 3000 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                <defs><linearGradient id="wave-grad-front" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="oklch(74% 0.08 45)" stop-opacity="0"/>
+                    <stop offset="0.22" stop-color="oklch(74% 0.08 45)" stop-opacity="0.24"/>
+                    <stop offset="1" stop-color="oklch(74% 0.08 45)" stop-opacity="0.24"/>
+                </linearGradient></defs>
+                <path fill="url(#wave-grad-front)" d="M0,200 C 150,140 300,140 450,200 C 600,260 750,260 900,200 C 1050,140 1200,140 1350,200 C 1500,260 1650,260 1800,200 C 1950,140 2100,140 2250,200 C 2400,260 2550,260 2700,200 C 2850,140 3000,140 3000,200 L3000,320 L0,320 Z"/>
+            </svg>
+        </div>
+    </div>
     <!-- 右上角按钮容器 -->
-    <!-- 极简模式：左下角搜索图标（悬停展开搜索框） -->
+    <!-- 极简模式：左上角搜索按钮（悬停展开搜索框，使用设置里的默认搜索引擎） -->
     <div id="minimal-search" class="minimal-search" hidden>
         <div class="minimal-search-expander">
             <i class="ri-search-line" aria-hidden="true"></i>
             <form class="minimal-search-form" id="minimal-search-form" autocomplete="off">
-                <input type="text" id="minimal-search-input" placeholder="搜索…" aria-label="搜索">
+                <input type="text" id="minimal-search-input" class="minimal-search-input" placeholder="搜索…" aria-label="搜索">
             </form>
         </div>
     </div>
@@ -115,18 +171,8 @@
                     <button class="search-button" data-engine="必应">必应</button>
                 </div>
             </div>
-            <div class="home-category-toolbar" id="home-category-toolbar">
-                <button type="button" class="home-category-toggle" id="home-category-toggle" aria-expanded="false">
-                    <span class="home-category-toggle-icon">
-                        <i class="ri-folder-2-line"></i>
-                    </span>
-                    <span class="home-category-toggle-text">分类</span>
-                    <small id="home-category-summary">0 个分类</small>
-                    <i class="ri-arrow-down-s-line home-category-toggle-arrow"></i>
-                </button>
-            </div>
         </div>
-        
+
         <!-- 最近使用（快捷访问） -->
         <div id="recent-links" class="recent-links" hidden></div>
 
@@ -147,40 +193,66 @@
                     <i class="ri-settings-3-line" aria-hidden="true"></i>
                     <h2 id="settings-title">设置</h2>
                 </div>
-                <button id="close-settings" class="icon-button" title="关闭设置">
-                    <i class="ri-close-line"></i>
-                </button>
+                <div class="header-actions">
+                    <button id="open-about" class="icon-button" title="关于" aria-label="关于本应用">
+                        <i class="ri-information-line"></i>
+                    </button>
+                    <button id="close-settings" class="icon-button" title="关闭设置">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
             </div>
             
             <!-- 标签页导航 -->
             <div class="settings-tabs">
                 <button class="tab-button active" data-tab="links">
                     <i class="ri-links-line"></i>
-                    <span>链接与分组</span>
+                    <span class="tab-button-text">
+                        <span>链接与分组</span>
+                        <small>网址、分类、标签</small>
+                    </span>
                 </button>
                 <button class="tab-button" data-tab="appearance">
                     <i class="ri-palette-line"></i>
-                    <span>外观</span>
+                    <span class="tab-button-text">
+                        <span>外观</span>
+                        <small>主题、背景、质感</small>
+                    </span>
                 </button>
                 <button class="tab-button" data-tab="layout">
                     <i class="ri-layout-grid-line"></i>
-                    <span>布局</span>
+                    <span class="tab-button-text">
+                        <span>布局</span>
+                        <small>密度、组件、工具栏</small>
+                    </span>
                 </button>
                 <button class="tab-button" data-tab="homecontent">
                     <i class="ri-home-smile-line"></i>
-                    <span>首页内容</span>
+                    <span class="tab-button-text">
+                        <span>首页内容</span>
+                        <small>时间、天气、标题</small>
+                    </span>
                 </button>
                 <button class="tab-button" data-tab="search">
                     <i class="ri-search-line"></i>
-                    <span>搜索引擎</span>
+                    <span class="tab-button-text">
+                        <span>搜索引擎</span>
+                        <small>默认、排序、模板</small>
+                    </span>
                 </button>
                 <button class="tab-button" data-tab="data">
                     <i class="ri-database-2-line"></i>
-                    <span>数据</span>
+                    <span class="tab-button-text">
+                        <span>数据</span>
+                        <small>备份、导入、存储</small>
+                    </span>
                 </button>
                 <button class="tab-button" data-tab="about">
                     <i class="ri-information-line"></i>
-                    <span>关于</span>
+                    <span class="tab-button-text">
+                        <span>关于</span>
+                        <small>版本、说明、项目</small>
+                    </span>
                 </button>
             </div>
 
@@ -190,7 +262,7 @@
                 <button type="button" id="clear-settings-search" title="清空设置搜索">
                     <i class="ri-close-line"></i>
                 </button>
-                <span id="settings-search-count"></span>
+                <span id="settings-search-count" aria-live="polite"></span>
             </div>
             
             <!-- 标签页内容 -->
@@ -407,11 +479,14 @@
                 <div class="tab-content" id="appearance-tab">
                     <div class="tab-header">
                         <i class="ri-palette-line"></i>
-                        <h3>外观</h3>
+                        <div>
+                            <h3>外观</h3>
+                            <p>控制主题、首页背景、玻璃质感和内容显示细节</p>
+                        </div>
                     </div>
 
                     <!-- 主题模式 -->
-                    <div class="settings-section">
+                    <div class="settings-section" data-section-id="appearance.theme">
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-sun-line"></i>
@@ -449,7 +524,7 @@
                     </div>
                     
                     <!-- 首页视觉 -->
-                    <div class="settings-section">
+                    <div class="settings-section" data-section-id="appearance.visual">
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-bubble-chart-line"></i>
@@ -515,8 +590,8 @@
                         </div>
                     </div>
 
-                    <!-- 内容显示 -->
-                    <div class="settings-section">
+                    <!-- 内容显示（从「首页内容」迁入：紧凑/缩略图/动画/搜索按钮图标 属视觉外观） -->
+                    <div class="settings-section" data-section-id="appearance.display">
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-eye-line"></i>
@@ -577,11 +652,14 @@
                 <div class="tab-content" id="layout-tab">
                     <div class="tab-header">
                         <i class="ri-layout-grid-line"></i>
-                        <h3>布局</h3>
+                        <div>
+                            <h3>布局</h3>
+                            <p>调整首页空间、分组行为、右上角工具栏和自定义按钮</p>
+                        </div>
                     </div>
 
                     <!-- 界面布局 -->
-                    <div class="settings-section">
+                    <div class="settings-section" data-section-id="layout.interface">
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-layout-grid-line"></i>
@@ -619,10 +697,35 @@
                                         <span>打开时展开首个分组</span>
                                     </div>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" id="default-expand-all">
+                                        <input type="checkbox" id="default-expand-first">
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-cursor-line"></i>
+                                        <span>点击空白收起分组</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="home-click-blank-collapse" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 极简模式（§2.2：从「界面布局」独立成区，开关 + 子配置内聚） -->
+                    <div class="settings-section" data-section-id="layout.minimal">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-focus-3-line"></i>
+                                <span>极简模式</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
                                 <div class="option-item">
                                     <div class="option-header">
                                         <i class="ri-focus-3-line"></i>
@@ -633,12 +736,43 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                                <!-- §3.3：子项默认为「禁用态」（可见但灰），开启极简模式后激活，
+                                     提升可发现性，避免完全隐藏导致用户不知还有可调项 -->
+                                <div class="option-item minimal-sub-option option-item-gated" data-gate="minimal-mode-toggle">
+                                    <div class="option-header">
+                                        <i class="ri-time-line"></i>
+                                        <span>时钟方向</span>
+                                    </div>
+                                    <select id="minimal-clock-orient" class="format-select">
+                                        <option value="vertical-two">竖排 · 两行</option>
+                                        <option value="vertical-glyph">竖排 · 逐字</option>
+                                        <option value="horizontal">横排</option>
+                                    </select>
+                                </div>
+                                <div class="option-item minimal-sub-option option-item-gated" data-gate="minimal-mode-toggle">
+                                    <div class="option-header">
+                                        <i class="ri-layout-grid-line"></i>
+                                        <span>时钟位置</span>
+                                    </div>
+                                    <select id="minimal-clock-position" class="format-select">
+                                        <option value="left-center">左 · 中</option>
+                                        <option value="left-top">左 · 上</option>
+                                        <option value="left-bottom">左 · 下</option>
+                                        <option value="center-center">中 · 中</option>
+                                        <option value="center-top">中 · 上</option>
+                                        <option value="center-bottom">中 · 下</option>
+                                        <option value="right-center">右 · 中</option>
+                                        <option value="right-top">右 · 上</option>
+                                        <option value="right-bottom">右 · 下</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- 首页组件 -->
-                    <div class="settings-section">
+
+                    <!-- 首页组件（含信息条/搜索框/最近使用 + 工具栏按钮显隐 + 自定义按钮） -->
+                    <!-- §2.1：原「首页内容 → 首页工具栏」已迁入此处，统一为「首页组件」分区 -->
+                    <div class="settings-section" data-section-id="layout.components">
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-layout-2-line"></i>
@@ -668,198 +802,16 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 时间与天气 -->
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <div class="section-title-left">
-                                <i class="ri-time-line"></i>
-                                <span>时间与天气</span>
-                            </div>
-                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
-                        </div>
-                        <div class="section-content">
-                            <div class="layout-options">
                                 <div class="option-item">
                                     <div class="option-header">
-                                        <i class="ri-cursor-line"></i>
-                                        <span>点击空白收起分组</span>
+                                        <i class="ri-time-line"></i>
+                                        <span>显示最近使用</span>
                                     </div>
                                     <label class="toggle-switch">
-                                        <input type="checkbox" id="home-click-blank-collapse" checked>
+                                        <input type="checkbox" id="show-recent-links" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div><!-- /layout-tab -->
-
-                <!-- 首页内容标签页 -->
-                <div class="tab-content" id="homecontent-tab">
-                    <div class="tab-header">
-                        <i class="ri-home-smile-line"></i>
-                        <h3>首页内容</h3>
-                    </div>
-
-                    <!-- 时间与日期 -->
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <div class="section-title-left">
-                                <i class="ri-time-line"></i>
-                                <span>时间与日期</span>
-                            </div>
-                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
-                        </div>
-                        <div class="section-content">
-                            <div class="layout-options">
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-time-line"></i>
-                                            <span>显示时间</span>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="show-time-toggle" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-calendar-line"></i>
-                                            <span>显示日期</span>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="show-date-toggle" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-seconds-line"></i>
-                                            <span>显示秒数</span>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="show-seconds-toggle" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="option-item">
-                                        <div class="option-header">
-                                            <i class="ri-time-zone-line"></i>
-                                            <span>24 小时制</span>
-                                        </div>
-                                        <label class="toggle-switch">
-                                            <input type="checkbox" id="24hour-toggle" checked>
-                                            <span class="toggle-slider"></span>
-                                        </label>
-                                </div>
-                                <div class="date-format-selector" style="margin-top: 12px;">
-                                    <select id="date-format-select" class="format-select">
-                                        <option value="cn">YYYY 年 MM 月 DD 日</option>
-                                        <option value="cn-short">MM 月 DD 日</option>
-                                        <option value="us">MM/DD/YYYY</option>
-                                        <option value="eu">DD/MM/YYYY</option>
-                                        <option value="iso">YYYY-MM-DD</option>
-                                        <option value="cn-week">YYYY 年 MM 月 DD 日 星期 W</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 天气显示 -->
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <div class="section-title-left">
-                                <i class="ri-cloud-line"></i>
-                                <span>天气显示</span>
-                            </div>
-                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
-                        </div>
-                        <div class="section-content">
-                            <div class="weather-settings">
-                                <div class="option-item">
-                                    <div class="option-header">
-                                        <i class="ri-cloud-line"></i>
-                                        <span>显示天气</span>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="show-weather-toggle" checked>
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                                <div class="form-item" style="margin-top: 12px;">
-                                    <label for="weather-city-input">
-                                        <i class="ri-map-pin-line"></i>
-                                        <span>城市名称</span>
-                                    </label>
-                                    <div class="input-wrapper">
-                                        <i class="ri-map-pin-line input-icon"></i>
-                                        <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
-                                    </div>
-                                    <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
-                                </div>
-                                <div class="form-item" style="margin-top: 12px;">
-                                    <label for="weather-unit-select">
-                                        <i class="ri-temperature-line"></i>
-                                        <span>温度单位</span>
-                                    </label>
-                                    <select id="weather-unit-select" class="format-select">
-                                        <option value="C">摄氏度 (°C)</option>
-                                        <option value="F">华氏度 (°F)</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 网站设置 -->
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <div class="section-title-left">
-                                <i class="ri-edit-line"></i>
-                                <span>网站设置</span>
-                            </div>
-                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
-                        </div>
-                        <div class="section-content">
-                        <div class="layout-options">
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-text"></i>
-                                    <span>网站标题</span>
-                                </div>
-                                <input type="text" id="site-title-input" placeholder="我的导航" class="format-select">
-                            </div>
-                            <div class="option-item">
-                                <div class="option-header">
-                                    <i class="ri-heading"></i>
-                                    <span>在首页显示标题</span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="show-home-title" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 快捷按钮显示 -->
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <div class="section-title-left">
-                                <i class="ri-function-line"></i>
-                                <span>首页按钮</span>
-                            </div>
-                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
-                        </div>
-                        <div class="section-content">
-                            <div class="button-settings-grid">
                                 <div class="option-item">
                                     <div class="option-header">
                                         <i class="ri-sun-line"></i>
@@ -913,7 +865,7 @@
                             </div>
                             <div class="settings-note">
                                 <i class="ri-keyboard-line"></i>
-                                <span>隐藏设置按钮后，可按 Ctrl/Cmd + , 重新打开设置。</span>
+                                <span>工具栏按钮隐藏后，可通过设置或快捷键恢复；隐藏设置按钮后，可按 Ctrl/Cmd + , 重新打开设置。</span>
                             </div>
                             <div class="custom-buttons-header">
                                 <div>
@@ -930,39 +882,254 @@
                             </div>
                         </div>
                     </div>
+
+                </div><!-- /layout-tab -->
+
+                <!-- 首页内容标签页 -->
+                <div class="tab-content" id="homecontent-tab">
+                    <div class="tab-header">
+                        <i class="ri-home-smile-line"></i>
+                        <div>
+                            <h3>首页内容</h3>
+                            <p>决定首页展示哪些信息，以及这些信息怎么显示</p>
+                        </div>
+                    </div>
+
+                    <!-- 时间与日期 -->
+                    <div class="settings-section" data-section-id="homecontent.time">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-time-line"></i>
+                                <span>时间与日期</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-time-line"></i>
+                                            <span>显示时间</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-time-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-calendar-line"></i>
+                                            <span>显示日期</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-date-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-seconds-line"></i>
+                                            <span>显示秒数</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="show-seconds-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="option-item">
+                                        <div class="option-header">
+                                            <i class="ri-time-zone-line"></i>
+                                            <span>24 小时制</span>
+                                        </div>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="24hour-toggle" checked>
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-calendar-2-line"></i>
+                                        <span>日期格式</span>
+                                    </div>
+                                    <select id="date-format-select" class="format-select">
+                                        <option value="cn">YYYY 年 MM 月 DD 日</option>
+                                        <option value="cn-short">MM 月 DD 日</option>
+                                        <option value="us">MM/DD/YYYY</option>
+                                        <option value="eu">DD/MM/YYYY</option>
+                                        <option value="iso">YYYY-MM-DD</option>
+                                        <option value="cn-week">YYYY 年 MM 月 DD 日 星期 W</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 天气显示 -->
+                    <div class="settings-section" data-section-id="homecontent.weather">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-cloud-line"></i>
+                                <span>天气显示</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="weather-settings">
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-cloud-line"></i>
+                                        <span>显示天气</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="show-weather-toggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="option-item option-item-stacked">
+                                    <div class="option-header">
+                                        <i class="ri-map-pin-line"></i>
+                                        <span>城市名称</span>
+                                    </div>
+                                    <div class="input-wrapper">
+                                        <i class="ri-map-pin-line input-icon"></i>
+                                        <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
+                                    </div>
+                                    <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-temperature-line"></i>
+                                        <span>温度单位</span>
+                                    </div>
+                                    <select id="weather-unit-select" class="format-select">
+                                        <option value="C">摄氏度 (°C)</option>
+                                        <option value="F">华氏度 (°F)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 网站设置 -->
+                    <div class="settings-section" data-section-id="homecontent.site">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-edit-line"></i>
+                                <span>网站设置</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                        <div class="layout-options">
+                            <div class="option-item option-item-stacked">
+                                <div class="option-header">
+                                    <i class="ri-input-method-line"></i>
+                                    <span>网站标题</span>
+                                </div>
+                                <div class="input-wrapper">
+                                    <input type="text" id="site-title-input" placeholder="我的导航">
+                                </div>
+                            </div>
+                            <div class="option-item">
+                                <div class="option-header">
+                                    <i class="ri-heading"></i>
+                                    <span>在首页显示标题</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="show-home-title" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+
+                    <!-- 内容显示（已迁移到「外观」标签页：这些是视觉外观设置，归外观更合理） -->
+
+                    <!-- 首页工具栏（已迁入「布局 → 首页组件」分区，§2.1） -->
                 </div>
-                
+
                 <!-- 搜索引擎管理标签页 -->
                 <div class="tab-content" id="search-tab">
                     <div class="tab-header">
                         <i class="ri-search-line"></i>
-                        <h3>搜索引擎管理</h3>
-                    </div>
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-list-settings-line"></i>
-                            <span>搜索引擎列表</span>
-                        </div>
-                        <div class="search-engine-list" id="search-engine-list">
-                            <!-- 动态填充分类列表 -->
-                        </div>
-                        <div class="search-engine-add">
-                            <button class="btn-primary" id="add-search-engine-btn">
-                                <i class="ri-add-line"></i>
-                                <span>添加搜索引擎</span>
-                            </button>
+                        <div>
+                            <h3>搜索引擎</h3>
+                            <p>管理搜索按钮、默认引擎、排序和 URL 模板</p>
                         </div>
                     </div>
-                    <div class="settings-section">
+                    <div class="settings-section" data-section-id="search.list">
                         <div class="section-title">
-                            <i class="ri-lightbulb-line"></i>
-                            <span>使用说明</span>
+                            <div class="section-title-left">
+                                <i class="ri-list-settings-line"></i>
+                                <span>搜索引擎列表</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
-                        <div class="search-hint">
-                            <p>• 点击搜索引擎名称可编辑，修改名称和搜索 URL 模板</p>
-                            <p>• 拖动搜索引擎可调整顺序</p>
-                            <p>• 搜索 URL 模板中用 <code>%s</code> 表示搜索关键词</p>
-                            <p>• 例如：百度的搜索 URL 是 <code>https://www.baidu.com/s?wd=%s</code></p>
+                        <div class="section-content">
+                            <div class="search-engine-list" id="search-engine-list">
+                                <!-- 动态填充分类列表 -->
+                            </div>
+                            <div class="search-engine-add">
+                                <button class="btn-primary" id="add-search-engine-btn">
+                                    <i class="ri-add-line"></i>
+                                    <span>添加搜索引擎</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="search.default">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-settings-2-line"></i>
+                                <span>默认与测试</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-star-line"></i>
+                                        <span>默认搜索引擎</span>
+                                    </div>
+                                    <select id="default-search-engine" class="format-select">
+                                        <!-- 动态填充 -->
+                                    </select>
+                                </div>
+                                <div class="option-item option-item-stacked">
+                                    <div class="option-header">
+                                        <i class="ri-test-tube-line"></i>
+                                        <span>测试搜索</span>
+                                    </div>
+                                    <div class="input-wrapper">
+                                        <i class="ri-search-line input-icon"></i>
+                                        <input type="text" id="search-engine-test-input" placeholder="输入关键词测试 URL 模板" value="test">
+                                    </div>
+                                    <button type="button" class="btn-secondary" id="search-engine-test-btn" style="margin-top: 8px; width: 100%;">
+                                        <i class="ri-external-link-line"></i>
+                                        <span>打开测试搜索</span>
+                                    </button>
+                                    <small class="form-hint" id="search-engine-test-url">将使用默认引擎打开新标签页</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="search.help">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-lightbulb-line"></i>
+                                <span>使用说明</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="search-hint">
+                                <p>• 点击搜索引擎名称可编辑，修改名称和搜索 URL 模板</p>
+                                <p>• 拖动搜索引擎可调整顺序</p>
+                                <p>• 搜索 URL 模板中用 <code>%s</code> 表示搜索关键词</p>
+                                <p>• 例如：百度的搜索 URL 是 <code>https://www.baidu.com/s?wd=%s</code></p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -983,11 +1150,11 @@
                             <div class="form-grid" style="grid-template-columns: 1fr;">
                                 <div class="form-item">
                                     <label for="search-engine-name">
-                                        <i class="ri-text"></i>
+                                        <i class="ri-input-method-line"></i>
                                         <span>引擎名称</span>
                                     </label>
                                     <div class="input-wrapper">
-                                        <i class="ri-text input-icon"></i>
+                                        <i class="ri-input-method-line input-icon"></i>
                                         <input type="text" id="search-engine-name" placeholder="例如：百度">
                                     </div>
                                 </div>
@@ -1042,11 +1209,11 @@
                             <div class="form-grid" style="grid-template-columns: 1fr;">
                                 <div class="form-item">
                                     <label for="top-button-label">
-                                        <i class="ri-text"></i>
+                                        <i class="ri-input-method-line"></i>
                                         <span>按钮名称</span>
                                     </label>
                                     <div class="input-wrapper">
-                                        <i class="ri-text input-icon"></i>
+                                        <i class="ri-input-method-line input-icon"></i>
                                         <input type="text" id="top-button-label" placeholder="例如：GitHub">
                                     </div>
                                 </div>
@@ -1090,61 +1257,108 @@
                 <div class="tab-content" id="data-tab">
                     <div class="tab-header">
                         <i class="ri-database-2-line"></i>
-                        <h3>数据管理</h3>
+                        <div>
+                            <h3>数据</h3>
+                            <p>备份、导入、清理和查看当前浏览器里的保存状态</p>
+                        </div>
                     </div>
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-download-line"></i>
-                            <span>导出与导入</span>
+                    <div class="settings-section" data-section-id="data.import-export">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-download-line"></i>
+                                <span>导出与导入</span>
+                            </div>
                         </div>
-                        <div class="data-actions">
-                            <button class="data-action-btn" id="export-data">
-                                <i class="ri-download-cloud-2-line"></i>
-                                <span>导出完整配置</span>
-                                <small>备份链接、分组、外观和所有设置</small>
-                            </button>
-                            <button class="data-action-btn" id="import-data">
-                                <i class="ri-upload-cloud-2-line"></i>
-                                <span>导入完整配置</span>
-                                <small>恢复备份文件里的链接和设置</small>
-                            </button>
-                            <input type="file" id="import-file" accept=".json" style="display: none;">
+                        <div class="section-content">
+                            <div class="data-actions">
+                                <button class="data-action-btn" id="export-data">
+                                    <i class="ri-download-cloud-2-line"></i>
+                                    <span>导出完整配置</span>
+                                    <small>备份链接、分组、外观和所有设置</small>
+                                </button>
+                                <button class="data-action-btn" id="import-data">
+                                    <i class="ri-upload-cloud-2-line"></i>
+                                    <span>导入完整配置</span>
+                                    <small>恢复备份文件里的链接和设置</small>
+                                </button>
+                                <input type="file" id="import-file" accept=".json" style="display: none;">
+                            </div>
                         </div>
-                        <div class="data-action-row">
-                            <button id="import-bookmarks-btn" class="data-action-btn">
-                                <i class="ri-bookmark-line" aria-hidden="true"></i>
-                                <div class="data-action-text">
-                                    <span>从浏览器书签导入</span>
-                                    <small>导入 .html 书签文件或 .csv（自动归类到分组）</small>
+                    </div>
+                    <div class="settings-section" data-section-id="data.bookmarks">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-bookmark-line"></i>
+                                <span>书签导入</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <div class="data-action-row">
+                                <button id="import-bookmarks-btn" class="data-action-btn">
+                                    <i class="ri-bookmark-line" aria-hidden="true"></i>
+                                    <div class="data-action-text">
+                                        <span>从浏览器书签导入</span>
+                                        <small>导入 .html 书签文件或 .csv（自动归类到分组）</small>
+                                    </div>
+                                </button>
+                                <input type="file" id="import-bookmarks-file" accept=".html,.htm,.csv" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="data.safety">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-shield-keyhole-line"></i>
+                                <span>数据安全</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <div class="data-actions">
+                                <button class="data-action-btn danger" id="clear-cache">
+                                    <i class="ri-delete-bin-line"></i>
+                                    <span>清除缓存</span>
+                                    <small>清除本地缓存数据</small>
+                                </button>
+                                <button class="data-action-btn danger" id="reset-all">
+                                    <i class="ri-refresh-line"></i>
+                                    <span>重置所有</span>
+                                    <small>恢复默认设置和数据</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="data.storage">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-storage-line"></i>
+                                <span>存储信息</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <div class="storage-info">
+                                <div class="storage-item">
+                                    <span class="storage-label">链接数量</span>
+                                    <span class="storage-value" id="storage-links-count">0</span>
                                 </div>
-                            </button>
-                            <input type="file" id="import-bookmarks-file" accept=".html,.htm,.csv" style="display: none;">
+                                <div class="storage-item">
+                                    <span class="storage-label">数据大小</span>
+                                    <span class="storage-value" id="storage-size">0 KB</span>
+                                </div>
+                                <div class="storage-item">
+                                    <span class="storage-label">最后更新</span>
+                                    <span class="storage-value" id="storage-last-update">-</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-shield-keyhole-line"></i>
-                            <span>数据安全</span>
+                    <div class="settings-section" data-section-id="data.persistence">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-save-3-line"></i>
+                                <span>保存机制</span>
+                            </div>
                         </div>
-                        <div class="data-actions">
-                            <button class="data-action-btn danger" id="clear-cache">
-                                <i class="ri-delete-bin-line"></i>
-                                <span>清除缓存</span>
-                                <small>清除本地缓存数据</small>
-                            </button>
-                            <button class="data-action-btn danger" id="reset-all">
-                                <i class="ri-refresh-line"></i>
-                                <span>重置所有</span>
-                                <small>恢复默认设置和数据</small>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-save-3-line"></i>
-                            <span>保存方式</span>
-                        </div>
-                        <div class="storage-info">
+                        <div class="section-content">
                             <div class="settings-persist-note">
                                 <i class="ri-information-line"></i>
                                 <div>
@@ -1154,40 +1368,22 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="settings-section">
-                        <div class="section-title">
-                            <i class="ri-storage-line"></i>
-                            <span>存储信息</span>
-                        </div>
-                        <div class="storage-info">
-                            <div class="storage-item">
-                                <span class="storage-label">链接数量</span>
-                                <span class="storage-value" id="storage-links-count">0</span>
-                            </div>
-                            <div class="storage-item">
-                                <span class="storage-label">数据大小</span>
-                                <span class="storage-value" id="storage-size">0 KB</span>
-                            </div>
-                            <div class="storage-item">
-                                <span class="storage-label">最后更新</span>
-                                <span class="storage-value" id="storage-last-update">-</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
                 
                 <!-- 关于标签页 -->
                 <div class="tab-content" id="about-tab">
                     <div class="tab-header">
                         <i class="ri-information-line"></i>
-                        <h3>关于</h3>
+                        <div>
+                            <h3>关于</h3>
+                            <p>查看版本、功能说明和项目入口</p>
+                        </div>
                     </div>
                     <div class="about-content">
                         <div class="about-logo">
                             <i class="ri-compass-3-line"></i>
                             <h2>导航页</h2>
-                            <span class="about-version">Version <span id="current-version">1.4.0</span></span>
+                            <span class="about-version">Version <span id="current-version">1.5.0</span></span>
                             <div id="version-check-status" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);">
                                 <span class="version-checking"><i class="ri-loader-4-line ri-spin"></i> 检查更新中...</span>
                             </div>
@@ -1213,6 +1409,23 @@
                                 <span>响应式设计</span>
                             </div>
                         </div>
+                        <div class="about-shortcuts">
+                            <h4 class="about-shortcuts-title"><i class="ri-keyboard-line"></i> 键盘快捷键</h4>
+                            <ul class="shortcut-list">
+                                <li>
+                                    <span class="shortcut-desc">快速启动器</span>
+                                    <span class="shortcut-keys"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd></span>
+                                </li>
+                                <li>
+                                    <span class="shortcut-desc">打开设置</span>
+                                    <span class="shortcut-keys"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>,</kbd></span>
+                                </li>
+                                <li>
+                                    <span class="shortcut-desc">关闭弹窗 / 设置</span>
+                                    <span class="shortcut-keys"><kbd>Esc</kbd></span>
+                                </li>
+                            </ul>
+                        </div>
                         <div class="about-links">
                             <a href="https://github.com/LceAn/LocalNavigationPage" target="_blank" rel="noopener noreferrer" class="about-link">
                                 <i class="ri-github-line"></i>
@@ -1236,7 +1449,7 @@
     <i class="ri-arrow-up-line"></i>
 </button>
 
-<script src="js/main.js?v=20260623-minfix" defer></script>
-<script src="js/darkMode.js?v=20260623-minfix" defer></script>
+<script src="js/main.js?v=20260824-thumbfix" defer></script>
+<script src="js/darkMode.js?v=20260627-settings-ia" defer></script>
 </body>
 </html>

@@ -36,10 +36,11 @@
     max-width: 550px;
     transform: translateY(0);
     box-shadow: var(--shadow-lg);
-    animation: slideDown 0.3s ease-out;
+    animation: searchBarSlideDown 0.3s ease-out;
 }
 
-@keyframes slideDown {
+/* 搜索框固定时滑入动画（唯一名称，避免与 settings_box.css 的 slideDown 冲突被覆盖） */
+@keyframes searchBarSlideDown {
     from {
         transform: translateY(-100%);
         opacity: 0;
@@ -114,10 +115,22 @@
     display: flex;
     margin-left: auto;
     padding: 4px;
-    gap: 2px;
+    gap: 4px;
     background-color: color-mix(in oklch, var(--primary-color) 10%, transparent);
     border-radius: var(--rounded-full);
     flex-shrink: 0;
+    position: relative;
+}
+
+/* 输入框与引擎按钮之间的视觉分隔（柔和竖线，不抢眼） */
+.search-buttons::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 25%;
+    bottom: 25%;
+    width: 1px;
+    background: rgba(148, 163, 184, 0.32);
 }
 
 /* 搜索按钮：等宽分段，继承胶囊圆角 */
@@ -125,7 +138,7 @@
     background-color: transparent;
     color: var(--text-secondary);
     border: none;
-    padding: 8px 18px;
+    padding: 8px 20px;
     border-radius: var(--rounded-full);
     cursor: pointer;
     font-weight: 600;

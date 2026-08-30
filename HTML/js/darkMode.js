@@ -1,9 +1,13 @@
 // darkMode.js
+// 走 lnp:settings 容器；通过 main.js 暴露的 getSetting/setSetting 访问
 
 function getSavedTheme() {
-    const savedTheme = localStorage.getItem('theme');
+    const savedTheme = typeof getSetting === 'function' ? getSetting('theme', null) : localStorage.getItem('theme');
     if (savedTheme) return savedTheme;
-    return localStorage.getItem('darkMode') === 'enabled' ? 'dark' : 'light';
+    const darkMode = typeof getSetting === 'function'
+        ? getSetting('darkMode', null)
+        : localStorage.getItem('darkMode');
+    return darkMode === 'enabled' ? 'dark' : 'light';
 }
 
 function shouldUseDarkMode(theme) {
@@ -33,8 +37,13 @@ function setInitialTheme() {
 function toggleDarkMode() {
     const isDark = !document.body.classList.contains('dark-mode');
     document.body.classList.toggle('dark-mode', isDark);
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+    if (typeof setSetting === 'function') {
+        setSetting('theme', isDark ? 'dark' : 'light');
+        setSetting('darkMode', isDark ? 'enabled' : 'disabled');
+    } else {
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+    }
     updateThemeIcon(isDark);
 }
 

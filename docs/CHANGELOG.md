@@ -1,5 +1,25 @@
 # 更新日志 (CHANGELOG)
 
+## [1.5.0] - 2026-06-25
+
+### ⚡ 性能与安全优化
+
+#### 🔒 安全加固
+- Nginx 新增安全响应头：X-Frame-Options、X-Content-Type-Options、Referrer-Policy、Permissions-Policy
+- 新增静态资源缓存策略（CSS/JS 7 天、图片 30 天）
+
+#### ⚡ 性能
+- 清理 settings_box.css 中约 120 行重复 CSS 规则（15 个重复选择器）
+- 移除 styles.css 中重复的 `@keyframes pulse-green` 定义
+- 移除已废弃的死代码 CSS 规则
+- 链接状态探测在页面不可见时自动暂停（Page Visibility API）
+
+#### 🛠 工程化
+- 新增 .gitignore
+- 全局版本号对齐到 1.5.0
+
+---
+
 ## [1.4.0] - 2026-06-19
 
 ### ✨ 2026 现代化焕新

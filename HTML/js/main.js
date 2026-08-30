@@ -5,12 +5,17 @@ const HOME_LAYOUT_SETTINGS_KEY = 'homeLayoutSettings';
 const HOME_FEATURE_SETTINGS_KEY = 'homeFeatureSettings';
 const HOME_CATEGORY_TRAY_OPEN_KEY = 'homeCategoryTrayOpen';
 const TOP_BUTTON_SETTINGS_KEY = 'topButtonSettings';
-const FULL_BACKUP_SETTINGS_KEYS = [
+const STORAGE_KEY = 'lnp:settings';
+const SETTINGS_SCHEMA_VERSION = 2;
+
+// v1 时代的 key 名清单（迁移时需要逐个读取、复制、删除）
+const V1_KEYS_TO_MIGRATE = [
     LINKS_STORAGE_KEY,
     CUSTOM_CATEGORIES_KEY,
     LAST_USED_LINK_URLS_KEY,
     HOME_LAYOUT_SETTINGS_KEY,
     HOME_FEATURE_SETTINGS_KEY,
+    HOME_CATEGORY_TRAY_OPEN_KEY,
     TOP_BUTTON_SETTINGS_KEY,
     'homeVisualSettings',
     'displaySettings',
@@ -22,8 +27,150 @@ const FULL_BACKUP_SETTINGS_KEYS = [
     'showThumbnails',
     'enableAnimations',
     'contentPosition',
-    'defaultExpandAll',
-    'collapsedSections'
+    'defaultExpandFirst',
+    'collapsedSections',
+    'minimalMode',
+    'minimalClockOrient',
+    'minimalClockPosition',
+    'searchButtonIconMode',
+    'defaultSearchEngine',
+    'expandedCategories',
+    'showRecentLinks',
+    'recentLinks',
+    'linkStatusCache',
+    'lastUpdate',
+    'lastBackupTs',
+    'backupReminderDismissTs',
+    'versionCheckCache',
+    'buttonVisibility',
+    'showThemeBtn'
+];
+
+// 内存中的配置缓存（避免每次都 JSON.parse 整个容器）
+let _settingsCache = null;
+let _settingsLoaded = false;
+
+function getAllSettings() {
+    if (_settingsLoaded && _settingsCache) return _settingsCache;
+    let raw;
+    try {
+        raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    } catch (error) {
+        console.warn('解析 lnp:settings 失败，回退迁移', error);
+        raw = null;
+    }
+    if (!raw || !raw.schemaVersion) {
+        raw = migrateV1ToV2(raw);
+    }
+    _settingsCache = raw;
+    _settingsLoaded = true;
+    return _settingsCache;
+}
+
+function setAllSettings(settings) {
+    settings.schemaVersion = SETTINGS_SCHEMA_VERSION;
+    const ok = writeStorage(STORAGE_KEY, JSON.stringify(settings));
+    if (ok) {
+        _settingsCache = settings;
+        _settingsLoaded = true;
+    }
+    return ok;
+}
+
+// 设置键重命名迁移：把旧键的值搬到新键（仅当新键不存在时），用于设置项命名规范化。
+// 一次性运行（_renamedKeys 防重复执行），失败静默——最坏情况是该项恢复默认值。
+renameSettingKeysOnce();
+function renameSettingKeysOnce() {
+    if (localStorage.getItem('lnp:keysRenamed') === '1') return;
+    try {
+        const renames = [
+            ['defaultExpandAll', 'defaultExpandFirst'] // §3.5：展开首个分组的命名修正
+        ];
+        let changed = false;
+        for (const [oldKey, newKey] of renames) {
+            const all = getAllSettings();
+            if (!(newKey in all) && (oldKey in all)) {
+                all[newKey] = all[oldKey];
+                setAllSettings(all);
+                changed = true;
+            }
+        }
+        localStorage.setItem('lnp:keysRenamed', '1');
+        if (changed) console.info('[lnp] 设置键重命名迁移完成');
+    } catch (e) { /* 静默 */ }
+}
+
+function getSetting(key, defaultValue) {
+    const all = getAllSettings();
+    return key in all ? all[key] : defaultValue;
+}
+
+function setSetting(key, value) {
+    // 写前重新读取最新容器：多标签页场景下，内存缓存可能落后于其他标签页
+    // 刚写入的设置，直接整体回写缓存会把它们覆盖掉。
+    let latest = null;
+    try {
+        latest = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    } catch { /* 解析失败则退回缓存 */ }
+    const all = (latest && latest.schemaVersion) ? latest : getAllSettings();
+    all[key] = value;
+    return setAllSettings(all);
+}
+
+// 其他标签页修改设置时，同步刷新本页缓存，避免下次写入带回旧快照
+window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY || !event.newValue) return;
+    try {
+        const raw = JSON.parse(event.newValue);
+        if (raw && raw.schemaVersion) {
+            _settingsCache = raw;
+        }
+    } catch { /* 忽略异常数据 */ }
+});
+
+// 暴露给 darkMode.js 等其他脚本使用
+window.getSetting = getSetting;
+window.setSetting = setSetting;
+
+// v1 → v2 一次性迁移：把旧 localStorage 散 key 全部读出、写入新容器、删除旧 key
+function migrateV1ToV2(existing) {
+    const merged = existing && typeof existing === 'object' ? { ...existing } : {};
+    let migratedCount = 0;
+    for (const key of V1_KEYS_TO_MIGRATE) {
+        const value = localStorage.getItem(key);
+        if (value === null) continue;
+        // 数值/布尔/字符串/JSON 都接受；这里只判断是否存在
+        if (!(key in merged)) {
+            try {
+                // 试一下能不能 parse，不能就当字符串存
+                merged[key] = JSON.parse(value);
+            } catch {
+                merged[key] = value;
+            }
+            migratedCount += 1;
+        }
+    }
+    merged.schemaVersion = SETTINGS_SCHEMA_VERSION;
+
+    // 删掉所有 v1 散 key（即便没值也尝试一次，避免脏数据）
+    for (const key of V1_KEYS_TO_MIGRATE) {
+        try { localStorage.removeItem(key); } catch {}
+    }
+
+    console.info(`[lnp] 迁移 v1→v2 完成：合并 ${migratedCount} 个设置项`);
+    // 立即持久化新容器
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    } catch (error) {
+        console.error('[lnp] 迁移后写入失败', error);
+    }
+    return merged;
+}
+
+// 向后兼容：保留旧的 FULL_BACKUP_SETTINGS_KEYS（备份导入仍要识别）
+// 但导出/导入都改为直接序列化 lnp:settings 容器。
+const FULL_BACKUP_SETTINGS_KEYS = [
+    STORAGE_KEY
 ];
 let links = [];
 let bundledLinks = [];
@@ -121,7 +268,7 @@ function openSafeUrl(url) {
 }
 
 function getLastUsedLinkUrls() {
-    const saved = readJSONStorage(LAST_USED_LINK_URLS_KEY, {});
+    const saved = getSetting(LAST_USED_LINK_URLS_KEY, {});
     return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
 }
 
@@ -129,24 +276,21 @@ function rememberLastUsedLinkUrl(link, url) {
     if (!link?.ID || !isSafeUrl(url)) return;
     const saved = getLastUsedLinkUrls();
     saved[String(link.ID)] = url;
-    writeStorage(LAST_USED_LINK_URLS_KEY, JSON.stringify(saved));
+    setSetting(LAST_USED_LINK_URLS_KEY, saved);
 }
 
 // 最近使用记录：每个链接按 ID 记录最近访问时间戳，用于首页「最近使用」行
 const RECENT_LINKS_KEY = 'recentLinks';
 function recordRecentLink(link) {
     if (!link?.ID) return;
-    let recent = {};
-    try { recent = JSON.parse(localStorage.getItem(RECENT_LINKS_KEY) || '{}'); } catch {}
+    const recent = { ...getSetting(RECENT_LINKS_KEY, {}) };
     recent[String(link.ID)] = Date.now();
     // 只保留最近 8 条，避免无限增长
     const sorted = Object.entries(recent).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const trimmed = Object.fromEntries(sorted);
-    writeStorage(RECENT_LINKS_KEY, JSON.stringify(trimmed));
+    setSetting(RECENT_LINKS_KEY, Object.fromEntries(sorted));
 }
 function getRecentLinks() {
-    try { return JSON.parse(localStorage.getItem(RECENT_LINKS_KEY) || '{}'); }
-    catch { return {}; }
+    return getSetting(RECENT_LINKS_KEY, {}) || {};
 }
 
 // ============ 链接状态监控（P0-2）============
@@ -157,13 +301,12 @@ const PROBE_TIMEOUT_MS = 3000;
 const PROBE_INTERVAL_MS = 60000;
 
 function getLinkStatusCache() {
-    try { return JSON.parse(localStorage.getItem(LINK_STATUS_CACHE_KEY) || '{}'); }
-    catch { return {}; }
+    return getSetting(LINK_STATUS_CACHE_KEY, {}) || {};
 }
 function setLinkStatus(url, status) {
     const cache = getLinkStatusCache();
     cache[url] = { ...status, ts: Date.now() };
-    writeStorage(LINK_STATUS_CACHE_KEY, JSON.stringify(cache));
+    setSetting(LINK_STATUS_CACHE_KEY, cache);
 }
 
 // 探测单个 URL：online=可达, ms=响应毫秒, 仅对 http(s) 有效
@@ -220,7 +363,10 @@ function startStatusMonitor(allLinks) {
     if (probeTimer) clearTimeout(probeTimer);
     // 首次延迟 2s 探测（等首屏渲染完）
     setTimeout(() => probeLinkStatuses(allLinks), 2000);
-    probeTimer = setInterval(() => probeLinkStatuses(allLinks), PROBE_INTERVAL_MS);
+    probeTimer = setInterval(() => {
+        if (document.hidden) return;
+        probeLinkStatuses(allLinks);
+    }, PROBE_INTERVAL_MS);
 }
 
 // 读取某个 URL 的缓存状态（供卡片显示）
@@ -312,6 +458,13 @@ function getUrlChoiceMeta(urlObj) {
     return { icon: 'ri-global-line', type: 'remote' };
 }
 
+// 新链接的默认缩略图：内网地址外部截图服务无法访问，留空走首字母 + favicon 兜底
+function defaultThumbnailFor(address) {
+    return getUrlChoiceMeta({ address }).type === 'local'
+        ? ''
+        : `https://s0.wp.com/mshots/v1/${encodeURIComponent(address)}?w=240&h=240`;
+}
+
 function openLinkUrl(link, url) {
     const safeUrl = sanitizeUrl(url);
     if (safeUrl === '#') {
@@ -372,25 +525,25 @@ function normalizeLinks(rawLinks) {
 }
 
 function loadStoredLinks(defaultLinks) {
-    const stored = readJSONStorage(LINKS_STORAGE_KEY, null);
+    const stored = getSetting(LINKS_STORAGE_KEY, null);
     const storedLinks = Array.isArray(stored) ? stored : stored?.links;
     return normalizeLinks(storedLinks || defaultLinks);
 }
 
 function persistLinks() {
-    writeStorage(LINKS_STORAGE_KEY, JSON.stringify({ links }));
-    writeStorage('lastUpdate', new Date().toISOString());
+    setSetting(LINKS_STORAGE_KEY, { links });
+    setSetting('lastUpdate', new Date().toISOString());
 }
 
 function getCustomCategories() {
-    const categories = readJSONStorage(CUSTOM_CATEGORIES_KEY, []);
+    const categories = getSetting(CUSTOM_CATEGORIES_KEY, []);
     return Array.isArray(categories)
         ? categories.map(category => String(category).trim()).filter(Boolean)
         : [];
 }
 
 function saveCustomCategories(categories) {
-    writeStorage(CUSTOM_CATEGORIES_KEY, JSON.stringify([...new Set(categories.filter(Boolean))]));
+    setSetting(CUSTOM_CATEGORIES_KEY, [...new Set(categories.filter(Boolean))]);
 }
 
 function getAllCategoryNames(sourceLinks = links) {
@@ -406,7 +559,7 @@ const defaultHomeLayoutSettings = {
 };
 
 function loadHomeLayoutSettings() {
-    const saved = readJSONStorage(HOME_LAYOUT_SETTINGS_KEY, {});
+    const saved = getSetting(HOME_LAYOUT_SETTINGS_KEY, {}) || {};
     const density = ['balanced', 'compact', 'spacious'].includes(saved?.density)
         ? saved.density
         : defaultHomeLayoutSettings.density;
@@ -417,18 +570,18 @@ function loadHomeLayoutSettings() {
 }
 
 function saveHomeLayoutSettings(settings) {
-    writeStorage(HOME_LAYOUT_SETTINGS_KEY, JSON.stringify({
+    setSetting(HOME_LAYOUT_SETTINGS_KEY, {
         ...defaultHomeLayoutSettings,
         ...settings
-    }));
+    });
 }
 
 function isHomeCategoryTrayOpen() {
-    return localStorage.getItem(HOME_CATEGORY_TRAY_OPEN_KEY) === 'true';
+    return getSetting(HOME_CATEGORY_TRAY_OPEN_KEY, false) === true;
 }
 
 function setHomeCategoryTrayOpen(open) {
-    writeStorage(HOME_CATEGORY_TRAY_OPEN_KEY, String(Boolean(open)));
+    setSetting(HOME_CATEGORY_TRAY_OPEN_KEY, Boolean(open));
 }
 
 function ensureHomeCategoriesVisibleForAction() {
@@ -480,7 +633,7 @@ const defaultHomeFeatureSettings = {
 };
 
 function loadHomeFeatureSettings() {
-    const saved = readJSONStorage(HOME_FEATURE_SETTINGS_KEY, {});
+    const saved = getSetting(HOME_FEATURE_SETTINGS_KEY, {}) || {};
     return {
         showTitle: saved?.showTitle !== false,
         showInfoBar: saved?.showInfoBar !== false,
@@ -489,10 +642,10 @@ function loadHomeFeatureSettings() {
 }
 
 function saveHomeFeatureSettings(settings) {
-    writeStorage(HOME_FEATURE_SETTINGS_KEY, JSON.stringify({
+    setSetting(HOME_FEATURE_SETTINGS_KEY, {
         ...defaultHomeFeatureSettings,
         ...settings
-    }));
+    });
 }
 
 function applyHomeFeatureSettings(settings = loadHomeFeatureSettings()) {
@@ -502,6 +655,9 @@ function applyHomeFeatureSettings(settings = loadHomeFeatureSettings()) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+    // 触发 v1 → v2 一次性迁移（首次访问把分散的 localStorage key 合并到 lnp:settings 容器）
+    try { getAllSettings(); } catch (e) { console.warn('初始化设置失败', e); }
+
     applyHomeFeatureSettings();
 
     // 装饰性图标（图标字体）对辅助技术隐藏，避免朗读无意义字形
@@ -530,10 +686,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 备份提醒：若有数据但超过 14 天未导出，温和提示一次（关闭后记 dismissTs，不再打扰）
     (function backupReminder() {
-        const hasLinks = localStorage.getItem(LINKS_STORAGE_KEY);
+        const hasLinks = getSetting(LINKS_STORAGE_KEY);
         if (!hasLinks) return; // 没数据不提醒
-        const last = Number(localStorage.getItem('lastBackupTs') || 0);
-        const dismissed = Number(localStorage.getItem('backupReminderDismissTs') || 0);
+        const last = Number(getSetting('lastBackupTs', 0) || 0);
+        const dismissed = Number(getSetting('backupReminderDismissTs', 0) || 0);
         const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000;
         if (last && (Date.now() - last) < FOURTEEN_DAYS) return;      // 近期导出过
         if (dismissed && (Date.now() - dismissed) < FOURTEEN_DAYS) return; // 近期已忽略
@@ -541,7 +697,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (typeof showMessage === 'function') {
                 showMessage('提示：建议定期导出备份以防数据丢失（设置 → 数据）');
             }
-            localStorage.setItem('backupReminderDismissTs', String(Date.now()));
+            setSetting('backupReminderDismissTs', String(Date.now()));
         }, 1500);
     })();
 
@@ -674,6 +830,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function ensureSettingsSearchEmptyState(tabContent) {
+        if (!tabContent) return null;
         let empty = tabContent.querySelector(':scope > .settings-search-empty');
         if (!empty) {
             empty = document.createElement('div');
@@ -685,14 +842,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function getSettingsSearchTargets(tabContent) {
-        return [...tabContent.querySelectorAll(':scope > .settings-section, :scope > .about-content, :scope > .data-actions')];
+        if (!tabContent) return [];
+        return [...tabContent.querySelectorAll(':scope > .settings-section, :scope > .about-content')];
     }
 
     function applySettingsSearch() {
         if (!settingsSearchInput || !settingsContent) return;
 
         const activeTabName = getActiveSettingsTabName();
-        const activeTab = document.getElementById(`${activeTabName}-tab`);
         const shouldShowSearch = activeTabName !== 'links';
         const query = settingsSearchInput.value.trim().toLowerCase();
 
@@ -700,59 +857,110 @@ document.addEventListener("DOMContentLoaded", function () {
             settingsSearchbar.style.display = shouldShowSearch ? 'grid' : 'none';
         }
 
+        // 先清掉所有隐藏标记与高亮标记
         tabContents.forEach(tabContent => {
             getSettingsSearchTargets(tabContent).forEach(target => {
-                target.classList.remove('settings-search-hidden');
+                target.classList.remove('settings-search-hidden', 'settings-search-hit');
             });
         });
 
-        if (!shouldShowSearch || !activeTab) {
+        if (!shouldShowSearch) {
             settingsContent.classList.remove('has-empty-search');
             if (settingsSearchCount) settingsSearchCount.textContent = '';
             if (clearSettingsSearchButton) clearSettingsSearchButton.style.display = 'none';
             return;
         }
 
-        const targets = getSettingsSearchTargets(activeTab);
-        let visibleCount = 0;
+        const query2 = query;
+        if (!query2) {
+            initSectionCollapseState();
+        }
 
-        targets.forEach(target => {
-            const matches = !query || target.textContent.toLowerCase().includes(query);
-            target.classList.toggle('settings-search-hidden', !matches);
-            if (matches) visibleCount += 1;
+        // §3.1 全局匹配：在所有标签页（非 links）里搜，找出首个命中分区所在标签页
+        const searchableTabs = [...tabContents].filter(t => t.id !== 'links-tab');
+        let firstHitTab = null;
+        let totalHits = 0;
+        searchableTabs.forEach(tabContent => {
+            const targets = getSettingsSearchTargets(tabContent);
+            let tabHit = false;
+            targets.forEach(target => {
+                const matches = !query2 || target.textContent.toLowerCase().includes(query2);
+                target.classList.toggle('settings-search-hidden', !matches);
+                if (matches && query2) {
+                    target.classList.add('settings-search-hit');
+                    tabHit = true;
+                    totalHits += 1;
+                }
+            });
+            if (tabHit) {
+                if (!firstHitTab) firstHitTab = tabContent;
+            }
         });
 
+        // 命中的分区若不在当前标签 → 自动切换到首个命中标签（避免用户以为"搜不到"）
+        if (query2 && firstHitTab && !firstHitTab.classList.contains('active')) {
+            const tabName = (firstHitTab.id || '').replace('-tab', '');
+            if (tabName) {
+                // 静默切换：不触发 applySettingsSearch 二次递归
+                tabButtons.forEach(btn => { btn.classList.remove('active'); btn.setAttribute('aria-selected', 'false'); });
+                tabContents.forEach(c => c.classList.remove('active'));
+                const btn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+                if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
+                firstHitTab.classList.add('active');
+            }
+        }
+
+        // §3.1 命中分区自动展开：搜索时展开所有 .settings-search-hit 的分区，方便看到命中的项
+        if (query2) {
+            document.querySelectorAll('.settings-search-hit.settings-section').forEach(sec => {
+                sec.classList.remove('collapsed');
+                syncSectionTitleState(sec);
+            });
+        }
+
+        const activeTab = document.querySelector('.tab-content.active');
         ensureSettingsSearchEmptyState(activeTab);
-        settingsContent.classList.toggle('has-empty-search', Boolean(query) && visibleCount === 0);
+        settingsContent.classList.toggle('has-empty-search', Boolean(query2) && totalHits === 0);
         if (settingsSearchCount) {
-            settingsSearchCount.textContent = query ? `${visibleCount} 项` : '';
+            settingsSearchCount.textContent = query2 ? `${totalHits} 项` : '';
         }
         if (clearSettingsSearchButton) {
-            clearSettingsSearchButton.style.display = query ? 'inline-flex' : 'none';
+            clearSettingsSearchButton.style.display = query2 ? 'inline-flex' : 'none';
         }
     }
 
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
             const targetTab = button.getAttribute('data-tab');
-
-            // 移除所有激活状态
-            tabButtons.forEach(btn => { btn.classList.remove('active'); btn.setAttribute('aria-selected', 'false'); });
-            tabContents.forEach(content => content.classList.remove('active'));
-
-            // 添加激活状态
-            button.classList.add('active');
-            button.setAttribute('aria-selected', 'true');
-            document.getElementById(`${targetTab}-tab`).classList.add('active');
-
-            // 如果切换到链接管理标签页，重新渲染链接
-            if (targetTab === 'links') {
-                renderLinksInSettingsIfVisible(links);
-            }
-
-            applySettingsSearch();
+            activateSettingsTab(targetTab);
         });
     });
+
+    // 激活某个设置标签页（供 tab 按钮与「关于」标题栏图标共用）
+    function activateSettingsTab(targetTab) {
+        // 移除所有激活状态
+        tabButtons.forEach(btn => { btn.classList.remove('active'); btn.setAttribute('aria-selected', 'false'); });
+        tabContents.forEach(content => content.classList.remove('active'));
+
+        // 添加激活状态（about 无 tab 按钮，但 tab-content 仍存在）
+        const matchingBtn = document.querySelector(`.tab-button[data-tab="${targetTab}"]`);
+        if (matchingBtn) { matchingBtn.classList.add('active'); matchingBtn.setAttribute('aria-selected', 'true'); }
+        const targetContent = document.getElementById(`${targetTab}-tab`);
+        if (targetContent) targetContent.classList.add('active');
+
+        // 如果切换到链接管理标签页，重新渲染链接
+        if (targetTab === 'links') {
+            renderLinksInSettingsIfVisible(links);
+        }
+
+        applySettingsSearch();
+    }
+
+    // 「关于」标题栏图标：打开关于面板（关于已从一级标签降级，由标题栏入口唤起）
+    const openAboutBtn = document.getElementById('open-about');
+    if (openAboutBtn) {
+        openAboutBtn.addEventListener('click', () => activateSettingsTab('about'));
+    }
 
     if (settingsSearchInput) {
         settingsSearchInput.addEventListener('input', applySettingsSearch);
@@ -784,15 +992,40 @@ document.addEventListener("DOMContentLoaded", function () {
             const closeBtn = document.getElementById('close-settings');
             closeBtn?.focus();
         });
+        // §5.1：焦点陷阱——Tab 在面板内循环，不跑到背景元素
+        document.addEventListener('keydown', trapSettingsFocus);
+    }
+
+    // §5.1：设置面板焦点陷阱（仅在面板打开时生效）
+    function trapSettingsFocus(e) {
+        if (e.key !== 'Tab') return;
+        const settingsContainer = document.getElementById('settings-container');
+        if (!settingsContainer || !settingsContainer.classList.contains('show')) return;
+        const focusables = settingsContainer.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const visible = [...focusables].filter(el => el.offsetParent !== null || el === document.activeElement);
+        if (!visible.length) return;
+        const first = visible[0];
+        const last = visible[visible.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
     }
 
     window.openSettingsPanel = openSettingsPanel;
 
-    // 关闭设置面板：统一入口，负责恢复焦点
+    // 关闭设置面板：统一入口，负责恢复焦点 + 移除焦点陷阱
     function closeSettingsPanel() {
         const settingsContainer = document.getElementById('settings-container');
         if (!settingsContainer) return;
         settingsContainer.classList.remove('show');
+        document.removeEventListener('keydown', trapSettingsFocus);
         setTimeout(() => {
             settingsContainer.style.display = 'none';
             // 恢复触发元素焦点
@@ -1071,8 +1304,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-category').value = '';
         document.getElementById('edit-tag').value = '';
         document.getElementById('edit-thumbnail').value = '';
-        // 清空 URL 列表
-        currentUrls = [];
+        // URL 列表预置一行空地址，新链接可直接填写
+        currentUrls = [{ address: '', label: '', priority: 1 }];
         renderUrlsList();
         // 清空预览
         renderThumbnailPreview('');
@@ -1251,7 +1484,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         saveCustomCategories([...getCustomCategories(), name]);
-        localStorage.setItem('lastUpdate', new Date().toISOString());
+        setSetting('lastUpdate', new Date().toISOString());
         showMessage('已添加分组：' + name);
         renderCategoriesList();
         updateCategoryDatalist();
@@ -1404,7 +1637,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 links[linkIndex].category = category || '未分类';
                 links[linkIndex].tag = tag;
-                links[linkIndex].thumbnail = thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(firstUrl)}?w=240&h=240`;
+                links[linkIndex].thumbnail = thumbnail || defaultThumbnailFor(firstUrl);
             }
             showMessage('已更新链接');
         } else {
@@ -1415,7 +1648,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 name: name,
                 category: category || '未分类',
                 tag: tag,
-                thumbnail: thumbnail || `https://s0.wp.com/mshots/v1/${encodeURIComponent(firstUrl)}?w=240&h=240`
+                thumbnail: thumbnail || defaultThumbnailFor(firstUrl)
             };
             // 如果只有一个 URL，使用旧格式兼容
             if (validUrls.length === 1) {
@@ -1478,14 +1711,11 @@ document.addEventListener("DOMContentLoaded", function () {
     window.updateCategoryDatalist = updateCategoryDatalist;
 
     function getPersistentSettingsSnapshot() {
-        return FULL_BACKUP_SETTINGS_KEYS.reduce((snapshot, key) => {
-            if (key === LINKS_STORAGE_KEY) return snapshot;
-            const value = localStorage.getItem(key);
-            if (value !== null) {
-                snapshot[key] = value;
-            }
-            return snapshot;
-        }, {});
+        // 直接返回 lnp:settings 容器（去掉 navigationLinks，因为 links 字段单独导出）
+        const all = getAllSettings();
+        const copy = { ...all };
+        delete copy[LINKS_STORAGE_KEY];
+        return copy;
     }
 
     function createFullBackup() {
@@ -1507,11 +1737,21 @@ document.addEventListener("DOMContentLoaded", function () {
     function restoreSettingsSnapshot(settings) {
         if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return;
 
-        const allowedKeys = new Set(FULL_BACKUP_SETTINGS_KEYS.filter(key => key !== LINKS_STORAGE_KEY));
+        const current = getAllSettings();
+        // 新格式：settings 就是 lnp:settings 容器；老格式：key→rawString 散值
+        // 这里一律按"已知 key 才合并"处理，避免脏数据写入
+        const knownKeys = new Set(V1_KEYS_TO_MIGRATE);
         Object.entries(settings).forEach(([key, value]) => {
-            if (!allowedKeys.has(key) || value == null) return;
-            localStorage.setItem(key, String(value));
+            if (!knownKeys.has(key) || value == null) return;
+            // 老格式是字符串，尝试解析；新格式已是对象
+            if (typeof value === 'string') {
+                try { current[key] = JSON.parse(value); }
+                catch { current[key] = value; }
+            } else {
+                current[key] = value;
+            }
         });
+        setAllSettings(current);
     }
 
     // 更新存储信息
@@ -1544,7 +1784,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // 最后更新时间
         if (storageLastUpdate) {
-            const lastUpdate = localStorage.getItem('lastUpdate');
+            const lastUpdate = getSetting('lastUpdate', null);
             if (lastUpdate) {
                 storageLastUpdate.textContent = new Date(lastUpdate).toLocaleString('zh-CN');
             } else {
@@ -1591,7 +1831,7 @@ document.addEventListener("DOMContentLoaded", function () {
             a.download = `navigation-backup-v2-${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            localStorage.setItem('lastBackupTs', String(Date.now()));
+            setSetting('lastBackupTs', Date.now());
             showMessage('完整配置已导出');
         });
     }
@@ -1782,7 +2022,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.4.0';
+    const currentVersion = '1.5.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1802,39 +2042,63 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // 渲染「检测失败 / 暂时无法检查」状态，并提供手动重试按钮（§4.4 超时兜底）
+    function renderVersionCheckFailed(message) {
+        const statusEl = document.getElementById('version-check-status');
+        if (!statusEl) return;
+        statusEl.innerHTML =
+            `<span style="color: var(--text-tertiary); display: inline-flex; align-items: center; gap: 6px;">` +
+            `<i class="ri-error-warning-line"></i> ${escapeHTML(message)}` +
+            `</span>` +
+            `<button type="button" id="retry-version-check" style="margin-left: 8px; background: none; border: 1px solid var(--bg-tertiary); border-radius: var(--rounded-full); padding: 2px 10px; font-size: 12px; color: var(--primary-color); cursor: pointer;">重试</button>`;
+        const retryBtn = document.getElementById('retry-version-check');
+        if (retryBtn) retryBtn.addEventListener('click', runVersionCheckNow);
+    }
+
+    let versionCheckController = null;
+    function runVersionCheckNow() {
+        // 超时兜底：8 秒未返回则中止并提示，避免永久停留在"检查更新中..."
+        if (versionCheckController) { try { versionCheckController.abort(); } catch (_) {} }
+        versionCheckController = ('AbortController' in window) ? new AbortController() : null;
+        const timeoutId = window.setTimeout(() => {
+            if (versionCheckController) { try { versionCheckController.abort(); } catch (_) {} }
+        }, 8000);
+
+        fetch('https://api.github.com/repos/LceAn/LocalNavigationPage/releases/latest',
+            versionCheckController ? { signal: versionCheckController.signal } : {})
+            .then(response => response.json())
+            .then(data => {
+                const latestVersion = String(data.tag_name || '').replace(/^v/i, '');
+                if (!latestVersion) throw new Error('版本数据为空');
+                setSetting('versionCheckCache', {
+                    latestVersion,
+                    checkedAt: Date.now()
+                });
+                renderVersionStatus(latestVersion);
+            })
+            .catch(error => {
+                console.error('版本检测失败:', error);
+                const isTimeout = error && (error.name === 'AbortError');
+                renderVersionCheckFailed(isTimeout ? '暂时无法检查更新' : '检测失败');
+            })
+            .finally(() => {
+                window.clearTimeout(timeoutId);
+                versionCheckController = null;
+            });
+    }
+
     function scheduleVersionCheck() {
-        const cached = readJSONStorage('versionCheckCache', null);
+        const cached = getSetting('versionCheckCache', null);
         const sixHours = 6 * 60 * 60 * 1000;
         if (cached?.latestVersion && Date.now() - cached.checkedAt < sixHours) {
             renderVersionStatus(cached.latestVersion);
             return;
         }
 
-        const runCheck = () => {
-            fetch('https://api.github.com/repos/LceAn/LocalNavigationPage/releases/latest')
-                .then(response => response.json())
-                .then(data => {
-                    const latestVersion = String(data.tag_name || '').replace(/^v/i, '');
-                    if (!latestVersion) throw new Error('版本数据为空');
-                    localStorage.setItem('versionCheckCache', JSON.stringify({
-                        latestVersion,
-                        checkedAt: Date.now()
-                    }));
-                    renderVersionStatus(latestVersion);
-                })
-                .catch(error => {
-                    console.error('版本检测失败:', error);
-                    const statusEl = document.getElementById('version-check-status');
-                    if (statusEl) {
-                        statusEl.innerHTML = '<span style="color: var(--text-tertiary);"><i class="ri-error-warning-line"></i> 检测失败</span>';
-                    }
-                });
-        };
-
         if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(runCheck, { timeout: 3000 });
+            window.requestIdleCallback(runVersionCheckNow, { timeout: 3000 });
         } else {
-            window.setTimeout(runCheck, 1200);
+            window.setTimeout(runVersionCheckNow, 1200);
         }
     }
 
@@ -1855,12 +2119,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 主题选择功能
     const themeOptions = document.querySelectorAll('.theme-option');
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedTheme = getSetting('theme', 'light');
 
     themeOptions.forEach(option => {
         if (option.dataset.theme === savedTheme) {
             option.classList.add('selected');
         }
+        // §5.3：自定义可点 div 补 ARIA + 可聚焦，便于屏幕阅读器与键盘
+        option.setAttribute('role', 'button');
+        option.setAttribute('tabindex', '0');
+        option.setAttribute('aria-pressed', option.classList.contains('selected') ? 'true' : 'false');
         option.addEventListener('click', () => applyThemeOption(option));
         // 键盘可达：Enter / Space 触发与点击相同的效果
         option.addEventListener('keydown', event => {
@@ -1875,7 +2143,7 @@ document.addEventListener("DOMContentLoaded", function () {
             themeOptions.forEach(o => o.classList.remove('selected'));
             option.classList.add('selected');
             const theme = option.dataset.theme;
-            localStorage.setItem('theme', theme);
+            setSetting('theme', theme);
 
             const body = document.body;
             if (theme === 'dark') {
@@ -1890,7 +2158,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
             const isDark = body.classList.contains('dark-mode');
-            localStorage.setItem('darkMode', isDark ? 'enabled' : 'disabled');
+            setSetting('darkMode', isDark ? 'enabled' : 'disabled');
             const themeIcon = document.getElementById('theme-icon');
             if (themeIcon) {
                 themeIcon.classList.toggle('ri-sun-line', !isDark);
@@ -1901,15 +2169,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 网站标题设置
     const siteTitleInput = document.getElementById('site-title-input');
-    const savedTitle = localStorage.getItem('siteTitle') || '我的导航';
+    const savedTitle = getSetting('siteTitle', '我的导航');
     siteTitleInput.value = savedTitle;
     document.querySelector('.page-header h1').textContent = savedTitle;
-    
+
     siteTitleInput.addEventListener('input', function() {
         const title = this.value.trim() || '我的导航';
         document.querySelector('.page-header h1').textContent = title;
         document.title = title;
-        localStorage.setItem('siteTitle', title);
+        setSetting('siteTitle', title);
     });
 
     const showHomeTitleToggle = document.getElementById('show-home-title');
@@ -1985,7 +2253,7 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     function loadHomeVisualSettings() {
-        const saved = readJSONStorage('homeVisualSettings', {});
+        const saved = getSetting('homeVisualSettings', {}) || {};
         const settings = { ...defaultHomeVisualSettings, ...saved };
         if (!['clean', 'soft', 'mesh', 'focus'].includes(settings.backgroundStyle)) {
             settings.backgroundStyle = defaultHomeVisualSettings.backgroundStyle;
@@ -2001,7 +2269,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function saveHomeVisualSettings(settings) {
-        localStorage.setItem('homeVisualSettings', JSON.stringify(settings));
+        setSetting('homeVisualSettings', settings);
     }
 
     function applyHomeVisualSettings(settings = loadHomeVisualSettings()) {
@@ -2090,11 +2358,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (compactModeToggle) {
-        compactModeToggle.checked = localStorage.getItem('compactMode') === 'true';
+        compactModeToggle.checked = getSetting('compactMode', false) === true;
         applyCompactMode(compactModeToggle.checked);
         compactModeToggle.addEventListener('change', function() {
             applyCompactMode(this.checked);
-            localStorage.setItem('compactMode', this.checked);
+            setSetting('compactMode', this.checked);
             showMessage(this.checked ? '已启用紧凑模式' : '已禁用紧凑模式');
         });
     }
@@ -2111,15 +2379,35 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
         }
-        
+
         showThumbnailsToggle.addEventListener('change', function() {
-            localStorage.setItem('showThumbnails', this.checked);
+            setSetting('showThumbnails', this.checked);
             applyThumbnailSetting(this.checked);
             showMessage(this.checked ? '已显示缩略图' : '已隐藏缩略图');
         });
-        showThumbnailsToggle.checked = localStorage.getItem('showThumbnails') !== 'false';
+        showThumbnailsToggle.checked = getSetting('showThumbnails', true) !== false;
         // 初始化应用缩略图设置
         applyThumbnailSetting(showThumbnailsToggle.checked);
+    }
+
+    // 显示最近使用快捷行
+    const showRecentLinksToggle = document.getElementById('show-recent-links');
+    if (showRecentLinksToggle) {
+        function applyRecentLinksSetting(show) {
+            const container = document.getElementById('recent-links');
+            if (container && !show) {
+                container.hidden = true;
+            } else if (container && show && typeof links !== 'undefined') {
+                renderRecentLinks(links);
+            }
+        }
+        showRecentLinksToggle.checked = getSetting('showRecentLinks', true) !== false;
+        applyRecentLinksSetting(showRecentLinksToggle.checked);
+        showRecentLinksToggle.addEventListener('change', function() {
+            setSetting('showRecentLinks', this.checked);
+            applyRecentLinksSetting(this.checked);
+            showMessage(this.checked ? '已显示最近使用' : '已隐藏最近使用');
+        });
     }
 
     // 搜索按钮图标模式（仅图标 / 图标+文字 / 仅文字）
@@ -2127,7 +2415,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchButtonIconModeSelect) {
         searchButtonIconModeSelect.value = getSearchButtonIconMode();
         searchButtonIconModeSelect.addEventListener('change', function() {
-            localStorage.setItem('searchButtonIconMode', this.value);
+            setSetting('searchButtonIconMode', this.value);
             updateSearchButtons();
             const labels = { 'text': '仅文字', 'logo': '仅图标', 'logo-text': '图标 + 文字' };
             showMessage('搜索按钮图标：' + (labels[this.value] || ''));
@@ -2135,11 +2423,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (enableAnimationsToggle) {
-        enableAnimationsToggle.checked = localStorage.getItem('enableAnimations') !== 'false';
+        enableAnimationsToggle.checked = getSetting('enableAnimations', true) !== false;
         applyAnimationSetting(enableAnimationsToggle.checked);
         enableAnimationsToggle.addEventListener('change', function() {
             applyAnimationSetting(this.checked);
-            localStorage.setItem('enableAnimations', this.checked);
+            setSetting('enableAnimations', this.checked);
             showMessage(this.checked ? '已启用动画' : '已禁用动画');
         });
     }
@@ -2151,7 +2439,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // 页面位置设置
     const pagePositionSelect = document.getElementById('page-position-select');
     if (pagePositionSelect) {
-        const savedPosition = localStorage.getItem('contentPosition') || 'default';
+        const savedPosition = getSetting('contentPosition', 'default');
         pagePositionSelect.value = savedPosition;
 
         // 刷新时恢复布局位置（此前只设了 select 值，没给 .container 加类）
@@ -2162,7 +2450,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         pagePositionSelect.addEventListener('change', function() {
             const position = this.value;
-            localStorage.setItem('contentPosition', position);
+            setSetting('contentPosition', position);
             
             const container = document.querySelector('.container');
             container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
@@ -2221,23 +2509,138 @@ document.addEventListener("DOMContentLoaded", function () {
     // 极简模式：只保留左下角搜索图标 + 右上角设置按钮（悬停展开），其余元素隐藏
     const minimalModeToggle = document.getElementById('minimal-mode-toggle');
     const minimalSearchEl = document.getElementById('minimal-search');
+    const minimalClockBg = document.getElementById('minimal-clock-bg');
+    const minimalWave = document.getElementById('minimal-wave');
+    const minimalClockOrientSel = document.getElementById('minimal-clock-orient');
+    const minimalClockPosSel = document.getElementById('minimal-clock-position');
+
+    // 把两位数字拆成单字符 span（逐字竖排时每字符独占一行）
+    function glyphSpans(str) {
+        return Array.from(str).map(ch => {
+            const sp = document.createElement('span');
+            sp.className = 'minimal-clock-glyph';
+            sp.textContent = ch;
+            return sp;
+        });
+    }
+    // 小圆点分隔符（竖排时用时/分之间，比孤立的冒号优雅）
+    function dotDivider() {
+        const d = document.createElement('span');
+        d.className = 'minimal-clock-dot';
+        d.setAttribute('aria-hidden', 'true');
+        return d;
+    }
+
+    // 重建极简时钟 DOM 结构以匹配方向：竖排两行 / 逐字竖排 / 横排
+    let minimalClockTimer = null;
+    function renderMinimalClock() {
+        if (!minimalClockBg) return;
+        const orient = getSetting('minimalClockOrient', 'vertical-two');
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        minimalClockBg.innerHTML = '';
+
+        if (orient === 'horizontal') {
+            // 横排：单行，数字等宽不跳动，冒号着色弱化
+            const line = document.createElement('div');
+            line.className = 'minimal-clock-line';
+            line.innerHTML =
+                `<span class="minimal-clock-seg">${h}</span>` +
+                `<span class="minimal-clock-colon">:</span>` +
+                `<span class="minimal-clock-seg">${m}</span>` +
+                `<span class="minimal-clock-colon minimal-clock-colon--sec">:</span>` +
+                `<span class="minimal-clock-seg minimal-clock-seg--sec">${s}</span>`;
+            minimalClockBg.appendChild(line);
+        } else if (orient === 'vertical-glyph') {
+            // 逐字竖排：每位数字独占一行，时/分之间用小圆点分隔
+            const wrap = document.createElement('div');
+            wrap.className = 'minimal-clock-glyphs';
+            glyphSpans(h).forEach(sp => wrap.appendChild(sp));
+            wrap.appendChild(dotDivider());
+            glyphSpans(m).forEach(sp => wrap.appendChild(sp));
+            minimalClockBg.appendChild(wrap);
+            const sec = document.createElement('div');
+            sec.className = 'minimal-clock-seconds';
+            sec.textContent = s;
+            minimalClockBg.appendChild(sec);
+        } else {
+            // 竖排两行（默认）：HH 叠·点·MM 叠，秒数小号附在底部
+            const wrap = document.createElement('div');
+            wrap.className = 'minimal-clock-glyphs';
+            glyphSpans(h).forEach(sp => wrap.appendChild(sp));
+            wrap.appendChild(dotDivider());
+            glyphSpans(m).forEach(sp => wrap.appendChild(sp));
+            minimalClockBg.appendChild(wrap);
+            const sec = document.createElement('div');
+            sec.className = 'minimal-clock-seconds';
+            sec.textContent = s;
+            minimalClockBg.appendChild(sec);
+        }
+    }
+    function updateMinimalClock() {
+        // 仅在可见时刷新，方向切换时由 renderMinimalClock 重建 DOM
+        if (!minimalClockBg || minimalClockBg.hidden) return;
+        renderMinimalClock();
+    }
+    // 应用方向/位置到 body 的 data 属性（CSS 据此布局，且不会被 JS inline 样式覆盖）
+    function applyMinimalClockStyle() {
+        const orient = getSetting('minimalClockOrient', 'vertical-two');
+        const pos = getSetting('minimalClockPosition', 'left-center');
+        document.body.dataset.minClockOrient = orient;
+        document.body.dataset.minClockPos = pos;
+    }
     function applyMinimalMode(enabled) {
         document.body.classList.toggle('minimal-mode', enabled);
         if (minimalSearchEl) minimalSearchEl.hidden = !enabled;
+        if (minimalClockBg) minimalClockBg.hidden = !enabled;
+        if (minimalWave) minimalWave.hidden = !enabled;
+        // §3.3：极简子项改为「禁用态」而非隐藏——由 body.minimal-mode 类驱动 CSS 的灰禁用/激活，
+        // 此处只需同步子项控件的 disabled 属性，保证灰态下不可操作。
+        document.querySelectorAll('.minimal-sub-option[data-gate="minimal-mode-toggle"]').forEach(el => {
+            el.querySelectorAll('input, select, button').forEach(ctrl => { ctrl.disabled = !enabled; });
+        });
+        if (enabled) {
+            applyMinimalClockStyle();
+            renderMinimalClock();
+            if (!minimalClockTimer) {
+                minimalClockTimer = setInterval(updateMinimalClock, 1000);
+            }
+        } else if (minimalClockTimer) {
+            clearInterval(minimalClockTimer);
+            minimalClockTimer = null;
+        }
     }
     if (minimalModeToggle) {
         // 恢复上次状态
-        const minimalOn = localStorage.getItem('minimalMode') === 'true';
+        const minimalOn = getSetting('minimalMode', false) === true;
         minimalModeToggle.checked = minimalOn;
         applyMinimalMode(minimalOn);
         minimalModeToggle.addEventListener('change', function() {
-            localStorage.setItem('minimalMode', String(this.checked));
+            setSetting('minimalMode', this.checked);
             applyMinimalMode(this.checked);
             showMessage(this.checked ? '已开启极简模式' : '已关闭极简模式');
         });
     }
+    // 时钟方向/位置选择
+    if (minimalClockOrientSel) {
+        minimalClockOrientSel.value = getSetting('minimalClockOrient', 'vertical-two');
+        minimalClockOrientSel.addEventListener('change', function() {
+            setSetting('minimalClockOrient', this.value);
+            applyMinimalClockStyle();
+            renderMinimalClock();
+        });
+    }
+    if (minimalClockPosSel) {
+        minimalClockPosSel.value = getSetting('minimalClockPosition', 'left-center');
+        minimalClockPosSel.addEventListener('change', function() {
+            setSetting('minimalClockPosition', this.value);
+            applyMinimalClockStyle();
+        });
+    }
 
-    // 极简模式：搜索表单提交 → 用默认搜索引擎搜索
+    // 极简模式：搜索表单提交 → 用设置里的默认搜索引擎搜索（在「搜索引擎」设置中切换默认引擎）
     const minimalSearchForm = document.getElementById('minimal-search-form');
     const minimalSearchInput = document.getElementById('minimal-search-input');
     if (minimalSearchForm) {
@@ -2245,12 +2648,13 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             const query = minimalSearchInput.value.trim();
             if (!query) return;
-            const engines = loadSearchEngines();
-            const engine = engines[0];
+            const engine = getDefaultSearchEngine();
             if (engine) {
                 const searchInput = document.getElementById('search-input');
                 if (searchInput) { searchInput.value = query; }
                 performSearch(engine);
+            } else {
+                showMessage('暂无可用搜索引擎');
             }
         });
     }
@@ -2261,7 +2665,7 @@ document.addEventListener("DOMContentLoaded", function () {
             setHomeCategoryTrayOpen(nextOpen);
             applyHomeCategoryDisplayMode();
             // 打开时若启用了「展开首个分类」，自动展开第一张手风琴卡
-            if (nextOpen && localStorage.getItem('defaultExpandAll') === 'true') {
+            if (nextOpen && getSetting('defaultExpandFirst', false) === true) {
                 requestAnimationFrame(() => {
                     const firstCategory = document.querySelector('.category-container');
                     if (firstCategory && !firstCategory.classList.contains('expanded')) {
@@ -2305,7 +2709,6 @@ document.addEventListener("DOMContentLoaded", function () {
             '.category-container',
             '.category-panel',
             '.search-container-wrapper',
-            '.home-category-toolbar',
             '.view-tabs',
             '.recent-links',
             '#launcher',
@@ -2322,12 +2725,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }, { passive: true });
     
     // 默认展开所有分类设置
-    const defaultExpandAllToggle = document.getElementById('default-expand-all');
-    if (defaultExpandAllToggle) {
-        defaultExpandAllToggle.checked = localStorage.getItem('defaultExpandAll') === 'true';
-        
-        defaultExpandAllToggle.addEventListener('change', function() {
-            localStorage.setItem('defaultExpandAll', this.checked);
+    const defaultExpandFirstToggle = document.getElementById('default-expand-first');
+    if (defaultExpandFirstToggle) {
+        defaultExpandFirstToggle.checked = getSetting('defaultExpandFirst', false) === true;
+
+        defaultExpandFirstToggle.addEventListener('change', function() {
+            setSetting('defaultExpandFirst', this.checked);
             if (this.checked) {
                 toggleAllCategories(true);
                 showMessage('已打开第一个分组');
@@ -2383,8 +2786,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function loadTopButtonSettings() {
-        const saved = readJSONStorage(TOP_BUTTON_SETTINGS_KEY, {});
-        const legacyButtonVisibility = readJSONStorage('buttonVisibility', null);
+        const saved = getSetting(TOP_BUTTON_SETTINGS_KEY, {}) || {};
+        const legacyButtonVisibility = getSetting('buttonVisibility', null);
         const hasSavedSystem = saved?.system && typeof saved.system === 'object';
         const system = {
             ...defaultTopButtonSettings.system,
@@ -2396,8 +2799,9 @@ document.addEventListener("DOMContentLoaded", function () {
             system.position = legacyButtonVisibility.position !== false;
         }
 
-        if (!hasSavedSystem && localStorage.getItem('showThemeBtn') !== null) {
-            system.theme = localStorage.getItem('showThemeBtn') !== 'false';
+        const showThemeBtnLegacy = getSetting('showThemeBtn', null);
+        if (!hasSavedSystem && showThemeBtnLegacy !== null && showThemeBtnLegacy !== undefined) {
+            system.theme = showThemeBtnLegacy !== 'false';
         }
 
         return {
@@ -2407,13 +2811,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function saveTopButtonSettings(settings) {
-        writeStorage(TOP_BUTTON_SETTINGS_KEY, JSON.stringify({
+        setSetting(TOP_BUTTON_SETTINGS_KEY, {
             system: {
                 ...defaultTopButtonSettings.system,
                 ...settings.system
             },
             customButtons: normalizeCustomTopButtons(settings.customButtons)
-        }));
+        });
     }
 
     function renderCustomTopButtons(settings = loadTopButtonSettings()) {
@@ -2720,7 +3124,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 加载搜索引擎
     function loadSearchEngines() {
-        const saved = readJSONStorage('searchEngines', null);
+        const saved = getSetting('searchEngines', null);
         const engines = Array.isArray(saved) ? saved : defaultSearchEngines;
         return engines
             .filter(engine => engine && engine.name && engine.url)
@@ -2730,10 +3134,73 @@ document.addEventListener("DOMContentLoaded", function () {
                 icon: String(engine.icon || '').trim()
             }));
     }
+
+    // 获取当前默认搜索引擎（按名称匹配，找不到则回退到第一个）
+    function getDefaultSearchEngine() {
+        const engines = loadSearchEngines();
+        if (!engines.length) return null;
+        const savedName = getSetting('defaultSearchEngine', '');
+        if (savedName) {
+            const found = engines.find(engine => engine.name === savedName);
+            if (found) return found;
+        }
+        return engines[0];
+    }
+
+    // 渲染"默认引擎"下拉：选项=当前所有引擎
+    function renderDefaultEngineSelect() {
+        const select = document.getElementById('default-search-engine');
+        if (!select) return;
+        const engines = loadSearchEngines();
+        const savedName = getSetting('defaultSearchEngine', '');
+        const selectedName = (savedName && engines.some(e => e.name === savedName))
+            ? savedName
+            : (engines[0]?.name || '');
+
+        select.innerHTML = engines.map(engine =>
+            `<option value="${escapeHTML(engine.name)}"${engine.name === selectedName ? ' selected' : ''}>${escapeHTML(engine.name)}</option>`
+        ).join('');
+
+        updateTestUrlHint();
+    }
+
+    // 更新测试区下方的 URL 提示
+    function updateTestUrlHint() {
+        const hint = document.getElementById('search-engine-test-url');
+        if (!hint) return;
+        const engine = getDefaultSearchEngine();
+        const keyword = document.getElementById('search-engine-test-input')?.value.trim() || 'test';
+        if (!engine) {
+            hint.textContent = '暂无可用搜索引擎';
+            return;
+        }
+        const previewUrl = engine.url.replace('%s', encodeURIComponent(keyword));
+        hint.textContent = `将打开：${previewUrl}`;
+    }
+
+    // 打开测试搜索
+    function performTestSearch() {
+        const engine = getDefaultSearchEngine();
+        if (!engine) {
+            showMessage('暂无可用搜索引擎');
+            return;
+        }
+        const keyword = document.getElementById('search-engine-test-input')?.value.trim();
+        if (!keyword) {
+            showMessage('请输入测试关键词');
+            return;
+        }
+        const searchURL = engine.url.replace('%s', encodeURIComponent(keyword));
+        if (!isSafeUrl(searchURL, ['http:', 'https:'])) {
+            showMessage('搜索地址无效');
+            return;
+        }
+        window.open(searchURL, '_blank', 'noopener');
+    }
     
     // 保存搜索引擎
     function saveSearchEngines(engines) {
-        writeStorage('searchEngines', JSON.stringify(engines));
+        setSetting('searchEngines', engines);
     }
     
     // 渲染搜索引擎列表
@@ -2788,6 +3255,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         bindSearchEngineDrag();
+        renderDefaultEngineSelect();
     }
 
     function bindSearchEngineDrag() {
@@ -2970,7 +3438,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 读取搜索按钮图标模式：text（仅文字）/ logo（仅图标）/ logo-text（图标+文字，默认）
     function getSearchButtonIconMode() {
-        const mode = localStorage.getItem('searchButtonIconMode');
+        const mode = getSetting('searchButtonIconMode', 'logo-text');
         return ['text', 'logo', 'logo-text'].includes(mode) ? mode : 'logo-text';
     }
 
@@ -3059,9 +3527,28 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-    
+
+    // 默认引擎下拉 + 测试按钮
+    const defaultEngineSelect = document.getElementById('default-search-engine');
+    if (defaultEngineSelect) {
+        defaultEngineSelect.addEventListener('change', function() {
+            setSetting('defaultSearchEngine', this.value);
+            showMessage('默认引擎：' + this.value);
+            updateTestUrlHint();
+        });
+    }
+    const testInput = document.getElementById('search-engine-test-input');
+    if (testInput) {
+        testInput.addEventListener('input', updateTestUrlHint);
+    }
+    const testBtn = document.getElementById('search-engine-test-btn');
+    if (testBtn) {
+        testBtn.addEventListener('click', performTestSearch);
+    }
+
     // 初始化搜索引擎列表
     renderSearchEngines();
+    renderDefaultEngineSelect();
     updateSearchButtons();
 
     // ================================
@@ -3094,7 +3581,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function loadDisplaySettings() {
         return {
             ...defaultDisplaySettings,
-            ...readJSONStorage('displaySettings', {})
+            ...(getSetting('displaySettings', {}) || {})
         };
     }
 
@@ -3109,7 +3596,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 保存显示设置
     function saveDisplaySettings(settings) {
-        writeStorage('displaySettings', JSON.stringify(settings));
+        setSetting('displaySettings', settings);
         cachedDisplaySettings = settings; // 失效缓存，下次取最新
     }
     
@@ -3494,23 +3981,31 @@ document.addEventListener("DOMContentLoaded", function () {
     updateTimeDisplay();
     updateWeather();
     
-    // 每秒更新一次时间和日期
+    // 每秒更新一次时间和日期（含极简模式大时钟）
     setInterval(() => {
         updateTimeDisplay();
+        if (document.body.classList.contains('minimal-mode')) updateMinimalClock();
     }, 1000);
     
     // ================================
     // 设置折叠面板功能
     // ================================
+    function syncSectionTitleState(section) {
+        const sectionTitle = section?.querySelector(':scope > .section-title');
+        if (!sectionTitle || sectionTitle.classList.contains('section-title-static')) return;
+        sectionTitle.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+    }
+
     window.toggleSection = function(sectionTitle) {
         const section = sectionTitle.closest('.settings-section');
         if (section) {
+            // §3.2：仅用稳定的 data-section-id 作为折叠持久化键，不再回退中文文案（文案改动会让旧态失效）
+            const sectionId = section.dataset.sectionId || '';
+            if (!sectionId) return;
             section.classList.toggle('collapsed');
-            
-            // 保存折叠状态
-            const sectionId = section.querySelector('.section-title-left span')?.textContent || '';
-            const collapsedSections = readJSONStorage('collapsedSections', []);
-            
+
+            const collapsedSections = getSetting('collapsedSections', []) || [];
+
             if (section.classList.contains('collapsed')) {
                 if (!collapsedSections.includes(sectionId)) {
                     collapsedSections.push(sectionId);
@@ -3521,8 +4016,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     collapsedSections.splice(index, 1);
                 }
             }
-            
-            localStorage.setItem('collapsedSections', JSON.stringify(collapsedSections));
+
+            setSetting('collapsedSections', collapsedSections);
+            syncSectionTitleState(section);
         }
     };
 
@@ -3530,19 +4026,36 @@ document.addEventListener("DOMContentLoaded", function () {
         const section = sectionTitle.closest('.settings-section');
         if (!section?.querySelector(':scope > .section-content')) return;
 
+        // §5.2：可折叠分区标题补 ARIA + 键盘支持；不可折叠（section-title-static）跳过
+        const isStatic = sectionTitle.classList.contains('section-title-static');
+        if (!isStatic) {
+            sectionTitle.setAttribute('role', 'button');
+            sectionTitle.setAttribute('tabindex', '0');
+            syncSectionTitleState(section);
+            sectionTitle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.toggleSection(sectionTitle);
+                }
+            });
+        }
+
         sectionTitle.addEventListener('click', () => {
+            if (isStatic) return; // 不可折叠分区不响应点击
             window.toggleSection(sectionTitle);
         });
     });
-    
+
     // 初始化折叠状态
     function initSectionCollapseState() {
-        const collapsedSections = readJSONStorage('collapsedSections', []);
-        document.querySelectorAll('.settings-section').forEach(section => {
-            const sectionId = section.querySelector('.section-title-left span')?.textContent || '';
-            if (collapsedSections.includes(sectionId)) {
-                section.classList.add('collapsed');
-            }
+        const collapsedSections = getSetting('collapsedSections', []) || [];
+        // §3.2：仅按 data-section-id 匹配，无 id 的分区（如 .section-title-static）不参与折叠
+        document.querySelectorAll('.settings-section[data-section-id]').forEach(section => {
+            const sectionId = section.dataset.sectionId;
+            const sectionTitle = section.querySelector(':scope > .section-title');
+            const canCollapse = sectionTitle && !sectionTitle.classList.contains('section-title-static');
+            section.classList.toggle('collapsed', Boolean(canCollapse && sectionId && collapsedSections.includes(sectionId)));
+            syncSectionTitleState(section);
         });
     }
     
@@ -3560,8 +4073,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (searchInput) {
         searchInput.addEventListener('keydown', event => {
             if (event.key !== 'Enter') return;
-            const [firstEngine] = loadSearchEngines();
-            performSearch(firstEngine);
+            performSearch(getDefaultSearchEngine());
         });
     }
 
@@ -3728,7 +4240,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const container = document.querySelector('.container');
 
         function updateLayoutMenuState() {
-            const savedPosition = localStorage.getItem('contentPosition') || 'default';
+            const savedPosition = getSetting('contentPosition', 'default');
             const { density } = loadHomeLayoutSettings();
             dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
                 const selected = item.dataset.action === savedPosition || item.dataset.density === density;
@@ -3788,7 +4300,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (action) {
                 container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
                 container.classList.add(`content-position-${action}`);
-                localStorage.setItem('contentPosition', action);
+                setSetting('contentPosition', action);
                 let message = '';
                 switch(action) {
                     case 'top': message = '内容已切换为靠上布局'; break;
@@ -3816,7 +4328,7 @@ document.addEventListener("DOMContentLoaded", function () {
             dropdownMenu.style.display = 'none';
         });
 
-        const savedPosition = localStorage.getItem('contentPosition');
+        const savedPosition = getSetting('contentPosition', null);
         if (savedPosition) {
             switch (savedPosition) {
                 case 'top':
@@ -3854,6 +4366,10 @@ document.addEventListener("DOMContentLoaded", function () {
 function renderRecentLinks(allLinks) {
     const container = document.getElementById('recent-links');
     if (!container) return;
+    if (getSetting('showRecentLinks', true) === false) {
+        container.hidden = true;
+        return;
+    }
     const recent = getRecentLinks();
     if (Object.keys(recent).length === 0) {
         container.hidden = true;
@@ -3952,16 +4468,13 @@ function renderLinksByCategory(allLinks) {
     });
 
     for (const category in categories) {
-        categories[category].sort((a, b) => b.ID - a.ID);
+        // 组内链接按名称排序，便于按拼音定位
+        categories[category].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN'));
     }
 
+    // 分组按名称排序，与顶部筛选标签栏（getAllCategoryNames）保持同一顺序
     const sortedCategories = Object.entries(categories)
-        .sort((a, b) => {
-            // 各分类的链接已按 ID 降序排序，首元素即最大，避免每次比较都重新求 max
-            const maxA = a[1][0]?.ID ?? 0;
-            const maxB = b[1][0]?.ID ?? 0;
-            return maxB - maxA;
-        });
+        .sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'));
 
     for (const [category, categoryLinks] of sortedCategories) {
         const categoryContainer = document.createElement('div');
@@ -3981,23 +4494,25 @@ function renderLinksByCategory(allLinks) {
         categoryTitle.appendChild(categoryIcon);
         categoryTitle.appendChild(document.createTextNode(` ${category}`));
 
-        const categoryPreview = document.createElement('div');
-        categoryPreview.className = 'category-preview';
-        categoryLinks.slice(0, 3).forEach(link => {
-            const previewChip = document.createElement('span');
-            previewChip.className = 'category-preview-chip';
-            previewChip.textContent = link.name || '未命名';
-            categoryPreview.appendChild(previewChip);
-        });
-        if (categoryLinks.length > 3) {
+        // 摘要 chip：链接较多时显示「前 2 个 + +N」帮助预览；链接少（≤2）时
+        // 不显示——否则会与下方卡片完全重复（如只有 1 个链接时就是重复显示那个名字）。
+        categoryHeaderMain.appendChild(categoryTitle);
+        const previewCount = 2;
+        if (categoryLinks.length > previewCount) {
+            const categoryPreview = document.createElement('div');
+            categoryPreview.className = 'category-preview';
+            categoryLinks.slice(0, previewCount).forEach(link => {
+                const previewChip = document.createElement('span');
+                previewChip.className = 'category-preview-chip';
+                previewChip.textContent = link.name || '未命名';
+                categoryPreview.appendChild(previewChip);
+            });
             const moreChip = document.createElement('span');
             moreChip.className = 'category-preview-chip category-preview-more';
-            moreChip.textContent = `+${categoryLinks.length - 3}`;
+            moreChip.textContent = `+${categoryLinks.length - previewCount}`;
             categoryPreview.appendChild(moreChip);
+            categoryHeaderMain.appendChild(categoryPreview);
         }
-
-        categoryHeaderMain.appendChild(categoryTitle);
-        categoryHeaderMain.appendChild(categoryPreview);
 
         const categoryHeaderActions = document.createElement('div');
         categoryHeaderActions.className = 'category-header-actions';
@@ -4029,7 +4544,7 @@ function renderLinksByCategory(allLinks) {
         linkContainer.appendChild(categoryContainer);
     }
 
-    if (localStorage.getItem('showThumbnails') === 'false') {
+    if (getSetting('showThumbnails', true) === false) {
         linkContainer.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
             thumbnail.style.display = 'none';
         });
@@ -4083,7 +4598,42 @@ function createHomeLinkElement(link) {
     const thumbnail = document.createElement('div');
     thumbnail.className = 'link-card-thumbnail';
     const thumbnailUrl = sanitizeUrl(link.thumbnail, '', ['http:', 'https:']);
-    if (thumbnailUrl) {
+    // 外部截图服务访问不到内网地址，内网链接的 mshots 缩略图必然加载失败；
+    // 直接跳过，省一次注定失败的请求。
+    let thumbnailReachable = Boolean(thumbnailUrl);
+    if (thumbnailReachable && getUrlChoiceMeta(preferredUrlInfo).type === 'local') {
+        try {
+            if (new URL(thumbnailUrl, window.location.href).hostname === 's0.wp.com') {
+                thumbnailReachable = false;
+            }
+        } catch {
+            thumbnailReachable = false;
+        }
+    }
+
+    // 首字母方块作底，尝试叠加站点 favicon；favicon 加载失败则保留首字母
+    const applyLetterAvatar = () => {
+        const statusDot = thumbnail.querySelector('.link-status-dot');
+        thumbnail.classList.add('placeholder', 'letter');
+        thumbnail.textContent = String(link.name || '?').trim().charAt(0).toUpperCase() || '?';
+        try {
+            const host = new URL(preferredUrlInfo.address, window.location.href).hostname;
+            if (host && host !== window.location.hostname) {
+                const fav = document.createElement('img');
+                fav.className = 'link-card-favicon';
+                fav.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+                fav.alt = '';
+                fav.loading = 'lazy';
+                fav.decoding = 'async';
+                // 加载失败：移除 img，露出底层首字母
+                fav.addEventListener('error', () => fav.remove());
+                thumbnail.appendChild(fav);
+            }
+        } catch (_) { /* 地址非法则只用首字母 */ }
+        if (statusDot) thumbnail.appendChild(statusDot);
+    };
+
+    if (thumbnailReachable) {
         // 用 <img loading="lazy"> 替代 background-image：可被浏览器跳过屏外请求，
         // 并显式声明尺寸以避免加载时布局抖动。
         const img = document.createElement('img');
@@ -4093,10 +4643,14 @@ function createHomeLinkElement(link) {
         img.decoding = 'async';
         img.width = 48;
         img.height = 48;
+        // 缩略图加载失败（服务不可达、离线等）回退首字母，避免裂图
+        img.addEventListener('error', () => {
+            img.remove();
+            applyLetterAvatar();
+        });
         thumbnail.appendChild(img);
     } else {
-        thumbnail.classList.add('placeholder');
-        thumbnail.innerHTML = '<i class="ri-links-line"></i>';
+        applyLetterAvatar();
     }
     linkCard.appendChild(thumbnail);
 
@@ -4361,21 +4915,8 @@ function setupMultiUrlDropdown(linkCard, link, safeUrls) {
 // 全局分类展开/收缩功能
 // ================================
 
-// 存储展开状态的键
-const EXPANDED_CATEGORIES_KEY = 'expandedCategories';
 let activeCategoryContainer = null;
 let categoryPanelElements = null;
-
-// 获取已展开的分类列表
-function getExpandedCategories() {
-    const stored = readJSONStorage(EXPANDED_CATEGORIES_KEY, []);
-    return Array.isArray(stored) ? stored : [];
-}
-
-// 保存展开状态
-function saveExpandedCategories(categories) {
-    localStorage.setItem(EXPANDED_CATEGORIES_KEY, JSON.stringify(categories));
-}
 
 function resetCategoryContainer(container) {
     if (!container) return;
@@ -4536,7 +5077,7 @@ function openCategoryPanel(container, saveState = true) {
         list.appendChild(createHomeLinkElement(link));
     });
 
-    if (localStorage.getItem('showThumbnails') === 'false') {
+    if (getSetting('showThumbnails', true) === false) {
         list.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
             thumbnail.style.display = 'none';
         });
@@ -4549,9 +5090,6 @@ function openCategoryPanel(container, saveState = true) {
         panel.setAttribute('aria-hidden', 'false');
     });
 
-    if (saveState) {
-        saveExpandedCategories([]);
-    }
     window.updateCategoryActionButtonState?.();
 }
 
@@ -4574,9 +5112,6 @@ function closeCategoryPanel(saveState = true) {
     categoryPanelElements.panel.classList.remove('show', 'mobile');
     categoryPanelElements.panel.setAttribute('aria-hidden', 'true');
 
-    if (saveState) {
-        saveExpandedCategories([]);
-    }
     window.updateCategoryActionButtonState?.();
 }
 
@@ -4606,7 +5141,7 @@ function toggleCategoryAccordion(container) {
     const categoryLinks = getCategoryPanelLinks(category);
     if (linkList) {
         linkList.replaceChildren(...categoryLinks.map(createHomeLinkElement));
-        if (localStorage.getItem('showThumbnails') === 'false') {
+        if (getSetting('showThumbnails', true) === false) {
             linkList.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
                 thumbnail.style.display = 'none';
             });
@@ -4642,11 +5177,10 @@ function toggleCategory(container) {
     toggleCategoryAccordion(container);
 }
 
-// 初始化分类展开状态
+    // 初始化分类展开状态
     function initCategoryToggles() {
     const categoryContainers = document.querySelectorAll('.category-container');
-    saveExpandedCategories([]);
-    
+
     categoryContainers.forEach(container => {
         const linkList = container.querySelector('.link-list');
         const toggleButton = container.querySelector('.toggle-button');
@@ -4687,7 +5221,7 @@ function toggleCategory(container) {
     });
 
     if (
-        localStorage.getItem('defaultExpandAll') === 'true'
+        getSetting('defaultExpandFirst', false) === true
         && document.body.classList.contains('home-categories-open')
     ) {
         const firstCategory = categoryContainers[0];
@@ -4945,7 +5479,7 @@ function createLinkItem(link) {
     const favicon = document.createElement('div');
     favicon.className = 'link-favicon';
     const safeThumbnail = sanitizeUrl(link.thumbnail, '', ['http:', 'https:']);
-    if (safeThumbnail && localStorage.getItem('showThumbnails') !== 'false') {
+    if (safeThumbnail && getSetting('showThumbnails', true) !== false) {
         favicon.classList.add('has-image');
         favicon.style.backgroundImage = `url("${safeThumbnail}")`;
     } else {

@@ -1,5 +1,12 @@
 # Local Navigation Page
 
+[![HTML](https://img.shields.io/badge/HTML-5-e34c26)]()
+[![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
+[![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
+[![Version](https://img.shields.io/badge/Version-1.5.0-blue)]()
+[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
+
 纯 HTML、CSS 和 JavaScript 实现的本地导航页，支持分类、多地址链接、搜索、主题切换、浏览器内编辑、导入导出、PWA 清单和 Docker 静态部署。
 
 ![日间模式](assets/day-mode.png)
@@ -48,6 +55,31 @@ docker compose up -d --build
 
 只允许 `http` 和 `https` 示例地址。页面打开链接前还会执行协议校验。
 
+## 自定义
+
+### 修改主题色
+
+编辑 `HTML/CSS/styles.css` 顶部的 `:root`（浅色）与 `.dark-mode`（深色）令牌。颜色使用现代 `oklch()`，派生色由 `color-mix()` 自动生成，所以只需改主色即可联动：
+
+```css
+:root {
+    --primary-color: oklch(62% 0.19 268);   /* 主色（靛蓝） */
+    --accent-color:  oklch(73% 0.17 45);    /* 强调色（橙）  */
+    --tertiary-color: oklch(72% 0.13 180);  /* 第三色（青）  */
+    /* —— 以下通常无需改动，会随主色派生 —— */
+    --primary-light: color-mix(in oklch, var(--primary-color) 12%, transparent);
+    --bg-primary: #F8FAFC;                  /* 页面背景      */
+    --text-primary: #1E293B;                /* 主要文字      */
+    --bg-card: #FFFFFF;                     /* 卡片背景      */
+}
+```
+
+> 兼容旧用法：仍可直接写 hex，例如 `--primary-color: #5D5FEF;`。`--primary-rgb`（如 `93 95 239`）用于 `rgba(var(--primary-rgb), 0.x)` 形式的半透明色，改主色时一并更新即可。
+
+### 修改搜索引擎
+
+打开右上角设置 → 搜索引擎，可新增、编辑或删除搜索引擎；搜索 URL 模板中用 `%s` 表示搜索关键词。
+
 ## 开发验证
 
 需要 Node.js 18+，无需安装第三方包：
@@ -88,3 +120,18 @@ docker build --tag local-navigation-page:test .
 - 维护节奏：按月检查浏览器兼容性、公开示例和 Docker 构建
 - 相关仓库：与 `Navigation_Index` 都属于导航领域，但数据模型和产品边界不同，不建议直接合并
 - 维护边界：公开前必须复核链接数据；归档、删除或历史重写需单独确认
+
+## 特性路线图
+
+- [x] 支持导入/导出配置（设置 → 数据管理）
+- [x] 支持自定义搜索引擎（设置 → 搜索引擎）
+- [x] 支持网站缩略图预览（首页卡片，懒加载）
+- [x] 支持快捷键操作（`Ctrl/Cmd + ,` 打开设置）
+- [ ] 支持拖拽排序
+- [ ] 支持多语言切换
+- [ ] 支持网站 favicon 自动获取
+
+---
+
+**最后更新：** 2026-06-27
+**当前版本：** 1.5.0

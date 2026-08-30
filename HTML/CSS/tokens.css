@@ -1,0 +1,109 @@
+/* ================================================================
+   Design Tokens — 全站设计变量集中定义
+   ----------------------------------------------------------------
+   本文件必须在所有其它 CSS 之前加载（index.html 中置于最前）。
+   所有组件样式（styles.css / search_input.css / settings_box.css）
+   统一从此取色，避免硬编码重复，并保证亮/暗模式一致。
+   ================================================================ */
+
+:root {
+  /* Modern color palette (oklch — wider gamut, smoother perceived transitions) */
+  --primary-color: oklch(62% 0.19 268);
+  --primary-rgb: 93 95 239;          /* hex #5D5FEF fallback for any rgb()/rgba() usage */
+  --primary-light: color-mix(in oklch, var(--primary-color) 12%, transparent);
+  --primary-dark: oklch(50% 0.18 268);
+  --secondary-color: oklch(55% 0.02 250);
+  --accent-color: oklch(73% 0.17 45);
+  --accent-light: color-mix(in oklch, var(--accent-color) 15%, transparent);
+
+  /* Text colors */
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-tertiary: #64748B;
+
+  /* Background colors */
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-tertiary: #F1F5F9;
+
+  /* Shadows (soft, layered) */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.02);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.02);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.04), 0 4px 6px rgba(0,0,0,0.02);
+  --shadow-xl: 0 20px 25px rgba(0,0,0,0.05), 0 10px 10px rgba(0,0,0,0.02);
+
+  /* Border radius */
+  --rounded-sm: 8px;
+  --rounded-md: 12px;
+  --rounded-lg: 16px;
+  --rounded-xl: 20px;
+  --rounded-2xl: 24px;
+  --rounded-full: 9999px;
+
+  /* Transitions */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.25s;
+  --transition-slow: 0.4s;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --home-glass-blur: 12px;
+  --home-card-opacity: 0.88;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, sans-serif;
+  --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+
+  /* Spacing */
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* 路由语义色（内网 / 隧道 / 公网）：徽章背景 + 文字色统一从此取，避免硬编码重复 */
+  --route-local-bg:   oklch(94% 0.08 145);
+  --route-local-fg:   oklch(45% 0.15 145);
+  --route-tunnel-bg:  oklch(94% 0.06 300);
+  --route-tunnel-fg:  oklch(50% 0.18 300);
+  --route-remote-bg:  oklch(94% 0.07 250);
+  --route-remote-fg:  oklch(48% 0.16 250);
+}
+
+.dark-mode {
+  /* Dark mode color palette */
+  --primary-color: oklch(73% 0.14 268);
+  --primary-rgb: 129 140 248;        /* hex #818CF8 fallback */
+  --primary-light: color-mix(in oklch, var(--primary-color) 15%, transparent);
+  --primary-dark: oklch(65% 0.16 268);
+  --secondary-color: oklch(75% 0.02 250);
+  --accent-color: oklch(79% 0.13 45);
+  --accent-light: color-mix(in oklch, var(--accent-color) 15%, transparent);
+
+  /* Text colors */
+  --text-primary: #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #94A3B8;
+
+  /* Background colors */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-card: #1E293B;
+  --bg-tertiary: #334155;
+
+  /* Shadows — progressive alpha so dark-mode cards regain depth (was 4× identical 0.3) */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.20);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.28);
+  --shadow-lg: 0 10px 20px rgba(0,0,0,0.40);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,0.55);
+
+  /* 路由语义色：深色模式提亮，用半透明底 + 高亮字 */
+  --route-local-bg:   rgb(34 197 94 / 0.18);
+  --route-local-fg:   oklch(78% 0.15 145);
+  --route-tunnel-bg:  rgb(168 85 247 / 0.18);
+  --route-tunnel-fg:  oklch(78% 0.14 300);
+  --route-remote-bg:  rgb(59 130 246 / 0.18);
+  --route-remote-fg:  oklch(78% 0.13 250);
+}
