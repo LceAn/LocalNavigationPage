@@ -7,7 +7,7 @@
 [![Version](https://img.shields.io/badge/Version-1.5.1-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
-纯 HTML、CSS 和 JavaScript 实现的本地导航页，支持图标磁贴分组、多地址链接、搜索、主题切换、浏览器内编辑、导入导出、PWA 清单和 Docker 静态部署。
+纯 HTML、CSS 和 JavaScript 实现的本地导航页，支持图标磁贴分组、多地址链接、搜索、主题切换、浏览器内编辑、导入导出、PWA 清单和 Docker 静态部署。字体与图标已本地化，断网或纯内网环境界面完整可用（仅网站缩略图/favicon 需要外网）。
 
 ![日间模式](assets/day-mode.png)
 

@@ -24,6 +24,7 @@
 - 无障碍：视图标签暴露选中状态（aria-pressed）、分组头键盘焦点环
 - 新增 `npm run serve` 零依赖静态服务器
 - validate 支持 `LNP_ALLOW_PRIVATE_LINKS=1` 本地豁免（CI 保持严格）
+- 字体与图标本地化（Inter latin 子集 + Remixicon，共约 200KB），断网或纯内网环境界面完整可用
 
 ## [1.5.0] - 2026-06-25
 
