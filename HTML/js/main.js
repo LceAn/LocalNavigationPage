@@ -1806,14 +1806,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // 搜索链接功能
     const linksSearch = document.getElementById('links-search');
     const clearLinksSearch = document.getElementById('clear-links-search');
+    let linksSearchDebounce = null;
     if (linksSearch) {
         linksSearch.addEventListener('input', () => {
-            renderLinksInSettingsIfVisible(links);
+            // 输入防抖：避免每个按键都全量重建链接列表
+            clearTimeout(linksSearchDebounce);
+            linksSearchDebounce = setTimeout(() => {
+                renderLinksInSettingsIfVisible(links);
+            }, 180);
         });
     }
     if (clearLinksSearch) {
         clearLinksSearch.addEventListener('click', () => {
             if (!linksSearch) return;
+            clearTimeout(linksSearchDebounce);
             linksSearch.value = '';
             linksSearch.focus();
             renderLinksInSettingsIfVisible(links);
