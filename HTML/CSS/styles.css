@@ -2692,3 +2692,30 @@ body.compact-mode .category-container .link-list {
   transform: scale(0.92);
   transform-origin: top right;
 }
+
+/* 首页空状态：无链接时的引导 */
+.home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: clamp(28px, 6vh, 64px) 16px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.home-empty i {
+  font-size: 44px;
+  color: rgb(var(--primary-rgb) / 0.45);
+}
+
+.home-empty p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text-secondary);
+}
+
+.home-empty span {
+  font-size: 13px;
+}

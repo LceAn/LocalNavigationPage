@@ -4569,6 +4569,18 @@ function renderLinksByCategory(allLinks) {
         linkContainer.appendChild(categoryContainer);
     }
 
+    // 空状态：没有任何分组时给出引导，而不是留白
+    if (sortedCategories.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'home-empty';
+        empty.innerHTML = `
+            <i class="ri-compass-3-line"></i>
+            <p>暂无链接</p>
+            <span>打开右上角「设置 → 链接与分组」添加你的第一个链接</span>
+        `;
+        linkContainer.appendChild(empty);
+    }
+
     if (getSetting('showThumbnails', true) === false) {
         linkContainer.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
             thumbnail.style.display = 'none';
