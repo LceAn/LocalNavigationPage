@@ -3,6 +3,7 @@
   "version": "1.5.0",
   "private": true,
   "scripts": {
-    "validate": "node scripts/validate.mjs"
+    "validate": "node scripts/validate.mjs",
+    "serve": "node scripts/serve.mjs"
   }
 }
