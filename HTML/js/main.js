@@ -1670,6 +1670,16 @@ document.addEventListener("DOMContentLoaded", function () {
             showMessage('已添加链接');
         }
 
+        // 重复地址提醒：不阻止保存，仅提示（编辑自身不计入）
+        const editingId = window.editingLinkId;
+        const addresses = validUrls.map(u => u.address);
+        const duplicate = links.find(l =>
+            l.ID !== editingId && getLinkUrls(l).some(u => addresses.includes(u.address))
+        );
+        if (duplicate) {
+            showMessage(`提示：该地址已存在于「${duplicate.name}」`);
+        }
+
         persistLinks();
         // 关闭弹窗
         closeModal();
