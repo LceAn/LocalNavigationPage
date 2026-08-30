@@ -500,7 +500,7 @@ function normalizeLinks(rawLinks) {
 
         if (Array.isArray(link?.urls)) {
             normalized.urls = link.urls
-                .filter(url => url && String(url.address || '').trim())
+                .filter(url => url && String(url.address || '').trim() && isSafeUrl(String(url.address).trim()))
                 .map((url, index) => ({
                     address: String(url.address).trim(),
                     label: String(url.label || `地址 ${index + 1}`),
@@ -516,12 +516,21 @@ function normalizeLinks(rawLinks) {
             normalized.url = String(link.url).trim();
         }
 
+        // 单地址旧格式同样过协议白名单；地址全部非法的链接直接丢弃
+        if (normalized.url !== undefined) {
+            if (!isSafeUrl(normalized.url)) {
+                return null;
+            }
+        } else if (!Array.isArray(normalized.urls) || normalized.urls.length === 0) {
+            return null;
+        }
+
         if (link?.thumbnail) {
             normalized.thumbnail = String(link.thumbnail).trim();
         }
 
         return normalized;
-    });
+    }).filter(Boolean);
 }
 
 function loadStoredLinks(defaultLinks) {
