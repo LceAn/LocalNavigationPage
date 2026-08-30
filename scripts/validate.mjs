@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const htmlRoot = join(root, 'HTML');
 const errors = [];
+const warnings = [];
 
 function readJSON(relativePath) {
   try {
@@ -55,7 +56,13 @@ function validateLinks(relativePath) {
 const runtimeLinks = validateLinks('HTML/data/links.json');
 const defaultLinks = validateLinks('HTML/data/links.json.default');
 if (runtimeLinks && defaultLinks && JSON.stringify(runtimeLinks) !== JSON.stringify(defaultLinks)) {
-  errors.push('HTML/data/links.json 必须保持为公开示例；私有地址请保存在浏览器或部署卷中');
+  // 本地开发可将 links.json 替换为私有数据，并设置 LNP_ALLOW_PRIVATE_LINKS=1 跳过该检查；
+  // CI 与默认环境保持严格：公开仓库绝不允许出现私有地址。
+  if (process.env.LNP_ALLOW_PRIVATE_LINKS === '1') {
+    warnings.push('HTML/data/links.json 与公开示例不一致（已按 LNP_ALLOW_PRIVATE_LINKS=1 跳过，切勿提交）');
+  } else {
+    errors.push('HTML/data/links.json 必须保持为公开示例；私有地址请保存在浏览器或部署卷中');
+  }
 }
 
 readJSON('HTML/manifest.webmanifest');
@@ -86,6 +93,8 @@ for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js']) {
 
 const shellCheck = spawnSync('sh', ['-n', join(root, 'docker/10-init-links-json.sh')], { encoding: 'utf8' });
 if (shellCheck.status !== 0) errors.push(`docker/10-init-links-json.sh: ${shellCheck.stderr.trim()}`);
+
+if (warnings.length > 0) console.warn(warnings.join('\n'));
 
 if (errors.length > 0) {
   console.error(errors.join('\n'));
