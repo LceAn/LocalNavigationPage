@@ -86,7 +86,7 @@ for (const reference of references) {
   }
 }
 
-for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js']) {
+for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js', 'HTML/sw.js']) {
   const result = spawnSync(process.execPath, ['--check', join(root, relativePath)], { encoding: 'utf8' });
   if (result.status !== 0) errors.push(`${relativePath}: JavaScript 语法检查失败\n${result.stderr.trim()}`);
 }

@@ -5641,3 +5641,12 @@ function createLinkItem(link) {
 
     return linkItem;
 }
+
+// Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(error => {
+            console.info('[lnp] Service Worker 注册失败，离线缓存不可用', error);
+        });
+    });
+}
