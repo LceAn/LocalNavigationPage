@@ -1385,7 +1385,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.5.4';
+    const currentVersion = '1.5.5';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -3193,7 +3193,7 @@ document.addEventListener("DOMContentLoaded", function () {
             [unit === 'F' ? 'u' : 'm']: ''
         });
 
-        const jsonUrl = `https://wttr.in/${encodeURIComponent(city)}?${jsonParams.toString()}`;
+        const jsonUrl = `https://wttr.in/${encodeURIComponent(city)}?${jsonParams.toString()}&lang=zh`;
         const shortTextUrl = `https://wttr.in/${encodeURIComponent(city)}?${shortTextParams.toString()}`;
 
         function renderWeatherText(text) {
@@ -3245,6 +3245,7 @@ document.addEventListener("DOMContentLoaded", function () {
         function translateWeatherText(text) {
             // wttr.in 短文本常见整句（如 "Partly cloudy, 25°C"）按词组逐个替换
             const phrases = [
+                [/thundery outbreaks/i, '雷阵雨'], [/outbreaks/i, ''], [/ in /i, ' '],
                 [/sunny/i, '晴'], [/clear/i, '晴'],
                 [/partly cloudy/i, '多云'], [/partly clear/i, '多云'],
                 [/cloudy/i, '阴'], [/overcast/i, '阴'],
@@ -3312,7 +3313,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .then(data => {
                 const current = data?.current_condition?.[0];
-                const description = current?.weatherDesc?.[0]?.value || '';
+                const description = current?.lang_zh?.[0]?.value || current?.weatherDesc?.[0]?.value || '';
                 const temp = unit === 'F' ? current?.temp_F : current?.temp_C;
                 if (!description || temp === undefined) {
                     throw new Error('天气数据不完整');
