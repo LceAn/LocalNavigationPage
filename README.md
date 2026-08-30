@@ -143,3 +143,11 @@ docker build --tag local-navigation-page:test .
 
 **最后更新：** 2026-06-27
 **当前版本：** 1.5.0
+
+---
+
+## 文档
+
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) — 更新日志
+- [docs/FEATURES_ROADMAP.md](docs/FEATURES_ROADMAP.md) — 功能规划与路线图
+- [SECURITY.md](SECURITY.md) — 安全策略
