@@ -2719,3 +2719,12 @@ body.compact-mode .category-container .link-list {
 .home-empty span {
   font-size: 13px;
 }
+
+/* 消息提示类型变体：警告（橙）/错误（红） */
+#message-container.type-warning {
+  background: linear-gradient(135deg, oklch(72% 0.15 70), oklch(66% 0.16 45));
+}
+
+#message-container.type-error {
+  background: linear-gradient(135deg, oklch(62% 0.19 25), oklch(55% 0.2 15));
+}

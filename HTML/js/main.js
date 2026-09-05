@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (dismissed && (Date.now() - dismissed) < FOURTEEN_DAYS) return; // 近期已忽略
         setTimeout(() => {
             if (typeof showMessage === 'function') {
-                showMessage('提示：建议定期导出备份以防数据丢失（设置 → 数据）');
+                showMessage('提示：建议定期导出备份以防数据丢失（设置 → 数据）', 'warning');
             }
             setSetting('backupReminderDismissTs', String(Date.now()));
         }, 1500);
@@ -81,13 +81,19 @@ document.addEventListener("DOMContentLoaded", function () {
     // 全局消息容器
     const messageContainer = document.getElementById('message-container');
 
-    function showMessage(message) {
+    let messageHideTimer = null;
+    function showMessage(message, type = 'success') {
         messageContainer.textContent = message;
+        // 类型样式：success 保持默认渐变，warning/error 换色区分
+        messageContainer.classList.toggle('type-warning', type === 'warning');
+        messageContainer.classList.toggle('type-error', type === 'error');
         messageContainer.style.display = 'block';
         setTimeout(() => {
             messageContainer.style.opacity = '1';
         }, 10);
-        setTimeout(() => {
+        // 清掉上一条消息的隐藏定时器，避免连续提示时被旧定时器提前藏掉
+        clearTimeout(messageHideTimer);
+        messageHideTimer = setTimeout(() => {
             hideMessage();
         }, 2000);
     }
@@ -950,17 +956,17 @@ document.addEventListener("DOMContentLoaded", function () {
             .filter(url => url.address);
         
         if (!name || validUrls.length === 0) {
-            showMessage('请填写名称和至少一个 URL 地址');
+            showMessage('请填写名称和至少一个 URL 地址', 'error');
             return;
         }
 
         if (validUrls.some(url => !isSafeUrl(url.address))) {
-            showMessage('链接地址格式无效');
+            showMessage('链接地址格式无效', 'error');
             return;
         }
 
         if (thumbnail && !isSafeUrl(thumbnail, ['http:', 'https:'])) {
-            showMessage('缩略图地址只支持 HTTP 或 HTTPS');
+            showMessage('缩略图地址只支持 HTTP 或 HTTPS', 'error');
             return;
         }
 
@@ -1015,7 +1021,7 @@ document.addEventListener("DOMContentLoaded", function () {
             l.ID !== editingId && getLinkUrls(l).some(u => addresses.includes(u.address))
         );
         if (duplicate) {
-            showMessage(`提示：该地址已存在于「${duplicate.name}」`);
+            showMessage(`提示：该地址已存在于「${duplicate.name}」`, 'warning');
         }
 
         persistLinks();
@@ -1236,10 +1242,10 @@ document.addEventListener("DOMContentLoaded", function () {
                             setTimeout(() => window.location.reload(), 700);
                         }
                     } else {
-                        showMessage('无效的数据格式');
+                        showMessage('无效的数据格式', 'error');
                     }
                 } catch (err) {
-                    showMessage('导入失败：' + err.message);
+                    showMessage('导入失败：' + err.message, 'error');
                 }
             };
             reader.readAsText(file);
@@ -1282,7 +1288,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 showMessage(`已导入 ${toAdd.length} 个书签${skipped ? `（${skipped} 个重复已跳过）` : ''}`);
             } catch (err) {
                 console.error(err);
-                showMessage('导入失败：文件格式无法解析');
+                showMessage('导入失败：文件格式无法解析', 'error');
             }
             importBookmarksFile.value = '';
         });
@@ -2414,7 +2420,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const icon = sanitizeIconClass(topButtonIconInput.value);
 
         if (!label || !url) {
-            showMessage('请填写按钮名称和地址');
+            showMessage('请填写按钮名称和地址', 'error');
             return;
         }
 
@@ -2720,7 +2726,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const icon = searchEngineIconInput.value.trim();
         
         if (!name || !url) {
-            showMessage('请填写名称和搜索 URL');
+            showMessage('请填写名称和搜索 URL', 'error');
             return;
         }
         
