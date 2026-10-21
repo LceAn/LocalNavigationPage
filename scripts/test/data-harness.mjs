@@ -56,6 +56,7 @@ export function loadDataLayer({ storage } = {}) {
   runScript(ctx.sandbox, 'HTML/js/storage.js');
   // 桥接 storage 层到数据层(对应浏览器全局作用域的跨脚本共享)
   const bridge = {
+    LAST_USED_LINK_URLS_KEY: ctx.sandbox.LAST_USED_LINK_URLS_KEY,
     getSetting: ctx.sandbox.getSetting,
     setSetting: ctx.sandbox.setSetting,
     getAllSettings: ctx.sandbox.getAllSettings,
@@ -68,7 +69,7 @@ export function loadDataLayer({ storage } = {}) {
     'normalizeLinks', 'loadStoredLinks', 'persistLinks',
     'getSafeLinkUrls', 'getPreferredUrlInfo', 'getUrlChoiceMeta',
     'isPrivateHost', 'defaultThumbnailFor', 'getAllCategoryNames',
-    'getLinkStatusCache', 'startStatusMonitor', 'getProbeIntervalMs'
+    'getLinkStatusCache', 'startStatusMonitor', 'getProbeIntervalMs', 'rememberLastUsedLinkUrl'
   ], bridge);
   return { ...ctx, api: ctx.sandbox };
 }

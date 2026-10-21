@@ -145,3 +145,46 @@ test('getProbeIntervalMs:非法输入回退默认值', () => {
   api.setSetting('probeIntervalMs', 'abc');
   assert.equal(api.getProbeIntervalMs(), 60000);
 });
+
+// ---------- 转义与主机分类补充 ----------
+test('escapeHTML:转义全部 HTML 元字符', () => {
+  const api = fresh();
+  assert.equal(api.escapeHTML('<img src=x onerror=alert(1)>"\''),
+    '&lt;img src=x onerror=alert(1)&gt;&quot;&#39;');
+  // null/undefined 统一输出空串(比渲染 'null' 字符串更干净)
+  assert.equal(api.escapeHTML(null), '');
+  assert.equal(api.escapeHTML(undefined), '');
+});
+
+test('isPrivateHost:覆盖环回/链路本地/IPv6/边界网段', () => {
+  const api = fresh();
+  const privates = ['localhost', 'nas.local', 'router.lan', '127.0.0.1', '127.255.255.255',
+    '10.0.0.1', '10.255.255.255', '172.16.0.1', '172.31.255.255',
+    '192.168.0.1', '192.168.255.255', '169.254.1.1', '::1', 'fe80::1'];
+  for (const h of privates) assert.equal(api.isPrivateHost(h), true, h);
+  const publics = ['example.com', '8.8.8.8', '11.0.0.1', '172.32.0.1', '172.15.255.255',
+    '192.169.0.1', '169.255.0.1', '2001:db8::1'];
+  for (const h of publics) assert.equal(api.isPrivateHost(h), false, h);
+});
+
+test('getPreferredUrlInfo:记住上次选择的地址优先', () => {
+  const api = fresh();
+  const link = { ID: 9, urls: [
+    { address: 'http://lan.example', label: '内网', priority: 1 },
+    { address: 'https://wan.example', label: '公网', priority: 2 }
+  ]};
+  // 无记忆:按 priority 取第一个
+  assert.equal(api.getPreferredUrlInfo(link).address, 'http://lan.example');
+  // 记住公网后:优先公网
+  api.rememberLastUsedLinkUrl(link, 'https://wan.example');
+  assert.equal(api.getPreferredUrlInfo(link).address, 'https://wan.example');
+});
+
+test('getSafeLinkUrls:多地址按 priority 升序', () => {
+  const api = fresh();
+  const out = api.getSafeLinkUrls({ urls: [
+    { address: 'http://b.example', priority: 2 },
+    { address: 'http://a.example', priority: 1 }
+  ]});
+  assert.deepEqual(out.map(u => u.address), ['http://a.example', 'http://b.example']);
+});
