@@ -114,6 +114,7 @@ function renderLinksByCategory(allLinks) {
     const sortedCategories = Object.entries(categories)
         .sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'));
 
+    const renderBatch = document.createDocumentFragment();
     for (const [category, categoryLinks] of sortedCategories) {
         const categoryContainer = document.createElement('div');
         categoryContainer.className = 'category-container';
@@ -179,7 +180,7 @@ function renderLinksByCategory(allLinks) {
         linkList.style.cssText = 'margin: 0; border: none;';
         categoryContainer.appendChild(linkList);
 
-        linkContainer.appendChild(categoryContainer);
+        renderBatch.appendChild(categoryContainer);
     }
 
     // 空状态：没有任何分组时给出引导，而不是留白
@@ -191,8 +192,10 @@ function renderLinksByCategory(allLinks) {
             <p>暂无链接</p>
             <span>打开右上角「设置 → 链接与分组」添加你的第一个链接</span>
         `;
-        linkContainer.appendChild(empty);
+        renderBatch.appendChild(empty);
     }
+    // 分组先汇集到 fragment，一次性插入，减少重排次数
+    linkContainer.appendChild(renderBatch);
 
     if (getSetting('showThumbnails', true) === false) {
         linkContainer.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
