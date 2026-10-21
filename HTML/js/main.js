@@ -1227,6 +1227,10 @@ document.addEventListener("DOMContentLoaded", function () {
             reader.onload = (event) => {
                 try {
                     const data = JSON.parse(event.target.result);
+                    // 备份来自更新版本时提示（数据仍尝试导入，但不保证兼容）
+                    if (data.appVersion && compareVersions(String(data.appVersion), currentVersion) > 0) {
+                        showMessage(`注意：备份由更新版本 v${data.appVersion} 导出，可能存在不兼容字段`, 'warning');
+                    }
                     const hasLinks = data.links && Array.isArray(data.links);
                     const hasSettings = data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings);
 
