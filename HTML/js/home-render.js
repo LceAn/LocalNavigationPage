@@ -399,17 +399,6 @@ function createHomeLinkElement(link) {
 }
 
 // 获取链接的 URL 列表（支持新旧格式）
-function getLinkUrls(link) {
-    if (link.urls && Array.isArray(link.urls)) {
-        // 新格式：多 URL，按优先级排序
-        return [...link.urls].sort((a, b) => (a.priority || 999) - (b.priority || 999));
-    } else if (link.url) {
-        // 旧格式：单 URL
-        return [{ address: link.url, label: '默认', priority: 1 }];
-    }
-    return [];
-}
-
 // 设置多 URL 快捷切换
 function setupMultiUrlDropdown(linkCard, link, safeUrls) {
     if (safeUrls.length <= 1) return;

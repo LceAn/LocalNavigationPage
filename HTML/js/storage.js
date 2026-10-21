@@ -130,6 +130,32 @@ window.addEventListener('storage', (event) => {
     } catch { /* 忽略异常数据 */ }
 });
 
+function readJSONStorage(key, fallbackValue) {
+    try {
+        const value = localStorage.getItem(key);
+        return value ? JSON.parse(value) : fallbackValue;
+    } catch (error) {
+        console.warn(`读取本地配置失败：${key}`, error);
+        return fallbackValue;
+    }
+}
+
+// 统一的安全写入：捕获配额超限（QuotaExceededError），避免静默丢数据。
+// 失败时延迟提示一次（用 showMessage，若尚未定义则仅 console）。
+function writeStorage(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (error) {
+        console.error(`写入本地配置失败：${key}`, error);
+        const notify = window.showMessage;
+        if (typeof notify === 'function') {
+            notify('本地存储已满，请导出备份后清理再操作');
+        }
+        return false;
+    }
+}
+
 // 暴露给 darkMode.js 等其他脚本使用
 window.getSetting = getSetting;
 window.setSetting = setSetting;

@@ -44,31 +44,6 @@ function escapeHTML(value) {
     })[char]);
 }
 
-function readJSONStorage(key, fallbackValue) {
-    try {
-        const value = localStorage.getItem(key);
-        return value ? JSON.parse(value) : fallbackValue;
-    } catch (error) {
-        console.warn(`读取本地配置失败：${key}`, error);
-        return fallbackValue;
-    }
-}
-
-// 统一的安全写入：捕获配额超限（QuotaExceededError），避免静默丢数据。
-// 失败时延迟提示一次（用 showMessage，若尚未定义则仅 console）。
-function writeStorage(key, value) {
-    try {
-        localStorage.setItem(key, value);
-        return true;
-    } catch (error) {
-        console.error(`写入本地配置失败：${key}`, error);
-        const notify = window.showMessage;
-        if (typeof notify === 'function') {
-            notify('本地存储已满，请导出备份后清理再操作');
-        }
-        return false;
-    }
-}
 
 function isSafeUrl(value, allowedProtocols = ['http:', 'https:', 'mailto:', 'tel:', 'ftp:', 'file:']) {
     const url = String(value ?? '').trim();
@@ -214,6 +189,17 @@ function getCachedStatusForUrl(url) {
     // 缓存超过 2 倍轮询间隔视为过期
     if (Date.now() - (entry.ts || 0) > PROBE_INTERVAL_MS * 2.5) return null;
     return entry;
+}
+
+function getLinkUrls(link) {
+    if (link.urls && Array.isArray(link.urls)) {
+        // 新格式：多 URL，按优先级排序
+        return [...link.urls].sort((a, b) => (a.priority || 999) - (b.priority || 999));
+    } else if (link.url) {
+        // 旧格式：单 URL
+        return [{ address: link.url, label: '默认', priority: 1 }];
+    }
+    return [];
 }
 
 function getSafeLinkUrls(link) {

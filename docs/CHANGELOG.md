@@ -1,5 +1,23 @@
 # 更新日志 (CHANGELOG)
 
+## [1.5.9] - 2026-09-05
+
+### 🧪 测试基建（零依赖）
+
+- 新增数据层单元测试（node:test + 沙箱执行器，16 个用例全绿）：
+  URL 协议白名单、链接规范化（非法地址剔除 / ID 重排 / 单多地址收敛）、
+  内网/隧道/公网分类、设置存取、v1→v2 迁移、损坏容器容错、探测频率
+- npm test 入口；CI 新增 npm test 步骤（validate 与 docker build 之前）
+
+### 🎨 架构修正（由测试暴露）
+
+- writeStorage/readJSONStorage 归位 storage.js（此前 storage 层反向依赖
+  后加载数据层的实现，属循环依赖）
+- getLinkUrls 归位 links-data.js（此前数据层 getSafeLinkUrls 依赖渲染层
+  的函数，依赖方向倒置）
+- 运行时行为不变（浏览器全局作用域下两者本可互相调用），模块边界自此正确
+
+
 ## [1.5.8] - 2026-09-05
 
 ### ✨ 新增
