@@ -1852,6 +1852,19 @@ document.addEventListener("DOMContentLoaded", function () {
         if (homeClickBlankCollapseToggle) homeClickBlankCollapseToggle.checked = settings.clickBlankToCollapse !== false;
     }
 
+    // 在线状态探测频率：变更即时生效（重启监控循环）
+    {
+        const probeSelect = document.getElementById('probe-interval-select');
+        if (probeSelect) {
+            probeSelect.value = String(getProbeIntervalMs());
+            probeSelect.addEventListener('change', () => {
+                setSetting('probeIntervalMs', Number(probeSelect.value));
+                startStatusMonitor(links);
+                showMessage(Number(probeSelect.value) === 0 ? '已关闭在线状态探测' : '探测频率已更新');
+            });
+        }
+    }
+
     // 初始化一次：把存储里的密度/展开状态应用到首页
     {
         const homeLayoutSettings = loadHomeLayoutSettings();

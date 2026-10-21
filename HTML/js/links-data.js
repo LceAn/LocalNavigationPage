@@ -187,15 +187,23 @@ async function probeLinkStatuses(allLinks) {
     if (typeof refreshLinkStatusDots === 'function') refreshLinkStatusDots();
 }
 
+// 探测频率（毫秒）：从设置读取，0 = 关闭探测，默认 60s
+function getProbeIntervalMs() {
+    const saved = Number(getSetting('probeIntervalMs', PROBE_INTERVAL_MS));
+    return Number.isFinite(saved) && saved >= 0 ? saved : PROBE_INTERVAL_MS;
+}
+
 // 启动定期轮询
 function startStatusMonitor(allLinks) {
-    if (probeTimer) clearTimeout(probeTimer);
+    if (probeTimer) clearInterval(probeTimer);
+    const interval = getProbeIntervalMs();
+    if (interval === 0) return; // 用户关闭了探测
     // 首次延迟 2s 探测（等首屏渲染完）
     setTimeout(() => probeLinkStatuses(allLinks), 2000);
     probeTimer = setInterval(() => {
         if (document.hidden) return;
         probeLinkStatuses(allLinks);
-    }, PROBE_INTERVAL_MS);
+    }, interval);
 }
 
 // 读取某个 URL 的缓存状态（供卡片显示）
