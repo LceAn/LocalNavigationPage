@@ -2728,3 +2728,45 @@ body.compact-mode .category-container .link-list {
 #message-container.type-error {
   background: linear-gradient(135deg, oklch(62% 0.19 25), oklch(55% 0.2 15));
 }
+
+/* ================================
+   打印样式：导航页打印为清单
+   ================================ */
+@media print {
+  .search-container-wrapper,
+  .top-right-buttons,
+  .toggle-button,
+  .back-to-top,
+  #message-container,
+  #settings-container,
+  #launcher,
+  .view-tabs,
+  .recent-links {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  /* 分组全部展开、去掉玻璃与阴影，打印为平面清单 */
+  .category-container {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    break-inside: avoid;
+  }
+
+  .category-container .link-list {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .link-card {
+    break-inside: avoid;
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+  }
+}
