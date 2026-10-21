@@ -2770,3 +2770,9 @@ body.compact-mode .category-container .link-list {
     box-shadow: none !important;
   }
 }
+
+/* 链接磁贴的键盘焦点环（卡片 tabindex=0 可 Tab 导航） */
+.link-card:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
