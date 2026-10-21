@@ -451,12 +451,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return tb - ta;
         });
         if (q) {
+            // 空格分词，全部词都命中（任一字段）才保留：“nas 管理”可命中「NAS 管理」
+            const terms = q.split(/s+/).filter(Boolean);
             pool = pool.filter(link => {
                 const name = (link.name || '').toLowerCase();
                 const cat = (link.category || '').toLowerCase();
                 const tag = (link.tag || '').toLowerCase();
-                const urls = (link.url || '') + ' ' + (link.urls || []).map(u => u.address || '').join(' ');
-                return name.includes(q) || cat.includes(q) || tag.includes(q) || urls.toLowerCase().includes(q);
+                const urls = ((link.url || '') + ' ' + (link.urls || []).map(u => u.address || '').join(' ')).toLowerCase();
+                return terms.every(term =>
+                    name.includes(term) || cat.includes(term) || tag.includes(term) || urls.includes(term)
+                );
             });
         }
         const top = pool.slice(0, 8);
