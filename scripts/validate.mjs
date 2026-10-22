@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -66,6 +66,24 @@ if (runtimeLinks && defaultLinks && JSON.stringify(runtimeLinks) !== JSON.string
 }
 
 readJSON('HTML/manifest.webmanifest');
+
+// 经典脚本共享全局词法环境:同名顶层 const/let 会造成后加载脚本整体解析失败
+{
+  const declared = new Map();
+  const scriptFiles = readdirSync(join(root, 'HTML/js')).filter(f => f.endsWith('.js'));
+  for (const file of scriptFiles) {
+    const src = readFileSync(join(root, 'HTML/js', file), 'utf8');
+    for (const m of src.matchAll(/^(const|let)\s+([A-Za-z_$][\w$]*)/gm)) {
+      const name = m[2];
+      if (declared.has(name)) {
+        errors.push('HTML/js/' + file + ': 顶层 ' + m[1] + ' ' + name + ' 与 ' + declared.get(name) + ' 重复声明（经典脚本共享全局词法环境）');
+      } else {
+        declared.set(name, 'HTML/js/' + file);
+      }
+    }
+  }
+}
+
 
 const html = readFileSync(join(htmlRoot, 'index.html'), 'utf8');
 const references = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map(match => match[1]);

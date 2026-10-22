@@ -2,7 +2,7 @@
  * 时间格式(12/24h)、极简大时钟、天气获取与中文翻译、显示开关。
  * 依赖 links-data.js / storage.js 全局函数；showMessage 经 window 桥接。
  * main.js 的每秒 interval 会调用本模块的 updateTimeDisplay。 */
-const showMessage = (msg, type) => window.showMessage?.(msg, type);
+function showMessage(msg, type) { window.showMessage?.(msg, type); }
 
 
 // ================================

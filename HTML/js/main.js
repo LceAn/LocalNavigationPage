@@ -1290,7 +1290,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.5.12';
+    const currentVersion = '1.5.14';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1749,7 +1749,48 @@ document.addEventListener("DOMContentLoaded", function () {
         const probeSelect = document.getElementById('probe-interval-select');
         if (probeSelect) {
             probeSelect.value = String(getProbeIntervalMs());
-            probeSelect.addEventListener('change', () => {
+                // 智能选路开关
+    {
+        const smartToggle = document.getElementById('smart-routing-toggle');
+        if (smartToggle) {
+            smartToggle.checked = getSetting('smartRouting', false) === true;
+            smartToggle.addEventListener('change', () => {
+                setSetting('smartRouting', smartToggle.checked);
+                showMessage(smartToggle.checked ? '智能选路已开启' : '智能选路已关闭');
+            });
+        }
+    }
+
+    // 自定义 CSS：设置 → 外观中的文本框内容注入 <style>，实时生效并持久化
+    function applyCustomCss(css) {
+        let el = document.getElementById('custom-user-css');
+        if (!el) {
+            el = document.createElement('style');
+            el.id = 'custom-user-css';
+            document.head.appendChild(el);
+        }
+        el.textContent = String(css || '');
+    }
+    window.applyCustomCss = applyCustomCss;
+    {
+        const cssBox = document.getElementById('custom-css-input');
+        if (cssBox) {
+            cssBox.value = getSetting('customCss', '');
+            applyCustomCss(cssBox.value);
+            let cssDebounce = null;
+            cssBox.addEventListener('input', () => {
+                clearTimeout(cssDebounce);
+                cssDebounce = setTimeout(() => {
+                    applyCustomCss(cssBox.value);
+                    setSetting('customCss', cssBox.value);
+                }, 400);
+            });
+        } else {
+            applyCustomCss(getSetting('customCss', ''));
+        }
+    }
+
+probeSelect.addEventListener('change', () => {
                 setSetting('probeIntervalMs', Number(probeSelect.value));
                 startStatusMonitor(links);
                 showMessage(Number(probeSelect.value) === 0 ? '已关闭在线状态探测' : '探测频率已更新');

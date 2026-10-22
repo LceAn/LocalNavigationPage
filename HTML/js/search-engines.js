@@ -1,7 +1,7 @@
 /* search-engines.js — 搜索引擎管理（自 main.js 拆出，Phase 3）
  * 引擎列表增删改、默认引擎、测试搜索、首页搜索按钮渲染与执行。
  * 依赖 links-data.js / storage.js 全局函数；showMessage 经 window 桥接。 */
-const showMessage = (msg, type) => window.showMessage?.(msg, type);
+function showMessage(msg, type) { window.showMessage?.(msg, type); }
 
 
 // ================================

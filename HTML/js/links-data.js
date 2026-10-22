@@ -292,7 +292,31 @@ function defaultThumbnailFor(address) {
 }
 
 function openLinkUrl(link, url) {
-    const safeUrl = sanitizeUrl(url);
+    let chosen = url;
+    // 智能选路：多地址链接且首选探测为离线时，自动切换到探测在线且延迟最低的地址。
+    // 手动记住过的地址仍最优先（用户意图高于自动化）；探测缓存过期则不干预。
+    if (getSetting('smartRouting', false) === true) {
+        const safeUrls = getSafeLinkUrls(link);
+        if (safeUrls.length > 1) {
+            const saved = getLastUsedLinkUrls()[String(link?.ID)];
+            if (saved !== chosen) {
+                const current = getCachedStatusForUrl(chosen);
+                if (current && current.online === false) {
+                    const best = safeUrls
+                        .map(u => ({ u, st: getCachedStatusForUrl(u.address) }))
+                        .filter(x => x.st && x.st.online)
+                        .sort((a, b) => (a.st.ms ?? 1e9) - (b.st.ms ?? 1e9))[0];
+                    if (best && best.u.address !== chosen) {
+                        chosen = best.u.address;
+                        if (typeof window.showMessage === 'function') {
+                            window.showMessage(`首选地址离线，已自动切换（${best.st.ms ?? '?'}ms）`, 'warning');
+                        }
+                    }
+                }
+            }
+        }
+    }
+    const safeUrl = sanitizeUrl(chosen);
     if (safeUrl === '#') {
         openSafeUrl(safeUrl);
         return;
