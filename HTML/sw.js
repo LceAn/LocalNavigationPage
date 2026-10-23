@@ -9,16 +9,16 @@
  *
  * 发版时同步修改 CACHE_VERSION，激活时会自动清理旧缓存。
  */
-const CACHE_VERSION = 'lnp-v1.5.14';
+const CACHE_VERSION = 'lnp-v1.5.15';
 const APP_SHELL = [
     './',
     './index.html',
-    './CSS/fonts.css?v=1.5.14',
-    './CSS/remixicon.css?v=1.5.14',
-    './CSS/tokens.css?v=1.5.14',
-    './CSS/styles.css?v=1.5.14',
-    './CSS/search_input.css?v=1.5.14',
-    './CSS/settings_box.css?v=1.5.14',
+    './CSS/fonts.css?v=1.5.15',
+    './CSS/remixicon.css?v=1.5.15',
+    './CSS/tokens.css?v=1.5.15',
+    './CSS/styles.css?v=1.5.15',
+    './CSS/search_input.css?v=1.5.15',
+    './CSS/settings_box.css?v=1.5.15',
     './assets/fonts/remixicon.woff2',
     './assets/fonts/inter-var-latin.woff2'
 ];

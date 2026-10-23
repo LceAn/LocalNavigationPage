@@ -262,3 +262,9 @@
         font-size: 13px;
     }
 }
+
+/* 默认引擎指示：回车搜索使用带 .is-default 的按钮 */
+.search-button.is-default {
+  border-color: rgb(var(--primary-rgb) / 0.55);
+  box-shadow: 0 0 0 1px rgb(var(--primary-rgb) / 0.25);
+}

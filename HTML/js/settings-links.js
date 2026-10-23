@@ -333,18 +333,29 @@ function createLinkItem(link) {
     const deleteButton = createActionButton('delete', 'ri-delete-bin-line', '删除');
     deleteButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (confirm(`确定要删除 "${link.name}" 吗？`)) {
-            const index = links.findIndex(l => l.ID === link.ID);
-            if (index !== -1) {
-                links.splice(index, 1);
-                window.persistLinks?.();
-                renderLinksByCategory(links);
-                renderLinksInSettingsIfVisible(links);
-                window.updateCategoryDatalist?.();
-                window.updateStorageInfo?.();
-                window.showMessage?.('已删除链接');
-            }
-        }
+        if (!confirm(`确定要删除 "${link.name}" 吗？`)) return;
+        const index = links.findIndex(l => l.ID === link.ID);
+        if (index === -1) return;
+        const removed = links.splice(index, 1)[0];
+        window.persistLinks?.();
+        renderLinksByCategory(links);
+        renderLinksInSettingsIfVisible(links);
+        window.updateCategoryDatalist?.();
+        window.updateStorageInfo?.();
+        // 软删除：8 秒内可撤销（点击提示条或重进设置撤销）
+        window.__pendingDeletedLink = { link: removed, index };
+        window.showMessage?.(`已删除「${link.name}」 — 点击提示撤销`, 'warning');
+        const mc = document.getElementById('message-container');
+        mc?.classList.add('clickable-undo');
+        mc?.setAttribute('role', 'button');
+        mc?.setAttribute('tabindex', '0');
+        clearTimeout(window.__undoTimer);
+        window.__undoTimer = setTimeout(() => {
+            window.__pendingDeletedLink = null;
+            mc?.classList.remove('clickable-undo');
+            mc?.removeAttribute('role');
+            mc?.removeAttribute('tabindex');
+        }, 8000);
     });
 
     linkItem.addEventListener('click', () => {
@@ -367,3 +378,22 @@ function createLinkItem(link) {
     return linkItem;
 }
 
+
+// 点击消息提示撤销最近删除的链接(8 秒窗口内)
+(() => {
+    const mc = document.getElementById('message-container');
+    mc?.addEventListener('click', () => {
+        const pending = window.__pendingDeletedLink;
+        if (!pending) return;
+        window.__pendingDeletedLink = null;
+        clearTimeout(window.__undoTimer);
+        mc.classList.remove('clickable-undo');
+        links.splice(Math.min(pending.index, links.length), 0, pending.link);
+        window.persistLinks?.();
+        renderLinksByCategory(links);
+        renderLinksInSettingsIfVisible(links);
+        window.updateCategoryDatalist?.();
+        window.updateStorageInfo?.();
+        window.showMessage?.('已撤销删除「' + pending.link.name + '」');
+    });
+})();

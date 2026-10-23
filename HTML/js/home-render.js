@@ -214,12 +214,17 @@ function renderLinksByCategory(allLinks) {
 
 // 刷新首页所有状态点（探测完成后调用）
 function refreshLinkStatusDots() {
+    const probingDisabled = getProbeIntervalMs() === 0;
     document.querySelectorAll('.link-status-dot').forEach(dot => {
         const url = dot.dataset.probeUrl;
         if (!url) return;
         const status = getCachedStatusForUrl(url);
-        dot.classList.remove('status-pending', 'status-online', 'status-offline');
-        if (!status) {
+        dot.classList.remove('status-pending', 'status-online', 'status-offline', 'status-off');
+        if (probingDisabled) {
+            // 探测已关闭：显示停用态而非误导性的「检测中…」
+            dot.classList.add('status-off');
+            dot.title = '在线探测已关闭（设置 → 布局）';
+        } else if (!status) {
             dot.classList.add('status-pending');
             dot.title = '检测中…';
         } else if (status.online) {

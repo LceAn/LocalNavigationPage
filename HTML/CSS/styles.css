@@ -2776,3 +2776,9 @@ body.compact-mode .category-container .link-list {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
+
+/* 探测停用态：中性灰点（区别于检测中的半透明与离线的红） */
+.link-status-dot.status-off {
+  background: var(--text-tertiary);
+  opacity: 0.45;
+}

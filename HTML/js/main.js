@@ -1122,6 +1122,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     const hasLinks = data.links && Array.isArray(data.links);
                     const hasSettings = data.settings && typeof data.settings === 'object' && !Array.isArray(data.settings);
 
+                    // 导入是覆盖式：任何写入发生前先确认，避免误点丢数据
+                    if (hasLinks || hasSettings) {
+                        const incomingCount = hasLinks ? normalizeLinks(data.links).length : 0;
+                        const scope = [hasSettings && '全部设置', hasLinks && (incomingCount + ' 条链接')].filter(Boolean).join(' + ');
+                        if (!confirm(`导入将替换${scope}，当前 ${links.length} 条链接会被覆盖，继续？`)) {
+                            showMessage('已取消导入', 'warning');
+                            importFileInput.value = '';
+                            return;
+                        }
+                    }
+
                     if (hasSettings) {
                         restoreSettingsSnapshot(data.settings);
                     }
@@ -1290,7 +1301,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.5.14';
+    const currentVersion = '1.5.15';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {

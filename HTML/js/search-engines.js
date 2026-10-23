@@ -373,10 +373,27 @@ function updateSearchButtons() {
         return `<button class="search-button search-button-has-icon" data-engine-index="${index}" title="${name}">${img}<span class="search-button-text">${name}</span></button>`;
     }).join('');
 
+    // 标记默认引擎（回车搜索使用的引擎）
+    const defaultName = getDefaultSearchEngine()?.name;
+    buttonContainer.querySelectorAll('.search-button').forEach(b => {
+        const idx = Number(b.getAttribute('data-engine-index'));
+        if (engines[idx] && engines[idx].name === defaultName) b.classList.add('is-default');
+    });
+
     buttonContainer.querySelectorAll('.search-button').forEach(btn => {
         btn.addEventListener('click', () => {
             const index = Number(btn.getAttribute('data-engine-index'));
-            performSearch(engines[index]);
+            const term = document.getElementById('search-input')?.value.trim();
+            if (term) {
+                performSearch(engines[index]);
+            } else {
+                // 空关键词：点击意图是切换引擎——设为默认并高亮，回车即用
+                setSetting('defaultSearchEngine', engines[index].name);
+                renderDefaultEngineSelect();
+                updateSearchButtons();
+                showMessage('已切换默认搜索引擎：' + engines[index].name);
+                document.getElementById('search-input')?.focus();
+            }
         });
         // 图标加载失败：隐藏 img，按钮回退显示文字（icon-only 模式靠 ::after 的 aria-label）
         const img = btn.querySelector('.search-button-icon');
