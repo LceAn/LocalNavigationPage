@@ -2782,3 +2782,40 @@ body.compact-mode .category-container .link-list {
   background: var(--text-tertiary);
   opacity: 0.45;
 }
+
+/* ================================================================
+   视觉打磨 v4：分类专属图标着色 / 磁贴色相变体 / 状态点呼吸
+   ================================================================ */
+
+/* 分类头图标:主色,与标题同呼吸 */
+.category-header h2 i {
+  color: var(--primary-color);
+  transition: transform var(--transition-fast) var(--ease-out-expo);
+}
+.category-header:hover h2 i {
+  transform: scale(1.12);
+}
+
+/* 磁贴首字母色相变体:同明度/饱和、不同色相,和而不同 */
+.link-card-thumbnail.placeholder.tile-hue-268 { background: linear-gradient(135deg, oklch(78% 0.11 268), oklch(66% 0.14 290)); color: oklch(38% 0.12 268); }
+.link-card-thumbnail.placeholder.tile-hue-212 { background: linear-gradient(135deg, oklch(80% 0.10 212), oklch(68% 0.12 230)); color: oklch(38% 0.11 212); }
+.link-card-thumbnail.placeholder.tile-hue-160 { background: linear-gradient(135deg, oklch(82% 0.11 160), oklch(70% 0.12 145)); color: oklch(36% 0.10 160); }
+.link-card-thumbnail.placeholder.tile-hue-25  { background: linear-gradient(135deg, oklch(84% 0.11 25),  oklch(72% 0.12 45));  color: oklch(40% 0.11 25); }
+.link-card-thumbnail.placeholder.tile-hue-340 { background: linear-gradient(135deg, oklch(82% 0.10 340), oklch(70% 0.12 355)); color: oklch(40% 0.10 340); }
+.link-card-thumbnail.placeholder.tile-hue-292 { background: linear-gradient(135deg, oklch(80% 0.10 292), oklch(68% 0.12 310)); color: oklch(38% 0.11 292); }
+.link-card-thumbnail.placeholder.tile-hue-180 { background: linear-gradient(135deg, oklch(82% 0.09 180), oklch(70% 0.11 195)); color: oklch(36% 0.09 180); }
+.link-card-thumbnail.placeholder.tile-hue-45  { background: linear-gradient(135deg, oklch(85% 0.11 45),  oklch(73% 0.12 65));  color: oklch(40% 0.10 45); }
+
+/* 在线状态点:呼吸光环 */
+.link-status-dot.status-online {
+  animation: lnp-pulse 2.4s ease-in-out infinite;
+}
+@keyframes lnp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(65% 0.18 145 / 0.45); }
+  50%      { box-shadow: 0 0 0 5px oklch(65% 0.18 145 / 0); }
+}
+
+/* 磁贴悬浮:图标轻微放大 + 上浮 */
+.link-card:hover .link-card-thumbnail {
+  transform: translateY(-2px) scale(1.06);
+}

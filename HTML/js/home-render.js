@@ -1,6 +1,37 @@
 /* home-render.js — 首页渲染层（自 main.js 拆出，Phase 2）
  * 链接按分组渲染、视图标签栏、最近使用、卡片构建、多地址下拉。
  * 依赖 storage.js / links-data.js（全局函数调用时解析）。 */
+// 分类图标:按名称关键词推断,未命中回退文件夹
+const CATEGORY_ICON_RULES = [
+  [/系统|管理|运维|监控/, 'ri-server-line'],
+  [/媒体|电影|音乐|视频|影音/, 'ri-film-line'],
+  [/下载|种子|bt/i, 'ri-download-cloud-2-line'],
+  [/ai|智能|大模型|gpt|llm/i, 'ri-robot-2-line'],
+  [/网络|路由|交换|设备/, 'ri-router-line'],
+  [/云|cloud|存储|nas/i, 'ri-cloud-line'],
+  [/自动|工作流|流程|workflow/i, 'ri-flow-chart'],
+  [/常用|常用网站|收藏/, 'ri-star-smile-line'],
+  [/开发|工具|编程|代码/, 'ri-code-s-slash-line'],
+  [/文档|知识|笔记|wiki/i, 'ri-book-2-line'],
+  [/面板|管理页|入口/, 'ri-dashboard-3-line'],
+  [/测试/, 'ri-flask-line'],
+];
+function categoryIconFor(name) {
+  const n = String(name || '');
+  for (const [re, icon] of CATEGORY_ICON_RULES) {
+    if (re.test(n)) return icon;
+  }
+  return 'ri-folder-2-line';
+}
+
+// 磁贴着色:按名称哈希取一组和谐色相,避免满屏同色
+const TILE_HUES = [268, 212, 160, 25, 340, 292, 180, 45];
+function tileHueClass(name) {
+  let h = 0;
+  for (const ch of String(name || '')) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return 'tile-hue-' + TILE_HUES[h % TILE_HUES.length];
+}
+
 function renderRecentLinks(allLinks) {
     const container = document.getElementById('recent-links');
     if (!container) return;
@@ -129,7 +160,7 @@ function renderLinksByCategory(allLinks) {
 
         const categoryTitle = document.createElement('h2');
         const categoryIcon = document.createElement('i');
-        categoryIcon.className = 'ri-folder-2-line';
+        categoryIcon.className = categoryIconFor(category);
         categoryTitle.appendChild(categoryIcon);
         categoryTitle.appendChild(document.createTextNode(` ${category}`));
 
@@ -274,7 +305,7 @@ function createHomeLinkElement(link) {
     // 首字母方块作底，尝试叠加站点 favicon；favicon 加载失败则保留首字母
     const applyLetterAvatar = () => {
         const statusDot = thumbnail.querySelector('.link-status-dot');
-        thumbnail.classList.add('placeholder', 'letter');
+        thumbnail.classList.add('placeholder', 'letter', tileHueClass(link.name));
         thumbnail.textContent = String(link.name || '?').trim().charAt(0).toUpperCase() || '?';
         try {
             const host = new URL(preferredUrlInfo.address, window.location.href).hostname;
@@ -561,3 +592,37 @@ function setupMultiUrlDropdown(linkCard, link, safeUrls) {
 }
 
 // ================================
+
+// 展开分组内方向键在磁贴间导航(左右换位、上下换行、Enter 打开)
+document.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(event.key)) return;
+    const tag = (document.activeElement?.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+    const cards = [...document.querySelectorAll('.category-container.expanded .link-card')];
+    if (!cards.length) return;
+    const current = document.activeElement?.classList?.contains('link-card')
+        ? document.activeElement
+        : null;
+
+    // Enter:打开当前聚焦的磁贴
+    if (event.key === 'Enter') {
+        if (current) {
+            event.preventDefault();
+            current.click();
+        }
+        return;
+    }
+
+    if (!current) return;
+    event.preventDefault();
+    const columns = Math.max(1, Math.round(current.parentElement.offsetWidth / (current.offsetWidth || 1)));
+    const idx = cards.indexOf(current);
+    let next = idx;
+    if (event.key === 'ArrowRight') next = idx + 1;
+    if (event.key === 'ArrowLeft') next = idx - 1;
+    if (event.key === 'ArrowDown') next = idx + columns;
+    if (event.key === 'ArrowUp') next = idx - columns;
+    next = Math.max(0, Math.min(cards.length - 1, next));
+    cards[next]?.focus();
+});

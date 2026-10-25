@@ -413,6 +413,15 @@ document.addEventListener("DOMContentLoaded", function () {
         if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
             event.preventDefault();
             openLauncher();
+            return;
+        }
+        // "/" 快速聚焦搜索框（输入类元素内不抢键）
+        if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            const tag = (document.activeElement?.tagName || '').toLowerCase();
+            if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+                event.preventDefault();
+                document.getElementById('search-input')?.focus();
+            }
         }
     });
 
@@ -1301,7 +1310,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.5.15';
+    const currentVersion = '1.5.16';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
