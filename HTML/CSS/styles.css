@@ -2819,3 +2819,117 @@ body.compact-mode .category-container .link-list {
 .link-card:hover .link-card-thumbnail {
   transform: translateY(-2px) scale(1.06);
 }
+
+/* ================================================================
+   布局 v5 —— 紧凑网格磁贴(终版布局)
+   卡片:图标在左、双行文字在右,横向铺满列宽——消灭"名称挤中间、
+   两边留白"的松散观感;信息密度约为旧竖排磁贴的 2 倍。
+   ================================================================ */
+
+/* 链接网格:固定列宽,自然换行,填满容器 */
+.category-container .link-list {
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+/* 磁贴:横向图标+文字,占满列宽 */
+.link-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: var(--rounded-md);
+  background: color-mix(in srgb, var(--bg-card) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 6%, transparent);
+}
+
+.link-card:hover {
+  transform: translateY(-1px);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+
+.link-card-thumbnail {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* 文字区:名称一行截断 + 标签小签同行右对齐,高度恒定 */
+.link-card-content {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.link-card-title {
+  font-size: 12.5px;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.link-card-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  max-width: 45%;
+  flex-shrink: 0;
+}
+
+/* 多地址徽标右上角固定 */
+.link-card .link-route-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  margin: 0;
+  transform: scale(0.9);
+}
+
+body.compact-mode .category-container .link-list {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+/* 布局 v5 微调:窄磁贴时标签独占第二行,名称不与标签挤;占位图标加深 */
+.link-card-content {
+  flex-wrap: wrap;
+}
+.link-card-title {
+  flex: 1 1 100%; /* 名称独占一行,标签换行显示 */
+}
+.link-card-tag {
+  flex: 0 0 auto;
+  margin-top: -2px;
+}
+.link-card-thumbnail.placeholder {
+  opacity: 1;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+/* 名称一行放全(不被标签挤压);磁贴列宽加大保证可读 */
+.link-card-content {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+.link-card-title {
+  flex: 0 0 auto;
+  width: 100%;
+  font-size: 13px;
+}
+.link-card-tag {
+  margin-top: 0;
+}
+.category-container .link-list {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
