@@ -420,6 +420,12 @@ function createHomeLinkElement(link) {
         }
         event.preventDefault();
         const currentPreferred = getPreferredUrlInfo(link, getSafeLinkUrls(link));
+        if (event.shiftKey) {
+            // Shift+点击：以网页小窗打开（Sun-Panel 风格的临时会话窗）
+            const w = window.open(currentPreferred.address, '_blank', 'noopener,width=1100,height=780');
+            if (w) { recordRecentLink(link); rememberLastUsedLinkUrl(link, currentPreferred.address); }
+            return;
+        }
         openLinkUrl(link, currentPreferred.address);
     }
 

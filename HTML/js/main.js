@@ -1146,6 +1146,18 @@ document.addEventListener("DOMContentLoaded", function () {
                         restoreSettingsSnapshot(data.settings);
                     }
 
+                    // 导入前自动备份当前配置（Flare 式安全网），失败不阻断导入
+                    try {
+                        const auto = JSON.stringify(createFullBackup(), null, 2);
+                        const autoBlob = new Blob([auto], { type: 'application/json' });
+                        const autoUrl = URL.createObjectURL(autoBlob);
+                        const autoA = document.createElement('a');
+                        autoA.href = autoUrl;
+                        autoA.download = 'navigation-auto-backup-' + new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19) + '.json';
+                        autoA.click();
+                        setTimeout(() => URL.revokeObjectURL(autoUrl), 2000);
+                    } catch (e) { console.warn('自动备份失败', e); }
+
                     if (hasLinks) {
                         links = normalizeLinks(data.links);
                         persistLinks();
@@ -1310,7 +1322,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.5.23';
+    const currentVersion = '1.6.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1792,6 +1804,83 @@ document.addEventListener("DOMContentLoaded", function () {
         el.textContent = String(css || '');
     }
     window.applyCustomCss = applyCustomCss;
+
+    // 主题色板:预设主色,写 :root / .dark-mode 的主色变量(color-mix 派生色自动联动)
+    const PRIMARY_PRESETS = [
+        { id: 'indigo',  name: '靛蓝', light: 'oklch(62% 0.19 268)', dark: 'oklch(73% 0.14 268)', rgbLight: '93 95 239',   rgbDark: '129 140 248' },
+        { id: 'violet',  name: '紫',   light: 'oklch(60% 0.20 300)', dark: 'oklch(72% 0.15 300)', rgbLight: '124 77 255',  rgbDark: '167 139 250' },
+        { id: 'teal',    name: '青',   light: 'oklch(64% 0.13 195)', dark: 'oklch(74% 0.11 195)', rgbLight: '13 148 166',  rgbDark: '103 198 212' },
+        { id: 'green',   name: '绿',   light: 'oklch(64% 0.16 150)', dark: 'oklch(74% 0.13 150)', rgbLight: '34 160 94',   rgbDark: '110 200 150' },
+        { id: 'orange',  name: '橙',   light: 'oklch(70% 0.16 55)',  dark: 'oklch(78% 0.13 55)',  rgbLight: '235 130 52',  rgbDark: '246 166 90' },
+        { id: 'pink',    name: '粉',   light: 'oklch(66% 0.19 350)', dark: 'oklch(75% 0.15 350)', rgbLight: '225 60 130',  rgbDark: '240 130 170' },
+        { id: 'red',     name: '红',   light: 'oklch(60% 0.20 25)',  dark: 'oklch(70% 0.16 25)',  rgbLight: '220 60 60',   rgbDark: '235 110 110' },
+        { id: 'blue',    name: '蓝',   light: 'oklch(62% 0.18 245)', dark: 'oklch(73% 0.14 245)', rgbLight: '37 99 235',   rgbDark: '96 145 250' }
+    ];
+
+    function applyCustomPrimary(id) {
+        const preset = PRIMARY_PRESETS.find(p => p.id === id);
+        let el = document.getElementById('custom-primary-css');
+        if (!preset) {
+            el?.remove();
+            return;
+        }
+        if (!el) {
+            el = document.createElement('style');
+            el.id = 'custom-primary-css';
+            document.head.appendChild(el);
+        }
+        // 只覆盖基础变量;--primary-light 等派生色由 color-mix(var()) 自动联动
+        el.textContent = [
+            ':root { --primary-color: ' + preset.light + '; --primary-rgb: ' + preset.rgbLight + '; --primary-dark: ' + preset.dark + '; }',
+            '.dark-mode { --primary-color: ' + preset.dark + '; --primary-rgb: ' + preset.rgbDark + '; --primary-dark: ' + preset.light + '; }'
+        ].join('\n');
+    }
+
+    {
+        const swatches = document.getElementById('theme-swatches');
+        if (swatches) {
+            const saved = getSetting('customPrimary', 'indigo');
+            swatches.innerHTML = PRIMARY_PRESETS.map(p =>
+                '<button type="button" class="theme-swatch" data-preset="' + p.id + '" title="' + p.name +
+                '" aria-label="主题色 ' + p.name + '"><span class="swatch-dot" style="background:' + p.light + '"></span><span class="swatch-name">' + p.name + '</span></button>'
+            ).join('');
+            applyCustomPrimary(saved);
+            [...swatches.querySelectorAll('.theme-swatch')].forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === saved);
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.preset;
+                    applyCustomPrimary(id);
+                    setSetting('customPrimary', id);
+                    swatches.querySelectorAll('.theme-swatch').forEach(b => b.classList.toggle('active', b.dataset.preset === id));
+                    showMessage('主题色已切换');
+                });
+            });
+        }
+    }
+
+    // 自定义 JS:页面加载后执行一次（随设置备份导出）
+    {
+        const jsBox = document.getElementById('custom-js-input');
+        const runCustomJs = (code) => {
+            const safe = String(code || '').trim();
+            if (!safe) return;
+            try { new Function(safe)(); }
+            catch (err) { console.warn('[lnp] 自定义 JS 执行失败', err); }
+        };
+        if (jsBox) {
+            jsBox.value = getSetting('customJs', '');
+            let jsDebounce = null;
+            jsBox.addEventListener('input', () => {
+                clearTimeout(jsDebounce);
+                jsDebounce = setTimeout(() => {
+                    setSetting('customJs', jsBox.value);
+                    runCustomJs(jsBox.value);
+                }, 600);
+            });
+        }
+        runCustomJs(getSetting('customJs', ''));
+    }
+
     {
         const cssBox = document.getElementById('custom-css-input');
         if (cssBox) {
@@ -2537,6 +2626,23 @@ probeSelect.addEventListener('change', () => {
     if (searchInput) {
         searchInput.addEventListener('keydown', event => {
             if (event.key !== 'Enter') return;
+            // 前缀搜索："/b 关键词" 用 b 开头的引擎搜索（匹配引擎名前缀或自定义 prefix 字段）
+            const raw = searchInput.value.trim();
+            const prefixMatch = raw.match(/^\/(\S+)\s+(.+)$/);
+            if (prefixMatch) {
+                const prefix = prefixMatch[1].toLowerCase();
+                const term = prefixMatch[2];
+                const engines = loadSearchEngines();
+                const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, '').toLowerCase(); } catch { return ''; } };
+                const hit = engines.find(en => en.name.toLowerCase().startsWith(prefix))
+                    ?? engines.find(en => (en.prefix || '').toLowerCase() === prefix)
+                    ?? engines.find(en => hostOf(en.url).startsWith(prefix));
+                if (hit) {
+                    searchInput.value = term;
+                    performSearch(hit, term);
+                    return;
+                }
+            }
             performSearch(getDefaultSearchEngine());
         });
     }
