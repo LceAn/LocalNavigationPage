@@ -1771,17 +1771,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const homeClickBlankCollapseToggle = document.getElementById('home-click-blank-collapse');
     const homeCategoryToggle = document.getElementById('home-category-toggle');
 
-    function syncHomeLayoutControls(settings = loadHomeLayoutSettings()) {
-        if (homeDensitySelect) homeDensitySelect.value = settings.density;
-        if (homeClickBlankCollapseToggle) homeClickBlankCollapseToggle.checked = settings.clickBlankToCollapse !== false;
-    }
 
     // 在线状态探测频率：变更即时生效（重启监控循环）
     {
         const probeSelect = document.getElementById('probe-interval-select');
         if (probeSelect) {
             probeSelect.value = String(getProbeIntervalMs());
-                // 智能选路开关
+            probeSelect.addEventListener('change', () => {
+                setSetting('probeIntervalMs', Number(probeSelect.value));
+                startStatusMonitor(links);
+                showMessage(Number(probeSelect.value) === 0 ? '已关闭在线状态探测' : '探测频率已更新');
+            });
+        }
+    }
+
+    // 智能选路开关
     {
         const smartToggle = document.getElementById('smart-routing-toggle');
         if (smartToggle) {
@@ -1793,7 +1797,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // 自定义 CSS：设置 → 外观中的文本框内容注入 <style>，实时生效并持久化
+    // 自定义 CSS：注入 <style>，实时生效并持久化
     function applyCustomCss(css) {
         let el = document.getElementById('custom-user-css');
         if (!el) {
@@ -1804,8 +1808,25 @@ document.addEventListener("DOMContentLoaded", function () {
         el.textContent = String(css || '');
     }
     window.applyCustomCss = applyCustomCss;
+    {
+        const cssBox = document.getElementById('custom-css-input');
+        if (cssBox) {
+            cssBox.value = getSetting('customCss', '');
+            applyCustomCss(cssBox.value);
+            let cssDebounce = null;
+            cssBox.addEventListener('input', () => {
+                clearTimeout(cssDebounce);
+                cssDebounce = setTimeout(() => {
+                    applyCustomCss(cssBox.value);
+                    setSetting('customCss', cssBox.value);
+                }, 400);
+            });
+        } else {
+            applyCustomCss(getSetting('customCss', ''));
+        }
+    }
 
-    // 主题色板:预设主色,写 :root / .dark-mode 的主色变量(color-mix 派生色自动联动)
+    // 主题色板:预设主色,写 :root / .dark-mode 主色变量(color-mix 派生色自动联动)
     const PRIMARY_PRESETS = [
         { id: 'indigo',  name: '靛蓝', light: 'oklch(62% 0.19 268)', dark: 'oklch(73% 0.14 268)', rgbLight: '93 95 239',   rgbDark: '129 140 248' },
         { id: 'violet',  name: '紫',   light: 'oklch(60% 0.20 300)', dark: 'oklch(72% 0.15 300)', rgbLight: '124 77 255',  rgbDark: '167 139 250' },
@@ -1829,7 +1850,6 @@ document.addEventListener("DOMContentLoaded", function () {
             el.id = 'custom-primary-css';
             document.head.appendChild(el);
         }
-        // 只覆盖基础变量;--primary-light 等派生色由 color-mix(var()) 自动联动
         el.textContent = [
             ':root { --primary-color: ' + preset.light + '; --primary-rgb: ' + preset.rgbLight + '; --primary-dark: ' + preset.dark + '; }',
             '.dark-mode { --primary-color: ' + preset.dark + '; --primary-rgb: ' + preset.rgbDark + '; --primary-dark: ' + preset.light + '; }'
@@ -1881,31 +1901,19 @@ document.addEventListener("DOMContentLoaded", function () {
         runCustomJs(getSetting('customJs', ''));
     }
 
+    // 分组排序：名称 / 链接数量（即时重渲染）
     {
-        const cssBox = document.getElementById('custom-css-input');
-        if (cssBox) {
-            cssBox.value = getSetting('customCss', '');
-            applyCustomCss(cssBox.value);
-            let cssDebounce = null;
-            cssBox.addEventListener('input', () => {
-                clearTimeout(cssDebounce);
-                cssDebounce = setTimeout(() => {
-                    applyCustomCss(cssBox.value);
-                    setSetting('customCss', cssBox.value);
-                }, 400);
+        const sortSel = document.getElementById('group-sort-select');
+        if (sortSel) {
+            sortSel.value = getSetting('groupSortMode', 'name');
+            sortSel.addEventListener('change', () => {
+                setSetting('groupSortMode', sortSel.value);
+                renderLinksByCategory(links);
+                showMessage('分组排序已更新');
             });
-        } else {
-            applyCustomCss(getSetting('customCss', ''));
         }
     }
 
-probeSelect.addEventListener('change', () => {
-                setSetting('probeIntervalMs', Number(probeSelect.value));
-                startStatusMonitor(links);
-                showMessage(Number(probeSelect.value) === 0 ? '已关闭在线状态探测' : '探测频率已更新');
-            });
-        }
-    }
 
     // 初始化一次：把存储里的密度/展开状态应用到首页
     {

@@ -168,7 +168,7 @@
         <div class="search-container-wrapper">
             <!-- 搜索框和按钮 -->
             <div class="search-container">
-                <input type="text" id="search-input" placeholder="输入搜索词">
+                <input type="text" id="search-input" placeholder="输入搜索词，/引擎名 可指定引擎">
                 <div class="search-buttons">
                     <button class="search-button" data-engine="百度">百度</button>
                     <button class="search-button" data-engine="Google">谷歌</button>
@@ -781,6 +781,16 @@
                                         <i class="ri-pulse-line"></i>
                                         <span>在线状态探测频率</span>
                                     </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-sort-desc"></i>
+                                        <span>分组排序</span>
+                                    </div>
+                                    <select id="group-sort-select" class="format-select">
+                                        <option value="name" selected>按名称（拼音）</option>
+                                        <option value="count">按链接数量</option>
+                                    </select>
+                                </div>
                                     <select id="probe-interval-select" class="format-select">
                                         <option value="30000">30 秒</option>
                                         <option value="60000" selected>1 分钟</option>
@@ -1254,6 +1264,16 @@
                                     <div class="input-wrapper">
                                         <i class="ri-image-line input-icon"></i>
                                         <input type="text" id="search-engine-icon" placeholder="https://...">
+                                    </div>
+                                </div>
+                                <div class="form-item">
+                                    <label for="search-engine-prefix">
+                                        <i class="ri-slash-command-line"></i>
+                                        <span>搜索前缀（可选，如 b，用 /b 关键词 直达）</span>
+                                    </label>
+                                    <div class="input-wrapper">
+                                        <i class="ri-slash-command-line input-icon"></i>
+                                        <input type="text" id="search-engine-prefix" placeholder="例如：b / g / bing">
                                     </div>
                                 </div>
                             </div>

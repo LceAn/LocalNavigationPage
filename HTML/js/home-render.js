@@ -142,8 +142,12 @@ function renderLinksByCategory(allLinks) {
     }
 
     // 分组按名称排序，与顶部筛选标签栏（getAllCategoryNames）保持同一顺序
+    // 分组排序：按名称（拼音）或按链接数量（设置 → 布局）
+    const sortMode = getSetting('groupSortMode', 'name');
     const sortedCategories = Object.entries(categories)
-        .sort((a, b) => a[0].localeCompare(b[0], 'zh-CN'));
+        .sort((a, b) => sortMode === 'count'
+            ? (b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-CN'))
+            : a[0].localeCompare(b[0], 'zh-CN'));
 
     const renderBatch = document.createDocumentFragment();
     for (const [category, categoryLinks] of sortedCategories) {

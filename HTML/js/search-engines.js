@@ -16,6 +16,7 @@ const searchEngineCancelBtn = document.getElementById('search-engine-cancel-btn'
 const searchEngineNameInput = document.getElementById('search-engine-name');
 const searchEngineUrlInput = document.getElementById('search-engine-url');
 const searchEngineIconInput = document.getElementById('search-engine-icon');
+const searchEnginePrefixInput = document.getElementById('search-engine-prefix');
 const searchEngineList = document.getElementById('search-engine-list');
 
 // 默认搜索引擎列表
@@ -203,6 +204,7 @@ function openAddSearchEngineModal() {
     searchEngineNameInput.value = '';
     searchEngineUrlInput.value = '';
     searchEngineIconInput.value = '';
+    if (searchEnginePrefixInput) searchEnginePrefixInput.value = '';
     window.editingSearchEngineIndex = null;
     searchEngineModal.style.display = 'flex';
     requestAnimationFrame(() => {
@@ -218,6 +220,7 @@ function openEditSearchEngineModal(index) {
     searchEngineNameInput.value = engine.name;
     searchEngineUrlInput.value = engine.url;
     searchEngineIconInput.value = engine.icon || '';
+    if (searchEnginePrefixInput) searchEnginePrefixInput.value = engine.prefix || '';
     window.editingSearchEngineIndex = index;
     searchEngineModal.style.display = 'flex';
     requestAnimationFrame(() => {
@@ -258,6 +261,7 @@ function saveSearchEngine() {
     const name = searchEngineNameInput.value.trim();
     const url = searchEngineUrlInput.value.trim();
     const icon = searchEngineIconInput.value.trim();
+    const prefix = searchEnginePrefixInput ? searchEnginePrefixInput.value.trim().toLowerCase() : '';
     
     if (!name || !url) {
         showMessage('请填写名称和搜索 URL', 'error');
@@ -285,10 +289,10 @@ function saveSearchEngine() {
     const editIndex = window.editingSearchEngineIndex;
     
     if (editIndex !== null) {
-        engines[Number(editIndex)] = { name, url, icon };
+        engines[Number(editIndex)] = { name, url, icon, ...(prefix ? { prefix } : {}) };
         showMessage('已更新搜索引擎');
     } else {
-        engines.push({ name, url, icon });
+        engines.push({ name, url, icon, ...(prefix ? { prefix } : {}) });
         showMessage('已添加搜索引擎');
     }
     
