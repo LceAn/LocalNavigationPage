@@ -415,6 +415,15 @@ document.addEventListener("DOMContentLoaded", function () {
             openLauncher();
             return;
         }
+        // "?" 快捷键速查面板（输入类元素内不抢键）
+        if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            const tag = (document.activeElement?.tagName || '').toLowerCase();
+            if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
+                event.preventDefault();
+                toggleShortcutCheatSheet();
+                return;
+            }
+        }
         // "/" 快速聚焦搜索框（输入类元素内不抢键）
         if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey) {
             const tag = (document.activeElement?.tagName || '').toLowerCase();
@@ -1353,7 +1362,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.10.0';
+    const currentVersion = '1.10.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -3309,6 +3318,36 @@ window.toggleAllCategories = function(expand) {
     closeCategoryPanel(false);
     window.updateCategoryActionButtonState?.();
 };
+
+// 快捷键速查面板（"?" 键切换）
+function toggleShortcutCheatSheet() {
+    let panel = document.getElementById('shortcut-cheatsheet');
+    if (panel) {
+        panel.remove();
+        return;
+    }
+    const rows = [
+        ['Ctrl / ⌘ + K', '键盘启动器：全局搜索链接'],
+        ['Ctrl / ⌘ + ,', '打开设置'],
+        ['/', '聚焦搜索框'],
+        ['?', '本速查面板'],
+        ['Esc', '关闭设置 / 弹窗 / 启动器 / 面板'],
+        ['Shift + 点击磁贴', '以小窗打开链接'],
+        ['右键磁贴', '复制地址 / 小窗 / 编辑 / 按路径直达'],
+        ['展开分组内 ↑ ↓ ← →', '磁贴间导航，Enter 打开'],
+    ];
+    panel = document.createElement('div');
+    panel.id = 'shortcut-cheatsheet';
+    panel.innerHTML =
+        '<div class="cheatsheet-card">' +
+        '<div class="cheatsheet-head"><i class="ri-keyboard-line"></i>键盘快捷键<button type="button" class="cheatsheet-close" aria-label="关闭"><i class="ri-close-line"></i></button></div>' +
+        '<div class="cheatsheet-body">' +
+        rows.map(([k, d]) => '<div class="cheatsheet-row"><kbd>' + k + '</kbd><span>' + d + '</span></div>').join('') +
+        '</div></div>';
+    document.body.appendChild(panel);
+    panel.querySelector('.cheatsheet-close').addEventListener('click', () => panel.remove());
+    panel.addEventListener('click', (e) => { if (e.target === panel) panel.remove(); });
+}
 
 // Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）
 if ('serviceWorker' in navigator) {
