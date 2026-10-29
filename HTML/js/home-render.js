@@ -144,10 +144,21 @@ function renderLinksByCategory(allLinks) {
     // 分组按名称排序，与顶部筛选标签栏（getAllCategoryNames）保持同一顺序
     // 分组排序：按名称（拼音）或按链接数量（设置 → 布局）
     const sortMode = getSetting('groupSortMode', 'name');
-    const sortedCategories = Object.entries(categories)
-        .sort((a, b) => sortMode === 'count'
-            ? (b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-CN'))
-            : a[0].localeCompare(b[0], 'zh-CN'));
+    let sortedCategories;
+    if (sortMode === 'custom') {
+        // 手动序:按 customCategoryOrder;未记录的分组按名称附后
+        const order = getSetting('customCategoryOrder', []);
+        const rank = new Map((Array.isArray(order) ? order : []).map((name, i) => [name, i]));
+        const nameSorted = Object.keys(categories).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+        sortedCategories = nameSorted
+            .map(name => [name, categories[name]])
+            .sort((a, b) => (rank.get(a[0]) ?? 1e9) - (rank.get(b[0]) ?? 1e9) || a[0].localeCompare(b[0], 'zh-CN'));
+    } else {
+        sortedCategories = Object.entries(categories)
+            .sort((a, b) => sortMode === 'count'
+                ? (b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-CN'))
+                : a[0].localeCompare(b[0], 'zh-CN'));
+    }
 
     const renderBatch = document.createDocumentFragment();
     for (const [category, categoryLinks] of sortedCategories) {

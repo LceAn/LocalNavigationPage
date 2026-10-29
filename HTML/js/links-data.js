@@ -406,10 +406,17 @@ function saveCustomCategories(categories) {
 }
 
 function getAllCategoryNames(sourceLinks = links) {
-    return [...new Set([
+    const names = [...new Set([
         ...sourceLinks.map(link => link.category || '未分类'),
         ...getCustomCategories()
     ])].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    // 手动排序模式下按 customCategoryOrder 排列(与首页分组卡片同序)
+    if (getSetting('groupSortMode', 'name') === 'custom') {
+        const order = getSetting('customCategoryOrder', []);
+        const rank = new Map((Array.isArray(order) ? order : []).map((name, i) => [name, i]));
+        names.sort((a, b) => (rank.get(a) ?? 1e9) - (rank.get(b) ?? 1e9) || a.localeCompare(b, 'zh-CN'));
+    }
+    return names;
 }
 
 const defaultHomeLayoutSettings = {

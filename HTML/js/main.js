@@ -701,6 +701,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     <span class="category-item-count">${categories[name]} 个链接</span>
                 </div>
                 <div class="category-item-actions">
+                    <button class="category-action-btn move" title="上移" data-action="up" data-category="${escapeHTML(name)}">
+                        <i class="ri-arrow-up-line"></i>
+                    </button>
+                    <button class="category-action-btn move" title="下移" data-action="down" data-category="${escapeHTML(name)}">
+                        <i class="ri-arrow-down-line"></i>
+                    </button>
                     <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${escapeHTML(name)}">
                         <i class="ri-edit-line"></i>
                     </button>
@@ -721,11 +727,36 @@ document.addEventListener("DOMContentLoaded", function () {
                     editCategory(category);
                 } else if (action === 'delete') {
                     deleteCategory(category);
+                } else if (action === 'up' || action === 'down') {
+                    moveCategory(category, action === 'up' ? -1 : 1);
                 }
             });
         });
     }
     
+    // 手动排序:上移/下移分组,写入 customCategoryOrder 并即时生效
+    function getCustomCategoryOrder() {
+        const saved = getSetting('customCategoryOrder', []);
+        return Array.isArray(saved) ? saved.filter(Boolean) : [];
+    }
+
+    function moveCategory(name, delta) {
+        // 基于当前展示顺序建立完整序列(未记录的分组保持名称序附在后面)
+        const current = getAllCategoryNames(links);
+        const saved = getCustomCategoryOrder();
+        const known = [...new Set([...saved.filter(c => current.includes(c)), ...current])];
+        const idx = known.indexOf(name);
+        const target = idx + delta;
+        if (idx === -1 || target < 0 || target >= known.length) return;
+        [known[idx], known[target]] = [known[target], known[idx]];
+        setSetting('customCategoryOrder', known);
+        setSetting('groupSortMode', 'custom');
+        renderCategoriesList();
+        renderLinksByCategory(links);
+        const sortSel = document.getElementById('group-sort-select');
+        if (sortSel) sortSel.value = 'custom';
+    }
+
     // 添加分类
     function addCategory(name) {
         if (!name || !name.trim()) {
