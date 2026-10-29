@@ -2971,3 +2971,50 @@ body.compact-mode .category-container .link-list {
 .link-card:hover .link-route-icon {
   transform: scale(1.1);
 }
+
+/* 右键上下文菜单 */
+#link-context-menu {
+  position: fixed;
+  z-index: 99998;
+  min-width: 200px;
+  max-width: 300px;
+  background: var(--bg-card);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  border-radius: var(--rounded-md);
+  box-shadow: var(--shadow-xl);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.ctx-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  border-radius: var(--rounded-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-menu-item i {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.ctx-menu-item:hover {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+.ctx-menu-item:hover i {
+  color: var(--primary-color);
+}
+.ctx-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}

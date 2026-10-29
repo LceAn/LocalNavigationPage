@@ -688,3 +688,98 @@ document.addEventListener('keydown', (event) => {
     next = Math.max(0, Math.min(cards.length - 1, next));
     cards[next]?.focus();
 });
+
+
+// ============ 磁贴右键上下文菜单 ============
+// 动作:复制地址 / 小窗打开 / 在设置中编辑;多地址链接列出每个地址直达
+(() => {
+    let menu = null;
+
+    function ensureMenu() {
+        if (menu) return menu;
+        menu = document.createElement('div');
+        menu.id = 'link-context-menu';
+        menu.setAttribute('role', 'menu');
+        menu.hidden = true;
+        document.body.appendChild(menu);
+        // 点击其他位置/Escape 关闭
+        document.addEventListener('click', (e) => {
+            if (!menu.contains(e.target)) hide();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hide();
+        });
+        window.addEventListener('blur', hide);
+        return menu;
+    }
+
+    function hide() {
+        if (menu) {
+            menu.hidden = true;
+            menu.innerHTML = '';
+        }
+    }
+
+    function item(label, icon, action) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'ctx-menu-item';
+        b.setAttribute('role', 'menuitem');
+        b.innerHTML = '<i class="' + icon + '"></i>' + label;
+        b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hide();
+            action();
+        });
+        return b;
+    }
+
+    function separator() {
+        const s = document.createElement('div');
+        s.className = 'ctx-menu-sep';
+        return s;
+    }
+
+    document.addEventListener('contextmenu', (e) => {
+        const card = e.target.closest('.link-card');
+        if (!card) return;
+        e.preventDefault();
+        const linkId = Number(card.dataset.linkId);
+        const link = (typeof links !== 'undefined' ? links : []).find(l => l.ID === linkId);
+        if (!link) return;
+        const safeUrls = getSafeLinkUrls(link);
+        const preferred = getPreferredUrlInfo(link, safeUrls);
+        const m = ensureMenu();
+        m.innerHTML = '';
+        m.appendChild(item('打开「' + (link.name || '未命名') + '」', 'ri-external-link-line', () => openLinkUrl(link, preferred.address)));
+        m.appendChild(item('小窗打开', 'ri-picture-in-picture-line', () => {
+            window.open(preferred.address, '_blank', 'noopener,width=1100,height=780');
+            recordRecentLink(link);
+            rememberLastUsedLinkUrl(link, preferred.address);
+        }));
+        m.appendChild(item('复制地址', 'ri-file-copy-line', () => {
+            navigator.clipboard?.writeText(preferred.address)
+                .then(() => window.showMessage?.('地址已复制', 'success'))
+                .catch(() => window.showMessage?.('复制失败', 'error'));
+        }));
+        if (safeUrls.length > 1) {
+            m.appendChild(separator());
+            safeUrls.forEach(u => {
+                const meta = getUrlChoiceMeta(u);
+                const label = { local: '内网', tunnel: '隧道', remote: '公网' }[meta.type] || '公网';
+                m.appendChild(item('直达' + label + '：' + (u.label || u.address), meta.icon, () => openLinkUrl(link, u.address)));
+            });
+        }
+        m.appendChild(separator());
+        m.appendChild(item('在设置中编辑', 'ri-edit-line', () => {
+            window.openSettingsPanel?.();
+            setTimeout(() => window.openEditModal?.(link), 150);
+        }));
+
+        // 定位:光标处,防溢出
+        m.hidden = false;
+        const mw = m.offsetWidth || 220, mh = m.offsetHeight || 160;
+        m.style.left = Math.min(e.clientX, window.innerWidth - mw - 8) + 'px';
+        m.style.top = Math.min(e.clientY, window.innerHeight - mh - 8) + 'px';
+    });
+})();
