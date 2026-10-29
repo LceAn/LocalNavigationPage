@@ -329,7 +329,13 @@ function getSearchEngineIcon(engine) {
         return { src: builtinEngineIcons[builtinKey], builtin: true };
     }
 
-    // ② 用户配置的 icon URL
+    // ② 用户配置的 icon:iconify:集合:名称 → 官方 API(SVG,无需登录)
+    if (engine.icon && /^iconify:[a-z0-9-]+:[a-z0-9-]+$/i.test(engine.icon.trim())) {
+        const [, collection, name] = engine.icon.trim().split(':');
+        return { src: `https://api.iconify.design/${collection}/${name}.svg?height=48`, builtin: false };
+    }
+
+    // ②b 用户配置的 icon URL
     if (engine.icon && isSafeUrl(engine.icon, ['http:', 'https:'])) {
         return { src: engine.icon, builtin: false };
     }
