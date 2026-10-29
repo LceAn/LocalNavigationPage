@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.10.2-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.10.3-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地/内网导航页：零依赖、零构建，数据存浏览器本地，支持 Docker 或任意静态服务器部署。字体与图标已本地化，**断网或纯内网环境界面完整可用**（仅网站缩略图 / favicon 需要外网）。

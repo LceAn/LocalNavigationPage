@@ -1362,7 +1362,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.10.2';
+    const currentVersion = '1.10.3';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -3348,6 +3348,37 @@ function toggleShortcutCheatSheet() {
     panel.querySelector('.cheatsheet-close').addEventListener('click', () => panel.remove());
     panel.addEventListener('click', (e) => { if (e.target === panel) panel.remove(); });
 }
+
+
+    // 访问排行（设置 → 数据）：Top 5 最常打开的链接
+    function renderVisitStats() {
+        const host = document.getElementById('visit-stats');
+        if (!host) return;
+        const counts = getVisitCounts();
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        if (!entries.length) {
+            host.innerHTML = '<p class="visit-stats-empty">暂无访问记录——打开链接后会在这里统计。</p>';
+            return;
+        }
+        const max = entries[0][1] || 1;
+        host.innerHTML = entries.map(([id, n]) => {
+            const link = links.find(l => String(l.ID) === String(id));
+            if (!link) return '';
+            const pct = Math.round((n / max) * 100);
+            return '<div class="visit-stat-row">' +
+                '<span class="visit-stat-name">' + escapeHTML(link.name || '未命名') + '</span>' +
+                '<span class="visit-stat-bar"><span style="width:' + pct + '%"></span></span>' +
+                '<span class="visit-stat-n">' + n + '</span></div>';
+        }).join('');
+    }
+    // 设置容器可见性变化时刷新
+    {
+        const sc = document.getElementById('settings-container');
+        if (sc) new MutationObserver(() => {
+            if (sc.classList.contains('show')) renderVisitStats();
+        }).observe(sc, { attributes: true });
+        setTimeout(renderVisitStats, 600);
+    }
 
 // Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）
 if ('serviceWorker' in navigator) {

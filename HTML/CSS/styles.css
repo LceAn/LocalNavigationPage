@@ -3074,3 +3074,41 @@ body.compact-mode .category-container .link-list {
   padding: 4px 8px;
 }
 .cheatsheet-row span { font-size: 13px; color: var(--text-secondary); }
+
+
+/* 访问排行（设置 → 数据） */
+.visit-stats { display: flex; flex-direction: column; gap: 10px; }
+.visit-stats-empty { margin: 0; color: var(--text-tertiary); font-size: 13px; }
+.visit-stat-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) 2fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.visit-stat-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.visit-stat-bar {
+  height: 8px;
+  border-radius: var(--rounded-full);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+.visit-stat-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+  transition: width var(--transition-normal) ease;
+}
+.visit-stat-n {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 24px;
+  text-align: right;
+}
