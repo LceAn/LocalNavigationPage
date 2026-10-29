@@ -115,3 +115,16 @@ if (launcherEl) {
         else if (e.key === 'Enter') { e.preventDefault(); launchSelectedItem(); }
     });
 }
+
+// URL 参数直达：?q=关键词 打开启动器并预填搜索（可设为浏览器自定义搜索）
+(() => {
+    const q = new URLSearchParams(window.location.search).get('q');
+    if (q && typeof openLauncher === 'function') {
+        openLauncher();
+        const input = document.getElementById('launcher-input');
+        if (input) {
+            input.value = q;
+            if (typeof renderLauncherResults === 'function') renderLauncherResults(q);
+        }
+    }
+})();
