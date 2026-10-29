@@ -2,6 +2,7 @@
 // 用法：node scripts/serve.mjs [端口]，默认 8080，根目录为 HTML/
 import { createServer } from 'node:http';
 import { stat, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { join, normalize, resolve, relative, isAbsolute, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,7 +52,13 @@ const server = createServer(async (req, res) => {
 
     const data = await readFile(filePath);
     const type = MIME[extname(filePath).toLowerCase()] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache' });
+    const etag = 'W"' + createHash('sha1').update(data).digest('hex') + '"';
+    if (req.headers['if-none-match'] === etag) {
+        res.writeHead(304, { ETag: etag });
+        res.end();
+        return;
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', ETag: etag });
     res.end(data);
   } catch (error) {
     res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }).end('500 Internal Server Error');
