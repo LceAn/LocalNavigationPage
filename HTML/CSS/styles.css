@@ -2933,3 +2933,41 @@ body.compact-mode .category-container .link-list {
 .category-container .link-list {
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
+
+/* ================================================================
+   内外网视觉语言：磁贴描边按路线着色 + 缩略图路线小图标
+   内网=绿 / 隧道=紫 / 公网=灰蓝,全站统一色彩语义
+   ================================================================ */
+
+/* 磁贴描边:2px 路线色环(优先级高于默认边框) */
+.link-card.card-route-local  .link-card-thumbnail { box-shadow: inset 0 0 0 2px oklch(65% 0.15 145 / 0.55); }
+.link-card.card-route-tunnel .link-card-thumbnail { box-shadow: inset 0 0 0 2px oklch(60% 0.15 300 / 0.55); }
+.link-card.card-route-remote .link-card-thumbnail { box-shadow: inset 0 0 0 2px oklch(60% 0.10 250 / 0.45); }
+
+/* 路线小图标:缩略图左下角圆片 */
+.link-route-icon {
+  position: absolute;
+  left: -5px;
+  bottom: -5px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  z-index: 3;
+  border: 2px solid var(--bg-card);
+}
+.link-route-icon::before { content: ''; }
+.link-route-icon.ri-home-wifi-line      { background: oklch(65% 0.15 145); color: #fff; }
+.link-route-icon.ri-shield-keyhole-line { background: oklch(60% 0.15 300); color: #fff; }
+.link-route-icon.ri-global-line         { background: oklch(58% 0.08 250); color: #fff; }
+
+/* 悬浮时环色不变,保持路线辨识 */
+.link-card:hover .link-card-thumbnail {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--primary-color) 45%, transparent), var(--shadow-sm);
+}
+.link-card:hover .link-route-icon {
+  transform: scale(1.1);
+}
