@@ -85,6 +85,21 @@ function rememberLastUsedLinkUrl(link, url) {
 
 // 最近使用记录：每个链接按 ID 记录最近访问时间戳，用于首页「最近使用」行
 const RECENT_LINKS_KEY = 'recentLinks';
+const LINK_VISIT_COUNTS_KEY = 'linkVisitCounts';
+
+function recordVisitCount(linkId) {
+    if (!linkId) return;
+    const counts = getSetting(LINK_VISIT_COUNTS_KEY, {}) || {};
+    counts[String(linkId)] = (counts[String(linkId)] || 0) + 1;
+    // 只保留前 50,防止无限增长
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+    setSetting(LINK_VISIT_COUNTS_KEY, Object.fromEntries(top));
+}
+
+function getVisitCounts() {
+    return getSetting(LINK_VISIT_COUNTS_KEY, {}) || {};
+}
+
 function recordRecentLink(link) {
     if (!link?.ID) return;
     const recent = { ...getSetting(RECENT_LINKS_KEY, {}) };
@@ -323,6 +338,7 @@ function openLinkUrl(link, url) {
     }
     rememberLastUsedLinkUrl(link, safeUrl);
     recordRecentLink(link);
+    recordVisitCount(link.ID);
     openSafeUrl(safeUrl);
 }
 
