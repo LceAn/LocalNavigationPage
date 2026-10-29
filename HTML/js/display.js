@@ -438,3 +438,22 @@ function fetchWeatherForCity(city, unit, elementId) {
 initDisplaySettings();
 updateTimeDisplay();
 updateWeather();
+
+// 离线指示条：navigator.onLine 变化时提示(离线缓存仍可正常使用)
+(() => {
+    let banner = null;
+    const show = (offline) => {
+        if (offline) {
+            banner = document.createElement('div');
+            banner.id = 'offline-banner';
+            banner.innerHTML = '<i class="ri-wifi-off-line"></i> 当前处于离线状态——界面与已缓存数据仍可使用';
+            document.body.appendChild(banner);
+        } else {
+            banner?.remove();
+            banner = null;
+        }
+    };
+    window.addEventListener('online', () => show(false));
+    window.addEventListener('offline', () => show(true));
+    if (!navigator.onLine) show(true);
+})();
