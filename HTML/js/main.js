@@ -1225,6 +1225,37 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // ============ 书签导入（P1-4）：Netscape HTML + CSV ============
+    // 导出为浏览器书签 HTML（Netscape 格式，可直接导入 Chrome/Edge/Firefox）
+    const exportBookmarksBtn = document.getElementById('export-bookmarks-btn');
+    if (exportBookmarksBtn) {
+        exportBookmarksBtn.addEventListener('click', () => {
+            const byCategory = {};
+            links.forEach(l => {
+                const cat = l.category || '未分类';
+                (byCategory[cat] ||= []).push(l);
+            });
+            const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            let html = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n';
+            Object.entries(byCategory).sort((a, b) => a[0].localeCompare(b[0], 'zh-CN')).forEach(([cat, items]) => {
+                html += '    <DT><H3>' + esc(cat) + '</H3>\n    <DL><p>\n';
+                items.forEach(l => {
+                    const url = l.url || (l.urls && l.urls[0]?.address) || '';
+                    if (!url || !/^https?:/i.test(url)) return;
+                    html += '        <DT><A HREF="' + esc(url) + '">' + esc(l.name || '未命名') + '</A>\n';
+                });
+                html += '    </DL><p>\n';
+            });
+            html += '</DL><p>\n';
+            const blob = new Blob([html], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'navigation-bookmarks-' + new Date().toISOString().slice(0, 10) + '.html';
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+            showMessage('已导出为浏览器书签文件');
+        });
+    }
+
     const importBookmarksBtn = document.getElementById('import-bookmarks-btn');
     const importBookmarksFile = document.getElementById('import-bookmarks-file');
     if (importBookmarksBtn && importBookmarksFile) {
@@ -1362,7 +1393,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.10.3';
+    const currentVersion = '1.10.4';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
