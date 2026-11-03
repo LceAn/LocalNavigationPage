@@ -62,7 +62,17 @@ cd LocalNavigationPage
 npm run serve          # 默认 8080，可带端口参数：npm run serve -- 3000
 ```
 
-或 Python 静态服务器：
+**首次部署？一键扫描本机所有服务**：
+
+```bash
+npm run scan                    # 扫描并生成 links-local.json
+npm run scan -- --probe         # 同时探测 HTTP 页面标题（更准确但更慢）
+npm run scan -- --host 192.168.1.100  # 生成局域网 IP 地址（手机也能访问）
+```
+
+扫描自动发现监听端口 → 按端口号/进程名智能分类（数据库/媒体/开发/同步…）→ 生成可导入的 JSON。在设置 → 数据 → 导入 即可一次性加入全部服务。
+
+或使用 Python 静态服务器：
 
 ```bash
 git clone https://github.com/LceAn/LocalNavigationPage.git
@@ -183,7 +193,7 @@ docker build --tag local-navigation-page:test .
 
 ---
 
-**最后更新：** 2026-10-29
+**最后更新：** 2026-11-03
 **当前版本：** 1.8.1
 
 ---

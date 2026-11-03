@@ -5,6 +5,7 @@
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "serve": "node scripts/serve.mjs",
-    "test": "node --test scripts/test/*.test.mjs"
+    "test": "node --test scripts/test/*.test.mjs",
+    "scan": "node scripts/scan-local.mjs"
   }
 }
