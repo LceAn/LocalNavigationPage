@@ -5,3 +5,5 @@ node_modules/
 *.log
 temp/
 links-local.json
+# 本地工具数据（记忆/缓存）
+.workbuddy/

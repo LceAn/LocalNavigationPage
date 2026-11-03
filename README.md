@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.10.5-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.11.1-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地/内网导航页：零依赖、零构建，数据存浏览器本地，支持 Docker 或任意静态服务器部署。字体与图标已本地化，**断网或纯内网环境界面完整可用**（仅网站缩略图 / favicon 需要外网）。
@@ -70,7 +70,11 @@ npm run scan -- --probe         # 同时探测 HTTP 页面标题（更准确但�
 npm run scan -- --host 192.168.1.100  # 生成局域网 IP 地址（手机也能访问）
 ```
 
-扫描自动发现监听端口 → 按端口号/进程名智能分类（数据库/媒体/开发/同步…）→ 生成可导入的 JSON。在设置 → 数据 → 导入 即可一次性加入全部服务。
+扫描自动发现监听端口 → 按端口号/进程名智能分类（Web/开发/媒体/监控…）→ 生成可导入的 JSON。
+
+- SSH、MySQL、Redis 这类非 HTTP 端口不会生成链接（浏览器打不开），扫描结束会汇总提示
+- 输出文件 `HTML/data/links-local.json` 已在 `.gitignore` / `.dockerignore` 中，不会进仓库或镜像
+- 导入是**覆盖式**的：设置 → 数据 → 导入会替换现有全部链接（导入前会自动备份当前配置）
 
 或使用 Python 静态服务器：
 
@@ -138,8 +142,9 @@ docker compose up -d --build
 需要 Node.js 18+，无需安装第三方包：
 
 ```bash
-npm test               # 数据层单元测试（20 例）
+npm test               # 数据层 + 扫描解析单元测试
 npm run validate       # 链接 JSON、资源引用、脚本语法、跨脚本重声明检查
+npm run scan           # 本机端口扫描（生成 gitignore 的 links-local.json）
 docker build --tag local-navigation-page:test .
 ```
 
@@ -161,7 +166,7 @@ docker build --tag local-navigation-page:test .
 - `HTML/CSS/`：页面样式（`tokens.css` 为设计令牌）
 - `HTML/data/`：公开示例与 Docker 默认配置
 - `HTML/sw.js`：Service Worker 离线缓存
-- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器）、`test/`（单元测试）
+- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器）、`scan-local.mjs`（本机端口扫描）、`test/`（单元测试）
 - `docker/`：Nginx 配置与数据初始化脚本
 - `docs/`：更新日志、路线图与设计文档
 
@@ -194,7 +199,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-03
-**当前版本：** 1.8.1
+**当前版本：** 1.11.1
 
 ---
 

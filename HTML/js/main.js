@@ -1180,27 +1180,29 @@ document.addEventListener("DOMContentLoaded", function () {
                             importFileInput.value = '';
                             return;
                         }
+
+                        // 导入前自动备份当前配置（Flare 式安全网），失败不阻断导入。
+                        // 必须在写入任何数据之前生成，否则备份里是新设置而不是导入前的状态。
+                        try {
+                            const auto = JSON.stringify(createFullBackup(), null, 2);
+                            const autoBlob = new Blob([auto], { type: 'application/json' });
+                            const autoUrl = URL.createObjectURL(autoBlob);
+                            const autoA = document.createElement('a');
+                            autoA.href = autoUrl;
+                            autoA.download = 'navigation-auto-backup-' + new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19) + '.json';
+                            autoA.click();
+                            setTimeout(() => URL.revokeObjectURL(autoUrl), 2000);
+                        } catch (e) { console.warn('自动备份失败', e); }
                     }
 
                     if (hasSettings) {
                         restoreSettingsSnapshot(data.settings);
                     }
 
-                    // 导入前自动备份当前配置（Flare 式安全网），失败不阻断导入
-                    try {
-                        const auto = JSON.stringify(createFullBackup(), null, 2);
-                        const autoBlob = new Blob([auto], { type: 'application/json' });
-                        const autoUrl = URL.createObjectURL(autoBlob);
-                        const autoA = document.createElement('a');
-                        autoA.href = autoUrl;
-                        autoA.download = 'navigation-auto-backup-' + new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19) + '.json';
-                        autoA.click();
-                        setTimeout(() => URL.revokeObjectURL(autoUrl), 2000);
-                    } catch (e) { console.warn('自动备份失败', e); }
-
                     if (hasLinks) {
                         links = normalizeLinks(data.links);
                         persistLinks();
+                        restartStatusMonitor();
                     }
 
                     if (hasLinks || hasSettings) {
@@ -1284,6 +1286,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }])[0]).map(l => { l.ID = ++maxId; return l; });
                 links = [...links, ...toAdd];
                 persistLinks();
+                restartStatusMonitor(); // 数组已换成新引用，探测循环必须跟着换
                 renderLinksByCategory(links);
                 renderRecentLinks(links);
                 renderLinksInSettingsIfVisible(links);
@@ -1383,6 +1386,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (confirm('确定要重置所有设置和数据吗？此操作不可恢复！')) {
                 localStorage.clear();
                 links = normalizeLinks(bundledLinks.length ? bundledLinks : fallbackLinks);
+                restartStatusMonitor();
                 renderLinksByCategory(links);
                 renderLinksInSettingsIfVisible(links);
                 updateCategoryDatalist();
@@ -1393,7 +1397,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.10.5';
+    const currentVersion = '1.11.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {

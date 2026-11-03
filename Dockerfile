@@ -5,10 +5,10 @@ FROM nginx:alpine
 
 # 维护者信息
 LABEL maintainer="LceAn <lcean@users.noreply.github.com>"
-LABEL version="1.10.5"
+LABEL version="1.11.1"
 LABEL description="Local Navigation Page - 个人本地网络导航页"
 
-# 复制静态文件到 nginx 目录；.dockerignore 会避免把本地 links.json 烘焙进镜像
+# 复制静态文件到 nginx 目录；.dockerignore 会避免把本地 links.json / links-local.json 烘焙进镜像
 COPY HTML/ /usr/share/nginx/html/
 
 # 提供独立默认配置，避免挂载空 data 目录时默认配置被 volume 遮住

@@ -69,7 +69,8 @@ export function loadDataLayer({ storage } = {}) {
     'normalizeLinks', 'loadStoredLinks', 'persistLinks',
     'getSafeLinkUrls', 'getPreferredUrlInfo', 'getUrlChoiceMeta',
     'isPrivateHost', 'defaultThumbnailFor', 'getAllCategoryNames',
-    'getLinkStatusCache', 'startStatusMonitor', 'getProbeIntervalMs', 'rememberLastUsedLinkUrl'
+    'getLinkStatusCache', 'startStatusMonitor', 'getProbeIntervalMs', 'getStatusCacheTtlMs',
+    'rememberLastUsedLinkUrl'
   ], bridge);
   return { ...ctx, api: ctx.sandbox };
 }

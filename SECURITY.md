@@ -4,8 +4,8 @@
 
 | 版本 | 支持 |
 | ---- | ---- |
-| 1.5.x | ✅ |
-| < 1.5 | ❌ |
+| 1.11.x | ✅ |
+| < 1.11 | ❌ |
 
 ## 报告漏洞 / Reporting a Vulnerability
 
@@ -32,6 +32,9 @@
   `javascript:` 等危险协议的链接会被丢弃。
 - 所有用户数据经 `escapeHTML` / `textContent` 渲染；图标类名经
   `sanitizeIconClass` 白名单校验。
+- 自定义 JS（设置 → 外观）经 `new Function` 执行；完整备份导入会恢复
+  `customJs` 并在刷新后运行。**备份文件等同于可执行代码，只导入自己导出
+  的副本**，不要导入来源不明的 JSON。
 - Docker 镜像的 nginx 对 JSON 数据路由禁用缓存，并全站下发
   `X-Frame-Options`、`X-Content-Type-Options`、`Referrer-Policy`、
   `Permissions-Policy` 安全响应头。

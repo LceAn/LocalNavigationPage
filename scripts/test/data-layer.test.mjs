@@ -146,6 +146,15 @@ test('getProbeIntervalMs:非法输入回退默认值', () => {
   assert.equal(api.getProbeIntervalMs(), 60000);
 });
 
+test('getStatusCacheTtlMs:跟随探测间隔,关闭探测时立即失效', () => {
+  const api = fresh();
+  assert.equal(api.getStatusCacheTtlMs(), 150000); // 默认 60s × 2.5
+  api.setSetting('probeIntervalMs', 300000);
+  assert.equal(api.getStatusCacheTtlMs(), 750000); // 5min 档位不能沿用 150s
+  api.setSetting('probeIntervalMs', 0);
+  assert.equal(api.getStatusCacheTtlMs(), 0); // 关闭后不再信任旧缓存
+});
+
 // ---------- 转义与主机分类补充 ----------
 test('escapeHTML:转义全部 HTML 元字符', () => {
   const api = fresh();

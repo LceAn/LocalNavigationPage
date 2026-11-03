@@ -1,5 +1,34 @@
 # 更新日志 (CHANGELOG)
 
+## [1.11.1] - 2026-11-03
+
+### 🐛 修复
+
+- **导入前自动备份时机错误**：设置恢复先于备份生成，备份内容变成「新设置 +
+  旧链接」，无法用于回滚。现在先备份、再写入
+- **在线探测缓存 TTL 固定 150 秒**：与可配置的探测间隔脱节，选 5 分钟时状态点
+  约一半时间显示「检测中…」，智能选路也读不到状态。TTL 改为跟随探测间隔
+- **链接整体替换后探测循环仍持有旧数组**：书签导入 / 导入链接 / 重置之后，
+  新链接不再被探测，直到刷新页面。现在会自动重启监控
+- **scan 在 Linux 非 root 下失效**：`ss -tlnp` 不带 `users:(...pid=)` 时正则
+  匹配失败，端口全部丢失。解析不再依赖 pid，且命令返回空结果时逐级回退
+- **scan 生成非 HTTP 死链**：SSH / MySQL / Redis 等端口被写成 `http://` 链接，
+  导入后点不开。现在默认跳过非 HTTP 端口并汇总提示，https 端口按白名单识别
+- Windows 进程名查询从「每个端口一次 tasklist」改为一次批量查询
+
+### 🔒 安全
+
+- `.dockerignore` 排除 `HTML/data/links-local.json`：避免跑过 scan 后
+  `docker build` 把本机端口清单烘进镜像，并通过 `/data/` 公开访问
+- SECURITY.md 补充备份文件信任边界：备份可携带 `customJs`，导入即执行
+
+### 🔧 工程
+
+- validate 增加 `scripts/scan-local.mjs` / `scripts/serve.mjs` 语法检查
+- 新增 scan 解析单元测试（Windows netstat / ss / lsof / 端口分类 / 跳过规则）
+- 版本号全量归一：package.json / Dockerfile / sw.js / main.js / index.html /
+  README badge 统一到 1.11.1（1.11.0 当时只改了 CHANGELOG）
+
 ## [1.11.0] - 2026-11-03
 
 ### ✨ 新增

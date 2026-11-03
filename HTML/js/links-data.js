@@ -183,6 +183,14 @@ function getProbeIntervalMs() {
     return Number.isFinite(saved) && saved >= 0 ? saved : PROBE_INTERVAL_MS;
 }
 
+// 状态缓存有效期：跟随用户配置的探测间隔（至少按 30s 计），
+// 关闭探测时旧缓存立即失效（返回 0 表示不再信任）
+function getStatusCacheTtlMs() {
+    const interval = getProbeIntervalMs();
+    if (interval === 0) return 0;
+    return Math.max(interval, 30000) * 2.5;
+}
+
 // 启动定期轮询
 function startStatusMonitor(allLinks) {
     if (probeTimer) clearInterval(probeTimer);
@@ -196,13 +204,19 @@ function startStatusMonitor(allLinks) {
     }, interval);
 }
 
+// 链接数组被整体替换后（导入 / 重置 / 书签导入）重启探测循环，
+// 否则计时器闭包里仍持有旧数组，新链接不会被探测
+function restartStatusMonitor() {
+    startStatusMonitor(links);
+}
+
 // 读取某个 URL 的缓存状态（供卡片显示）
 function getCachedStatusForUrl(url) {
     const cache = getLinkStatusCache();
     const entry = cache[url];
     if (!entry) return null;
-    // 缓存超过 2 倍轮询间隔视为过期
-    if (Date.now() - (entry.ts || 0) > PROBE_INTERVAL_MS * 2.5) return null;
+    // 过期阈值跟随探测间隔，避免 5 分钟档位下一半时间显示「检测中…」
+    if (Date.now() - (entry.ts || 0) > getStatusCacheTtlMs()) return null;
     return entry;
 }
 
