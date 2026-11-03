@@ -1397,7 +1397,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.11.1';
+    const currentVersion = '1.11.2';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1989,6 +1989,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+
+    // 把存储里的布局设置同步回控件（模块拆分时遗漏，初始化会直接抛异常）
+    function syncHomeLayoutControls(settings = loadHomeLayoutSettings()) {
+        if (homeDensitySelect) homeDensitySelect.value = settings.density;
+        if (homeClickBlankCollapseToggle) homeClickBlankCollapseToggle.checked = settings.clickBlankToCollapse !== false;
+    }
 
     // 初始化一次：把存储里的密度/展开状态应用到首页
     {

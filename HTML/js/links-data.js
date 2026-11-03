@@ -473,7 +473,8 @@ function saveHomeLayoutSettings(settings) {
 }
 
 function isHomeCategoryTrayOpen() {
-    return getSetting(HOME_CATEGORY_TRAY_OPEN_KEY, false) === true;
+    // 默认展开：导航页首屏必须能看到分组和链接；用户手动收起后记住 false
+    return getSetting(HOME_CATEGORY_TRAY_OPEN_KEY, true) !== false;
 }
 
 function setHomeCategoryTrayOpen(open) {
