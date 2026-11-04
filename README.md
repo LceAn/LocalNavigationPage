@@ -65,9 +65,11 @@ npm run serve          # 默认 8080，可带端口参数：npm run serve -- 300
 **首次部署？一键扫描本机所有服务**：
 
 ```bash
-npm run scan                    # 扫描并生成 links-local.json
-npm run scan -- --probe         # 同时探测 HTTP 页面标题（更准确但更慢）
+npm run scan                          # 扫描并生成 links-local.json
+npm run scan -- --probe               # HTTP 标题探测：服务名更准确（并行，约 20s）
+npm run scan -- --merge               # 直接合并进 links.json（只增不改不删）
 npm run scan -- --host 192.168.1.100  # 生成局域网 IP 地址（手机也能访问）
+npm run scan -- --list                # 只预览表格，不写文件
 ```
 
 扫描自动发现监听端口 → 按端口号/进程名智能分类（数据库/媒体/开发/同步…）→ 生成可导入的 JSON。在设置 → 数据 → 导入 即可一次性加入全部服务。

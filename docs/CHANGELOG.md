@@ -1,5 +1,26 @@
 # 更新日志 (CHANGELOG)
 
+## [1.12.0] - 2026-11-04
+
+### 🚀 扫描器重写为产品级（npm run scan 打磨到极致）
+
+- **Docker 集成**（识别质量质变）：自动解析 docker ps 端口映射，
+  容器名直通服务名——「Svchost :5001」→「Dify Docker Nginx」、
+  「Svchost :3001」→「Uptime Kuma」。支持 WSL2 docker 回退、
+  端口范围发布（80-81）、仅本机绑定（127.0.0.1 标注「仅本机」）
+- **80+ 知名服务端口库**：Jellyfin/Plex/Portainer/Uptime Kuma/Home
+  Assistant/n8n/Ollama/One API/Gitea/Nextcloud/Vaultwarden/MinIO/
+  全主流数据库/消息队列…
+- **HTTP 标题探测**：并行 8 并发（约 20s 完成），30+ 产品标题规则
+  （Jellyfin/Portainer/Dify/Open WebUI/CyberChef…）按标题识别服务
+- **--merge 模式**：直接合并进 links.json，只增不改不删（保留手工元数据）
+- **--list 预览 / --no-color / 彩色输出**：分组着色、识别来源标注
+  （docker/已知/探测/进程/推断五级置信度）
+- 识别管线五层置信度：Docker → 端口库 → HTTP 标题 → 进程名 → 端口段
+- 实测：本机 72 监听端口 → 识别 46 容器发布端口，21 个已知服务 +
+  全部 Docker 容器按真实名称归类，零噪音（系统端口全排除）
+
+
 ## [1.11.0] - 2026-11-03
 
 ### ✨ 新增
