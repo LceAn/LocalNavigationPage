@@ -636,6 +636,27 @@ body:not(.home-categories-open) #view-tabs {
   color: #ffffff;
   border-color: var(--primary-color);
 }
+
+/* 网络筛选 chip：沿用磁贴的路线色（内网绿 / 隧道紫 / 公网蓝）。
+   激活态用同一套 bg/fg 令牌，日/夜模式都能保证对比度。 */
+.view-tab-net.route-chip-local  { color: var(--route-local-fg);  border-color: color-mix(in srgb, var(--route-local-fg) 35%, transparent); }
+.view-tab-net.route-chip-tunnel { color: var(--route-tunnel-fg); border-color: color-mix(in srgb, var(--route-tunnel-fg) 35%, transparent); }
+.view-tab-net.route-chip-remote { color: var(--route-remote-fg); border-color: color-mix(in srgb, var(--route-remote-fg) 35%, transparent); }
+.view-tab-net.route-chip-local.active {
+  background: var(--route-local-bg);
+  color: var(--route-local-fg);
+  border-color: var(--route-local-fg);
+}
+.view-tab-net.route-chip-tunnel.active {
+  background: var(--route-tunnel-bg);
+  color: var(--route-tunnel-fg);
+  border-color: var(--route-tunnel-fg);
+}
+.view-tab-net.route-chip-remote.active {
+  background: var(--route-remote-bg);
+  color: var(--route-remote-fg);
+  border-color: var(--route-remote-fg);
+}
 .dark-mode .view-tab { background: rgba(15, 23, 42, 0.6); }
 
 .recent-link {

@@ -102,6 +102,46 @@ test('getUrlChoiceMeta:tailscale 标记 → tunnel,其余 → remote', () => {
   assert.equal(api.getUrlChoiceMeta({ address: 'https://public.example' }).type, 'remote');
 });
 
+test('getUrlChoiceMeta:Tailscale 域名/CGNAT 段无标签也判为隧道', () => {
+  const api = fresh();
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://100.100.1.1' }).type, 'tunnel');
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://100.127.255.254' }).type, 'tunnel');
+  assert.equal(api.getUrlChoiceMeta({ address: 'https://nas.tailnet.ts.net' }).type, 'tunnel');
+  assert.equal(api.getUrlChoiceMeta({ address: 'https://nas.ts.net' }).type, 'tunnel');
+  // 100.128.0.0 起已超出 Tailscale 使用的 100.64/10
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://100.128.0.1' }).type, 'remote');
+});
+
+test('getUrlChoiceMeta:主机名优先于标签,lan 不再误伤 Landing', () => {
+  const api = fresh();
+  // 私网 IP 即使标了 Tailscale 也应该是内网
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://192.168.1.5', label: 'Tailscale' }).type, 'local');
+  // "lan" 必须作为独立词出现
+  assert.equal(api.getUrlChoiceMeta({ address: 'https://public.example', label: 'Landing page' }).type, 'remote');
+  assert.equal(api.getUrlChoiceMeta({ address: 'https://public.example', label: '公司 LAN' }).type, 'local');
+  // 公网域名靠标签补充语义
+  assert.equal(api.getUrlChoiceMeta({ address: 'https://public.example', label: '内网' }).type, 'local');
+  assert.equal(api.getUrlChoiceMeta({ address: 'https://public.example', label: 'Tailscale' }).type, 'tunnel');
+});
+
+test('isPrivateHost:补充 home.arpa / IPv6 ULA / IPv4-mapped', () => {
+  const api = fresh();
+  for (const host of ['nas.home.arpa', 'fd00::1', 'fc12:3456::1', '::ffff:192.168.1.5']) {
+    assert.equal(api.isPrivateHost(host), true, host);
+  }
+  // 域名不能被 fc/fd 前缀误判成 IPv6 ULA
+  assert.equal(api.isPrivateHost('fcuk.com'), false);
+  assert.equal(api.isPrivateHost('fd-example.com'), false);
+});
+
+test('getUrlChoiceMeta:IPv6 地址（hostname 带方括号）也能正确分类', () => {
+  const api = fresh();
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://[::1]:8080' }).type, 'local');
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://[fd00::1]' }).type, 'local');
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://[fd7a:115c:a1e0::1]' }).type, 'tunnel');
+  assert.equal(api.getUrlChoiceMeta({ address: 'http://[2001:db8::1]' }).type, 'remote');
+});
+
 // ---------- 渲染前过滤 ----------
 test('getSafeLinkUrls:非法地址返回 # 并被过滤', () => {
   const api = fresh();

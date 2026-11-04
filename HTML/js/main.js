@@ -1397,7 +1397,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.11.2';
+    const currentVersion = '1.11.3';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -3135,6 +3135,8 @@ function ensureCategoryPanel() {
 function getCategoryPanelLinks(category) {
     return links
         .filter(link => (link.category || '未分类') === category)
+        // 网络筛选生效时，分组展开的列表也必须只保留该路线的链接
+        .filter(link => !currentViewType || getSafeLinkUrls(link).some(url => getUrlChoiceMeta(url).type === currentViewType))
         .sort((a, b) => b.ID - a.ID);
 }
 
@@ -3184,7 +3186,7 @@ function openCategoryPanel(container, saveState = true) {
     meta.textContent = `${categoryLinks.length} 个链接`;
     list.replaceChildren();
     categoryLinks.forEach(link => {
-        list.appendChild(createHomeLinkElement(link));
+        list.appendChild(createHomeLinkElement(link, currentViewType));
     });
 
     if (getSetting('showThumbnails', true) === false) {
@@ -3250,7 +3252,7 @@ function toggleCategoryAccordion(container) {
     const category = container.dataset.category;
     const categoryLinks = getCategoryPanelLinks(category);
     if (linkList) {
-        linkList.replaceChildren(...categoryLinks.map(createHomeLinkElement));
+        linkList.replaceChildren(...categoryLinks.map(link => createHomeLinkElement(link, currentViewType)));
         if (getSetting('showThumbnails', true) === false) {
             linkList.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
                 thumbnail.style.display = 'none';

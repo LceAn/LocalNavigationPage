@@ -249,13 +249,19 @@ function getPreferredUrlInfo(link, safeUrls = getSafeLinkUrls(link)) {
     const savedMatch = safeUrls.find(url => url.address === savedUrl);
     if (savedMatch) return savedMatch;
 
-    // 否则按当前网络环境智能选择：内网访问→优先内网 URL；公网访问→优先公网 URL
-    const currentIsLocal = isLocalNetworkContext();
+    // 否则按当前网络环境智能选择路线：
+    // 内网访问→内网优先；Tailscale 域名访问→隧道优先；公网访问→公网优先
     const typed = safeUrls.map(url => ({ url, type: getUrlChoiceMeta(url).type }));
-    const preferred = currentIsLocal
-        ? typed.find(t => t.type === 'local') || typed.find(t => t.type === 'tunnel') || typed.find(t => t.type === 'remote')
-        : typed.find(t => t.type === 'remote') || typed.find(t => t.type === 'tunnel') || typed.find(t => t.type === 'local');
+    const preferred = getRoutePreferenceOrder()
+        .map(type => typed.find(item => item.type === type))
+        .find(Boolean);
     return preferred ? preferred.url : safeUrls[0];
+}
+
+function getRoutePreferenceOrder() {
+    if (isLocalNetworkContext()) return ['local', 'tunnel', 'remote'];
+    if (isTunnelNetworkContext()) return ['tunnel', 'local', 'remote'];
+    return ['remote', 'tunnel', 'local'];
 }
 
 // 当前页面是通过内网还是公网访问（用于智能选择链接首选 URL）
@@ -263,12 +269,23 @@ let _cachedNetworkContext = null;
 function isLocalNetworkContext() {
     if (_cachedNetworkContext !== null) return _cachedNetworkContext;
     try {
-        _cachedNetworkContext = isPrivateHost(window.location.hostname) ||
-            /^(localhost|127\.|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i.test(window.location.hostname);
+        _cachedNetworkContext = isPrivateHost(window.location.hostname) && !isTunnelHost(window.location.hostname);
     } catch {
         _cachedNetworkContext = false;
     }
     return _cachedNetworkContext;
+}
+
+// 页面本身挂在 Tailscale 域名下时，隧道地址才是最短路径
+let _cachedTunnelContext = null;
+function isTunnelNetworkContext() {
+    if (_cachedTunnelContext !== null) return _cachedTunnelContext;
+    try {
+        _cachedTunnelContext = isTunnelHost(window.location.hostname);
+    } catch {
+        _cachedTunnelContext = false;
+    }
+    return _cachedTunnelContext;
 }
 
 function getUrlDisplayLabel(urlObj, index) {
@@ -276,10 +293,14 @@ function getUrlDisplayLabel(urlObj, index) {
 }
 
 function isPrivateHost(hostname) {
-    const host = hostname.toLowerCase();
-    if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.lan')) return true;
-    // IPv6 环回与链路本地（::1 / fe80::）
-    if (host === '::1' || host.startsWith('fe80:')) return true;
+    // URL.hostname 对 IPv6 会带方括号（[::1]），先剥掉再判断
+    const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+    if (!host) return false;
+    if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.lan') || host.endsWith('.home.arpa')) return true;
+    // IPv6：环回 ::1、链路本地 fe80::/10、唯一本地地址 fc00::/7
+    if (host === '::1' || host.startsWith('fe80:') || /^f[cd][0-9a-f]{0,2}:/.test(host)) return true;
+    // IPv4-mapped IPv6（::ffff:192.168.1.5）
+    if (host.startsWith('::ffff:')) return isPrivateHost(host.slice('::ffff:'.length));
     const match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (!match) return false;
     const parts = match.slice(1).map(Number);
@@ -291,8 +312,26 @@ function isPrivateHost(hostname) {
         || (parts[0] === 169 && parts[1] === 254); // IPv4 链路本地
 }
 
+// Tailscale：MagicDNS 域名 + 100.64.0.0/10 CGNAT 段。
+// 这些地址用公网 IP 段承载内网服务，必须归到「隧道」而不是「公网」。
+function isTunnelHost(hostname) {
+    const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+    if (!host) return false;
+    if (host.endsWith('.ts.net') || host.endsWith('.tailscale.net')) return true;
+    // Tailscale 的 IPv6 ULA 段（fd7a:115c:a1e0::/48），否则会被当成普通私网
+    if (host.startsWith('fd7a:115c:a1e0:')) return true;
+    const match = host.match(/^(\d{1,3})\.(\d{1,3})\./);
+    if (!match) return false;
+    return Number(match[1]) === 100 && Number(match[2]) >= 64 && Number(match[2]) <= 127;
+}
+
+// 标签是人工补充：只在主机名无法判断时使用。
+// "lan" 加边界，避免 "Landing page" 这类标签被误判成内网。
+const LOCAL_LABEL_PATTERN = /内网|本地|局域|local|(?:^|[^a-z])lan(?:[^a-z]|$)/i;
+const TUNNEL_LABEL_PATTERN = /tailscale|zerotier|wireguard|vpn|隧道|内网穿透|frp/i;
+
 function getUrlChoiceMeta(urlObj) {
-    const label = String(urlObj?.label || '').toLowerCase();
+    const label = String(urlObj?.label || '');
     let hostname = '';
     try {
         hostname = new URL(urlObj.address, window.location.href).hostname;
@@ -300,24 +339,30 @@ function getUrlChoiceMeta(urlObj) {
         hostname = '';
     }
 
-    const isLocal = isPrivateHost(hostname) || /内网|本地|局域|local|lan/.test(label);
-    if (isLocal) {
+    // 主机名优先：私网地址恒为内网，Tailscale 域名/CGNAT 恒为隧道。
+    // 这样即使标签写成「Tailscale」，192.168.x 也不会被误标成隧道。
+    if (isTunnelHost(hostname)) {
+        return { icon: 'ri-shield-keyhole-line', type: 'tunnel' };
+    }
+    if (isPrivateHost(hostname)) {
         return { icon: 'ri-home-wifi-line', type: 'local' };
     }
-
-    const isTunnel = /tailscale|zerotier|wireguard|vpn|隧道/.test(label);
-    if (isTunnel) {
+    if (TUNNEL_LABEL_PATTERN.test(label)) {
         return { icon: 'ri-shield-keyhole-line', type: 'tunnel' };
+    }
+    if (LOCAL_LABEL_PATTERN.test(label)) {
+        return { icon: 'ri-home-wifi-line', type: 'local' };
     }
 
     return { icon: 'ri-global-line', type: 'remote' };
 }
 
-// 新链接的默认缩略图：内网地址外部截图服务无法访问，留空走首字母 + favicon 兜底
+// 新链接的默认缩略图：外部截图服务访问不到内网/Tailscale 地址，
+// 这两类留空走首字母 + favicon 兜底，避免注定失败的请求
 function defaultThumbnailFor(address) {
-    return getUrlChoiceMeta({ address }).type === 'local'
-        ? ''
-        : `https://s0.wp.com/mshots/v1/${encodeURIComponent(address)}?w=240&h=240`;
+    return getUrlChoiceMeta({ address }).type === 'remote'
+        ? `https://s0.wp.com/mshots/v1/${encodeURIComponent(address)}?w=240&h=240`
+        : '';
 }
 
 function openLinkUrl(link, url) {

@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.11.2-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.11.3-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地/内网导航页：零依赖、零构建，数据存浏览器本地，支持 Docker 或任意静态服务器部署。字体与图标已本地化，**断网或纯内网环境界面完整可用**（仅网站缩略图 / favicon 需要外网）。
@@ -17,6 +17,8 @@
 
 - 紧凑网格磁贴布局：图标 + 名称 + 标签，悬浮显示完整名称与地址
 - 一个链接可配置多个地址（内网 / 隧道 / 公网），卡片角标一键切换并记住选择
+- 路线按主机名自动识别（私网段 / Tailscale 域名与 CGNAT 段 / 标签补注），三色贯穿磁贴描边、角标与筛选
+- 分组标签栏按内网 / 隧道 / 公网筛选，可与分组叠加（如「云服务 + 内网」）；筛选后点击直接走对应路线，不会「筛内网、开公网」
 - **智能选路**（独有能力）：首选地址探测离线时，自动切换到在线且延迟最低的地址
 - 在线状态探测：可配置频率（30s–5min 或关闭），状态点呼吸动画 + 悬停延迟毫秒数
 - 分组三种排序：名称（拼音）/ 链接数量 / 手动（管理分组弹窗上下移），卡片、标签栏、设置三处同序
@@ -199,7 +201,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-03
-**当前版本：** 1.11.2
+**当前版本：** 1.11.3
 
 ---
 

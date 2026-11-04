@@ -88,8 +88,9 @@ function renderViewTabs(allLinks) {
     const categories = getAllCategoryNames(allLinks);
     const hasType = (t) => allLinks.some(l => getSafeLinkUrls(l).some(u => getUrlChoiceMeta(u).type === t));
     const netChips = [
-        { type: 'local', label: '内网', icon: 'ri-home-wifi-line' },
-        { type: 'remote', label: '公网', icon: 'ri-global-line' }
+        { type: 'local', label: '内网', icon: 'ri-home-wifi-line', title: '只看可通过内网地址访问的链接' },
+        { type: 'tunnel', label: '隧道', icon: 'ri-shield-keyhole-line', title: '只看可通过 Tailscale / VPN 等隧道访问的链接' },
+        { type: 'remote', label: '公网', icon: 'ri-global-line', title: '只看可通过公网地址访问的链接' }
     ].filter(c => hasType(c.type));
 
     // 没有分组且没有网络差异时不显示标签栏
@@ -104,10 +105,10 @@ function renderViewTabs(allLinks) {
         const isActive = (name === '全部' && !currentViewCategory) || name === currentViewCategory;
         return `<button type="button" class="view-tab ${isActive ? 'active' : ''}" data-view="${escapeHTML(name)}" aria-pressed="${isActive}">${escapeHTML(name)}</button>`;
     }).join('');
-    // 网络筛选 chips:与分组维度互斥
+    // 网络筛选 chips：可与分组维度叠加（如「云服务 + 内网」）
     const netTabs = netChips.map(c => {
         const isOn = currentViewType === c.type;
-        return `<button type="button" class="view-tab view-tab-net route-chip-${c.type} ${isOn ? 'active' : ''}" data-net="${c.type}" aria-pressed="${isOn}"><i class="${c.icon}"></i> ${c.label}</button>`;
+        return `<button type="button" class="view-tab view-tab-net route-chip-${c.type} ${isOn ? 'active' : ''}" data-net="${c.type}" title="${c.title}" aria-pressed="${isOn}"><i class="${c.icon}"></i> ${c.label}</button>`;
     }).join('');
     tabsEl.innerHTML = catTabs + netTabs;
 
@@ -117,7 +118,6 @@ function renderViewTabs(allLinks) {
             event.stopPropagation();
             const type = btn.dataset.net;
             currentViewType = (currentViewType === type) ? '' : type; // 再点一次取消
-            currentViewCategory = '';
             renderLinksByCategory(links);
         });
     });
@@ -128,7 +128,6 @@ function renderViewTabs(allLinks) {
             event.stopPropagation();
             const name = btn.dataset.view;
             currentViewCategory = (name === '全部') ? '' : name;
-            currentViewType = '';
             renderLinksByCategory(links);
         });
     });
@@ -136,7 +135,7 @@ function renderViewTabs(allLinks) {
 
 // 当前视图筛选的分组（空 = 全部）
 let currentViewCategory = '';
-// 网络类型筛选（'' = 不过滤；local / remote）
+// 网络类型筛选（'' = 不过滤；local / tunnel / remote）
 let currentViewType = '';
 
 function renderLinksByCategory(allLinks) {
@@ -312,23 +311,36 @@ function refreshLinkStatusDots() {
     });
 }
 
-function createHomeLinkElement(link) {
+function createHomeLinkElement(link, preferredType = '') {
     const listItem = document.createElement('li');
     const safeUrls = getSafeLinkUrls(link);
-    const preferredUrlInfo = getPreferredUrlInfo(link, safeUrls);
+    // 网络筛选激活时，直接采用该路线的地址：避免「筛内网、点开却是公网」的错位
+    const routeMatched = preferredType
+        ? safeUrls.find(url => getUrlChoiceMeta(url).type === preferredType)
+        : null;
+    const preferredUrlInfo = routeMatched || getPreferredUrlInfo(link, safeUrls);
+    const preferredMeta = getUrlChoiceMeta(preferredUrlInfo);
+    let effectiveAddress = preferredUrlInfo.address;
     if (safeUrls.length > 1) {
         listItem.classList.add('multi-url-link-item');
     }
 
     const linkCard = document.createElement('a');
-    linkCard.href = preferredUrlInfo.address;
+    linkCard.href = effectiveAddress;
     linkCard.className = 'link-card';
     linkCard.dataset.linkId = link.ID;
     linkCard.setAttribute('role', 'button');
     linkCard.setAttribute('tabindex', '0');
     linkCard.setAttribute('aria-label', `${link.name || '未命名'}，打开${preferredUrlInfo.label || '默认'}地址`);
+
+    // 统一的地址更新入口：角标切换、下拉选择、筛选都用它，保证 href 与点击目标一致
+    const applyAddress = (address) => {
+        effectiveAddress = address;
+        linkCard.href = address;
+        linkCard.title = `${link.name || '未命名'}\n${address}`;
+    };
     // 悬浮提示：磁贴模式下名称最多两行，截断时仍可看全文与地址
-    linkCard.title = `${link.name || '未命名'}\n${preferredUrlInfo.address}`;
+    linkCard.title = `${link.name || '未命名'}\n${effectiveAddress}`;
 
     const thumbnail = document.createElement('div');
     thumbnail.className = 'link-card-thumbnail';
@@ -336,7 +348,7 @@ function createHomeLinkElement(link) {
     // 外部截图服务访问不到内网地址，内网链接的 mshots 缩略图必然加载失败；
     // 直接跳过，省一次注定失败的请求。
     let thumbnailReachable = Boolean(thumbnailUrl);
-    if (thumbnailReachable && getUrlChoiceMeta(preferredUrlInfo).type === 'local') {
+    if (thumbnailReachable && preferredMeta.type !== 'remote') {
         try {
             if (new URL(thumbnailUrl, window.location.href).hostname === 's0.wp.com') {
                 thumbnailReachable = false;
@@ -353,7 +365,8 @@ function createHomeLinkElement(link) {
         thumbnail.textContent = String(link.name || '?').trim().charAt(0).toUpperCase() || '?';
         try {
             const host = new URL(preferredUrlInfo.address, window.location.href).hostname;
-            if (host && host !== window.location.hostname) {
+            // 内网/隧道主机名不发给第三方 favicon 服务：既取不到，也白白泄露内网拓扑
+            if (host && host !== window.location.hostname && preferredMeta.type === 'remote') {
                 const fav = document.createElement('img');
                 fav.className = 'link-card-favicon';
                 fav.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
@@ -394,12 +407,16 @@ function createHomeLinkElement(link) {
     thumbnail.appendChild(routeBadgeIcon);
     linkCard.appendChild(thumbnail);
 
-    // 状态监控点：仅当首选 URL 是可探测类型（内网/隧道）时显示
-    const probeableUrl = safeUrls.find(isProbingUrl);
+    // 状态监控点：仅当当前展示的 URL 可探测（内网/隧道）时显示
+    const probeableUrl = routeMatched
+        ? (isProbingUrl(routeMatched) ? routeMatched : null)
+        : safeUrls.find(isProbingUrl);
     if (probeableUrl) {
         const statusDot = document.createElement('span');
         statusDot.className = 'link-status-dot status-pending';
-        statusDot.dataset.probeUrl = getPreferredUrlInfo(link, safeUrls.filter(isProbingUrl)).address;
+        statusDot.dataset.probeUrl = routeMatched
+            ? probeableUrl.address
+            : getPreferredUrlInfo(link, safeUrls.filter(isProbingUrl)).address;
         statusDot.title = '检测中…';
         thumbnail.appendChild(statusDot);
     }
@@ -415,43 +432,50 @@ function createHomeLinkElement(link) {
     if (safeUrls.length > 1) {
         const subtitle = document.createElement('div');
         subtitle.className = 'link-card-subtitle';
-        subtitle.textContent = `最近使用：${preferredUrlInfo.label || '默认'}`;
+        subtitle.textContent = `当前路径：${preferredUrlInfo.label || '默认'}`;
         content.appendChild(subtitle);
     }
 
     // 内/外网路径视觉：全部链接都按当前路径着色描边；多地址另有可点击徽章
     const urlTypes = new Set(safeUrls.map(url => getUrlChoiceMeta(url).type));
-    const preferredMeta = getUrlChoiceMeta(preferredUrlInfo);
-    linkCard.classList.add('card-route-' + preferredMeta.type);
+    let currentType = preferredMeta.type;
+    linkCard.classList.add('card-route-' + currentType);
     {
         const routeIcons = { local: 'ri-home-wifi-line', tunnel: 'ri-shield-keyhole-line', remote: 'ri-global-line' };
-        routeBadgeIcon.className = 'link-route-icon ' + (routeIcons[preferredMeta.type] || 'ri-global-line');
-        routeBadgeIcon.title = '访问路径：' + ({ local: '内网', tunnel: '隧道', remote: '公网' }[preferredMeta.type] || '公网');
+        routeBadgeIcon.className = 'link-route-icon ' + (routeIcons[currentType] || 'ri-global-line');
+        routeBadgeIcon.title = '访问路径：' + ({ local: '内网', tunnel: '隧道', remote: '公网' }[currentType] || '公网');
     }
     if (urlTypes.size > 1) {
         const routeBadge = document.createElement('span');
-        routeBadge.className = `link-route-badge route-${preferredMeta.type}`;
+        routeBadge.className = `link-route-badge route-${currentType}`;
         const labels = { local: '内网', tunnel: '隧道', remote: '公网' };
-        routeBadge.textContent = labels[preferredMeta.type] || '公网';
-        routeBadge.title = `当前访问路径：${labels[preferredMeta.type] || '公网'}（点击切换）`;
+        const routeIcons = { local: 'ri-home-wifi-line', tunnel: 'ri-shield-keyhole-line', remote: 'ri-global-line' };
+        routeBadge.textContent = labels[currentType] || '公网';
+        routeBadge.title = `当前访问路径：${labels[currentType] || '公网'}（点击切换）`;
         // 点击角标：在可用路径间循环切换，并记住选择
         routeBadge.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();
             const order = ['local', 'tunnel', 'remote'];
             const available = order.filter(t => urlTypes.has(t));
-            const curIdx = available.indexOf(preferredMeta.type);
+            // 用可变 currentType 计算下一站：只读初始值会导致第二次点击原地打转
+            const curIdx = available.indexOf(currentType);
             const nextType = available[(curIdx + 1) % available.length];
             const nextUrl = safeUrls.find(u => getUrlChoiceMeta(u).type === nextType);
             if (nextUrl) {
                 rememberLastUsedLinkUrl(link, nextUrl.address);
-                // 更新角标显示 + 卡片 href
+                // 更新角标、卡片描边、href 与副标题
                 const newMeta = getUrlChoiceMeta(nextUrl);
-                routeBadge.className = `link-route-badge route-${newMeta.type}`;
-                routeBadge.textContent = labels[newMeta.type] || '公网';
-                routeBadgeIcon.className = 'link-route-icon ' + ({ local: 'ri-home-wifi-line', tunnel: 'ri-shield-keyhole-line', remote: 'ri-global-line' }[newMeta.type] || 'ri-global-line');
-                routeBadge.title = `当前访问路径：${labels[newMeta.type] || '公网'}（点击切换）`;
-                linkCard.href = nextUrl.address;
+                currentType = newMeta.type;
+                routeBadge.className = `link-route-badge route-${currentType}`;
+                routeBadge.textContent = labels[currentType] || '公网';
+                routeBadgeIcon.className = 'link-route-icon ' + (routeIcons[currentType] || 'ri-global-line');
+                routeBadge.title = `当前访问路径：${labels[currentType] || '公网'}（点击切换）`;
+                linkCard.classList.remove('card-route-local', 'card-route-tunnel', 'card-route-remote');
+                linkCard.classList.add('card-route-' + currentType);
+                applyAddress(nextUrl.address);
+                const subtitleEl = linkCard.querySelector('.link-card-subtitle');
+                if (subtitleEl) subtitleEl.textContent = `当前路径：${labels[currentType] || '公网'}`;
             }
         });
         linkCard.appendChild(routeBadge);
@@ -467,7 +491,7 @@ function createHomeLinkElement(link) {
     }
 
     if (safeUrls.length > 1) {
-        setupMultiUrlDropdown(linkCard, link, safeUrls);
+        setupMultiUrlDropdown(linkCard, link, safeUrls, applyAddress);
     }
 
     function openPreferredUrl(event) {
@@ -475,14 +499,15 @@ function createHomeLinkElement(link) {
             return;
         }
         event.preventDefault();
-        const currentPreferred = getPreferredUrlInfo(link, getSafeLinkUrls(link));
+        // 使用当前生效地址（筛选结果 / 角标或下拉切换后的地址），而不是重新推导
+        const currentAddress = effectiveAddress;
         if (event.shiftKey) {
             // Shift+点击：以网页小窗打开（Sun-Panel 风格的临时会话窗）
-            const w = window.open(currentPreferred.address, '_blank', 'noopener,width=1100,height=780');
-            if (w) { recordRecentLink(link); rememberLastUsedLinkUrl(link, currentPreferred.address); }
+            const w = window.open(currentAddress, '_blank', 'noopener,width=1100,height=780');
+            if (w) { recordRecentLink(link); rememberLastUsedLinkUrl(link, currentAddress); }
             return;
         }
-        openLinkUrl(link, currentPreferred.address);
+        openLinkUrl(link, currentAddress);
     }
 
     linkCard.addEventListener('click', openPreferredUrl);
@@ -498,7 +523,7 @@ function createHomeLinkElement(link) {
 
 // 获取链接的 URL 列表（支持新旧格式）
 // 设置多 URL 快捷切换
-function setupMultiUrlDropdown(linkCard, link, safeUrls) {
+function setupMultiUrlDropdown(linkCard, link, safeUrls, onAddressChange) {
     if (safeUrls.length <= 1) return;
     linkCard.classList.add('has-multiple-urls');
 
@@ -531,7 +556,7 @@ function setupMultiUrlDropdown(linkCard, link, safeUrls) {
         const subtitle = linkCard.querySelector('.link-card-subtitle');
         const selectedInfo = safeUrls.find(url => url.address === currentUrl);
         if (subtitle && selectedInfo) {
-            subtitle.textContent = `最近使用：${selectedInfo.label}`;
+            subtitle.textContent = `当前路径：${selectedInfo.label}`;
         }
     }
 
@@ -539,6 +564,7 @@ function setupMultiUrlDropdown(linkCard, link, safeUrls) {
         rememberLastUsedLinkUrl(link, urlObj.address);
         recordRecentLink(link);
         updateSelectedUrl(urlObj.address);
+        if (typeof onAddressChange === 'function') onAddressChange(urlObj.address);
         openSafeUrl(urlObj.address);
     }
 

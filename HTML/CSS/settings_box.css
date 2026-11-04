@@ -2843,25 +2843,45 @@ body.dark-mode #link-modal .url-item {
 }
 
 /* 内/外网快速选择 chip：三种类型统一「淡底 + 同色边框 + 同色字」，
-   颜色取自路由 token，保证 local(绿)/tunnel(紫)/remote(蓝) 风格一致 */
+   颜色取自路由 token，保证 local(绿)/tunnel(紫)/remote(蓝) 在日夜模式下都一致 */
 .url-quick-choice.local:not(.selected) {
-    background: rgb(24 128 56 / 0.08);
-    border-color: rgb(24 128 56 / 0.28);
-    color: #188038;
+    background: var(--route-local-bg);
+    border-color: color-mix(in srgb, var(--route-local-fg) 32%, transparent);
+    color: var(--route-local-fg);
 }
 .url-quick-choice.tunnel:not(.selected) {
-    background: rgb(126 87 194 / 0.08);
-    border-color: rgb(126 87 194 / 0.28);
-    color: #6c40a8;
+    background: var(--route-tunnel-bg);
+    border-color: color-mix(in srgb, var(--route-tunnel-fg) 32%, transparent);
+    color: var(--route-tunnel-fg);
 }
 .url-quick-choice.remote:not(.selected) {
-    background: rgb(26 115 232 / 0.08);
-    border-color: rgb(26 115 232 / 0.28);
-    color: #1a73e8;
+    background: var(--route-remote-bg);
+    border-color: color-mix(in srgb, var(--route-remote-fg) 32%, transparent);
+    color: var(--route-remote-fg);
 }
-.url-quick-choice.local:not(.selected) i { color: #188038; }
-.url-quick-choice.tunnel:not(.selected) i { color: #6c40a8; }
-.url-quick-choice.remote:not(.selected) i { color: #1a73e8; }
+.url-quick-choice.local:not(.selected) i { color: var(--route-local-fg); }
+.url-quick-choice.tunnel:not(.selected) i { color: var(--route-tunnel-fg); }
+.url-quick-choice.remote:not(.selected) i { color: var(--route-remote-fg); }
+
+/* 选中态保留路线色，避免被通用 .selected 的靛蓝覆盖 */
+.url-quick-choice.local.selected {
+    background: var(--route-local-bg);
+    border-color: var(--route-local-fg);
+    color: var(--route-local-fg);
+}
+.url-quick-choice.tunnel.selected {
+    background: var(--route-tunnel-bg);
+    border-color: var(--route-tunnel-fg);
+    color: var(--route-tunnel-fg);
+}
+.url-quick-choice.remote.selected {
+    background: var(--route-remote-bg);
+    border-color: var(--route-remote-fg);
+    color: var(--route-remote-fg);
+}
+.url-quick-choice.local:hover { background: var(--route-local-bg); border-color: var(--route-local-fg); color: var(--route-local-fg); }
+.url-quick-choice.tunnel:hover { background: var(--route-tunnel-bg); border-color: var(--route-tunnel-fg); color: var(--route-tunnel-fg); }
+.url-quick-choice.remote:hover { background: var(--route-remote-bg); border-color: var(--route-remote-fg); color: var(--route-remote-fg); }
 
 .url-overflow-btn {
     max-width: none;
@@ -2929,13 +2949,18 @@ body.dark-mode #link-modal .url-item {
 }
 
 .url-type-icon.local {
-    color: #188038;
-    background: rgba(24, 128, 56, 0.1);
+    color: var(--route-local-fg);
+    background: var(--route-local-bg);
 }
 
 .url-type-icon.tunnel {
-    color: #1a73e8;
-    background: rgba(26, 115, 232, 0.1);
+    color: var(--route-tunnel-fg);
+    background: var(--route-tunnel-bg);
+}
+
+.url-type-icon.remote {
+    color: var(--route-remote-fg);
+    background: var(--route-remote-bg);
 }
 
 .url-dropdown-item .status-wrapper {

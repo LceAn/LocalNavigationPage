@@ -21,11 +21,13 @@
 
 ### 网络类型判定(getUrlChoiceMeta)
 
-`urls[].address` 的主机名或 `label` 决定路线类型:
+判定**以主机名为准**,`label` 只在主机名无法区分时做人工补充(例如公网域名标「内网」):
 
-- **local(内网,绿)**:主机名为 localhost / `.local` / `.lan` / `127.x` / `10.x` / `172.16-31.x` / `192.168.x` / `169.254.x` / `::1` / `fe80::`,或 label 含「内网/本地/局域/local/lan」
-- **tunnel(隧道,紫)**:label 含 tailscale / zerotier / wireguard / vpn / 隧道
+- **tunnel(隧道,紫)**:主机名为 `*.ts.net` / `*.tailscale.net`,或 IPv4 落在 `100.64.0.0/10`、IPv6 落在 `fd7a:115c:a1e0::/48`(Tailscale);否则 label 含 tailscale / zerotier / wireguard / vpn / 隧道 / 内网穿透 / frp
+- **local(内网,绿)**:主机名为 localhost / `.local` / `.lan` / `.home.arpa` / `127.x` / `10.x` / `172.16-31.x` / `192.168.x` / `169.254.x` / `::1` / `fe80::` / `fc00::/7`(ULA) / IPv4-mapped IPv6;否则 label 含「内网/本地/局域/local/lan」(lan 按独立词匹配,避免 Landing 误判)
 - **remote(公网,灰蓝)**:其余
+
+主机名优先级高于 label:私网 IP 即使标了「Tailscale」仍是内网;`*.ts.net` 即使标了「内网」仍是隧道。
 
 ## settings(设置容器,导出文件顶层 `settings` 字段)
 
