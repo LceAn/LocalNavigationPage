@@ -196,6 +196,13 @@ function renderLinksByCategory(allLinks) {
         categoryContainer.dataset.category = category;
         categoryContainer.dataset.linkCount = categoryLinks.length;
 
+        // 组内磁贴手动排序(customTileOrder[分组名] = ID 数组)
+        const tileOrderMap = getSetting('customTileOrder', {}) || {};
+        if (Array.isArray(tileOrderMap[category])) {
+            const rank = new Map(tileOrderMap[category].map((id, i) => [id, i]));
+            categoryLinks.sort((a, b) => (rank.get(a.ID) ?? 1e9) - (rank.get(b.ID) ?? 1e9));
+        }
+
         const categoryHeader = document.createElement('div');
         categoryHeader.className = 'category-header';
 
@@ -258,6 +265,44 @@ function renderLinksByCategory(allLinks) {
         renderBatch.appendChild(categoryContainer);
     }
 
+    // 磁贴拖拽排序：组内 HTML5 DnD,落下即持久化
+    linkContainer.querySelectorAll('.category-container').forEach(container => {
+        const list = container.querySelector('.link-list');
+        const cat = container.dataset.category;
+        if (!list) return;
+        let dragged = null;
+        list.querySelectorAll('li').forEach(li => {
+            li.addEventListener('dragstart', (e) => {
+                dragged = li;
+                li.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', li.dataset.linkId || '');
+            });
+            li.addEventListener('dragend', () => {
+                li.classList.remove('dragging');
+                dragged = null;
+            });
+            li.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (!dragged || dragged === li) return;
+                const rect = li.getBoundingClientRect();
+                const after = (e.clientY - rect.top) > rect.height / 2;
+                if (after) list.insertBefore(dragged, li.nextSibling);
+                else list.insertBefore(dragged, li);
+            });
+        });
+        list.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const ids = [...list.querySelectorAll('.link-card')].map(a => Number(a.dataset.linkId));
+            const order = getSetting('customTileOrder', {}) || {};
+            order[cat] = ids;
+            setSetting('customTileOrder', order);
+            if (typeof showMessage === 'function') showMessage('顺序已保存');
+        });
+        list.addEventListener('dragover', (e) => e.preventDefault());
+    });
+
     // 空状态：没有任何分组时给出引导，而不是留白
     if (sortedCategories.length === 0) {
         const empty = document.createElement('div');
@@ -314,6 +359,7 @@ function refreshLinkStatusDots() {
 
 function createHomeLinkElement(link) {
     const listItem = document.createElement('li');
+    listItem.draggable = true;
     const safeUrls = getSafeLinkUrls(link);
     const preferredUrlInfo = getPreferredUrlInfo(link, safeUrls);
     if (safeUrls.length > 1) {
@@ -324,6 +370,7 @@ function createHomeLinkElement(link) {
     linkCard.href = preferredUrlInfo.address;
     linkCard.className = 'link-card';
     linkCard.dataset.linkId = link.ID;
+    listItem.dataset.linkId = link.ID;
     linkCard.setAttribute('role', 'button');
     linkCard.setAttribute('tabindex', '0');
     linkCard.setAttribute('aria-label', `${link.name || '未命名'}，打开${preferredUrlInfo.label || '默认'}地址`);

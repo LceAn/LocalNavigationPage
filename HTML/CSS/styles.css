@@ -3130,3 +3130,18 @@ body.compact-mode .category-container .link-list {
   color: #fff;
   backdrop-filter: blur(6px);
 }
+
+
+/* 磁贴拖拽排序 */
+.category-container .link-list li {
+  cursor: grab;
+}
+.category-container .link-list li:active {
+  cursor: grabbing;
+}
+.category-container .link-list li.dragging {
+  opacity: 0.35;
+}
+.category-container .link-list li.dragging .link-card {
+  border-style: dashed;
+}
