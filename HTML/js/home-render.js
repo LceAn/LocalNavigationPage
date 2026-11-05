@@ -753,8 +753,24 @@ document.addEventListener('keydown', (event) => {
         document.addEventListener('click', (e) => {
             if (!menu.contains(e.target)) hide();
         });
+        let ctxSelected = -1;
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') hide();
+            if (e.key === 'Escape') { hide(); return; }
+            if (menu.hidden || menu.querySelectorAll('.ctx-menu-item').length === 0) return;
+            const items = [...menu.querySelectorAll('.ctx-menu-item')];
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                ctxSelected = Math.min(ctxSelected + 1, items.length - 1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                ctxSelected = Math.max(ctxSelected - 1, 0);
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (ctxSelected >= 0 && items[ctxSelected]) items[ctxSelected].click();
+                return;
+            } else return;
+            items.forEach((it, i) => it.classList.toggle('selected', i === ctxSelected));
+            items[ctxSelected]?.scrollIntoView({ block: 'nearest' });
         });
         window.addEventListener('blur', hide);
         return menu;

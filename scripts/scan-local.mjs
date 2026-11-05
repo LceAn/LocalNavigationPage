@@ -11,6 +11,8 @@
 //   npm run scan -- --out <path>    自定义输出路径
 //   npm run scan -- --list          只打印表格，不写文件
 //   npm run scan -- --json          纯 JSON 输出到 stdout（管道友好）
+//   npm run scan -- --probe-concurrency N   探测并发数（默认 8）
+//   npm run scan -- --probe-timeout ms      探测超时（默认 2500）
 //   npm run scan -- --no-color      关闭彩色输出
 //
 // 零依赖；Windows(netstat+tasklist) / Linux(ss) / macOS(lsof)；WSL2 兼容。
@@ -34,6 +36,8 @@ const PROBE = has('--probe');
 const MERGE = has('--merge');
 const LIST_ONLY = has('--list');
 const NO_COLOR = has('--no-color') || process.env.NO_COLOR || !process.stdout.isTTY;
+const PROBE_CONCURRENCY = Math.max(1, parseInt(val('--probe-concurrency'), 10) || 8);
+const PROBE_TIMEOUT = Math.max(500, parseInt(val('--probe-timeout'), 10) || 2500);
 const HOST = val('--host') || '127.0.0.1';
 const OUT = val('--out') ? resolve(val('--out')) : join(root, 'HTML', 'data', 'links-local.json');
 const LINKS_JSON = join(root, 'HTML', 'data', 'links.json');
@@ -263,7 +267,7 @@ function getDockerMap() {
     return map;
 }
 
-async function probeHttp(port, timeoutMs = 2500) {
+async function probeHttp(port, timeoutMs = PROBE_TIMEOUT) {
     // TLS 端口优先 https（自签证书跳过校验——目标是拿标题，不是建信任）
     const tls = port === 443 || port === 8443 || port === 9443;
     const schemes = tls ? ['https', 'http'] : ['http'];
@@ -342,7 +346,7 @@ async function main() {
         const candidates = services.filter(s => !NON_HTTP_PORTS.has(s.port) && !dockerMap.has(String(s.port)));
         log(`${C.dim}  · HTTP 探测 ${candidates.length} 个候选…${C.x}`);
         // 并行探测（8 并发），速度提升约 8 倍
-        const BATCH = 8;
+        const BATCH = PROBE_CONCURRENCY;
         for (let i = 0; i < candidates.length; i += BATCH) {
             const batch = candidates.slice(i, i + BATCH);
             const results = await Promise.all(batch.map(s => probeHttp(s.port)));

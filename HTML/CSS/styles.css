@@ -3145,3 +3145,12 @@ body.compact-mode .category-container .link-list {
 .category-container .link-list li.dragging .link-card {
   border-style: dashed;
 }
+
+
+.ctx-menu-item.selected {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+.ctx-menu-item.selected i {
+  color: var(--primary-color);
+}
