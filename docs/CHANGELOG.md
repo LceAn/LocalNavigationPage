@@ -1,5 +1,22 @@
 # 更新日志 (CHANGELOG)
 
+## [1.15.0] - 2026-11-08
+
+### ✨ 新增(第二批 20 轮打磨,记录见 docs/POLISH_LOG.md 第 2 批)
+
+- 天气 15 分钟缓存(wttr.in 限流防护)
+- 首页分组展开状态持久化(刷新保留)
+- 启动器:最近搜索词空态 / Esc 焦点还原 / 前缀无命中提示 / 底部快捷键条
+- 链接备注字段(编辑弹窗 + 磁贴悬浮显示)
+- 右键菜单:复制名称 / 键盘导航循环
+- 磁贴键盘 Home/End;favicon 提供商备选(duckduckgo)
+- 扫描器:--json 管道输出 / --exclude/--limit / --probe 并发超时参数化 /
+  TLS 端口探测 / 知识库扩至 130+
+- 设置:界面语言选择(zh-CN/en-US 起步覆盖)/ favicon 提供商
+- validate:跨脚本重声明 + 版本一致性检查
+- docs:CONTRIBUTING.md / SCHEMA.md 补全 / POLISH_LOG.md 打磨台账
+
+
 ## [1.14.0] - 2026-11-07
 
 ### ✨ 新增(20 轮打磨批次,逐轮记录见 docs/POLISH_LOG.md)
