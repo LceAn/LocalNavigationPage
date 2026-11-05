@@ -100,7 +100,7 @@ function launchSelectedItem() {
     const hit = engines.find(en => en.name.toLowerCase().startsWith(prefix))
         ?? engines.find(en => (en.prefix || '').toLowerCase() === prefix)
         ?? engines.find(en => { try { return new URL(en.url).hostname.replace(/^www\./, '').toLowerCase().startsWith(prefix); } catch { return false; } });
-    if (!hit) return;
+    if (!hit) { if (typeof showMessage === "function") showMessage("未找到前缀为 /" + prefix + " 的引擎", "warning"); return; }
     closeLauncher();
     const url = hit.url.replace('%s', encodeURIComponent(term));
     if (typeof isSafeUrl === 'function' && isSafeUrl(url, ['http:', 'https:'])) {
