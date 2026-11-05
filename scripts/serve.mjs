@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)), 'HTML');
 const port = Number.parseInt(process.argv[2], 10) || 8080;
+const bindHost = process.env.SERVE_HOST || '0.0.0.0';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -65,6 +66,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, '0.0.0.0', () => {
-  console.log(`导航页已启动: http://127.0.0.1:${port}/  (根目录: ${root})`);
+server.listen(port, bindHost, () => {
+  console.log(`导航页已启动: http://127.0.0.1:${port}/  (绑定: ${bindHost}, 根目录: ${root})`);
 });

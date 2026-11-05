@@ -13,6 +13,8 @@
 //   npm run scan -- --json          纯 JSON 输出到 stdout（管道友好）
 //   npm run scan -- --probe-concurrency N   探测并发数（默认 8）
 //   npm run scan -- --probe-timeout ms      探测超时（默认 2500）
+//   npm run scan -- --exclude 135,9000   排除指定端口
+//   npm run scan -- --limit 30           只取前 N 个服务
 //   npm run scan -- --no-color      关闭彩色输出
 //
 // 零依赖；Windows(netstat+tasklist) / Linux(ss) / macOS(lsof)；WSL2 兼容。
@@ -36,6 +38,8 @@ const PROBE = has('--probe');
 const MERGE = has('--merge');
 const LIST_ONLY = has('--list');
 const NO_COLOR = has('--no-color') || process.env.NO_COLOR || !process.stdout.isTTY;
+const EXCLUDE = (val('--exclude') || '').split(',').map(x => parseInt(x, 10)).filter(Number.isInteger);
+const LIMIT = parseInt(val('--limit'), 10) || Infinity;
 const PROBE_CONCURRENCY = Math.max(1, parseInt(val('--probe-concurrency'), 10) || 8);
 const PROBE_TIMEOUT = Math.max(500, parseInt(val('--probe-timeout'), 10) || 2500);
 const HOST = val('--host') || '127.0.0.1';
@@ -373,13 +377,22 @@ async function main() {
         };
     });
 
-    identified.sort((a, b) => a.category.localeCompare(b.category, 'zh-CN') || a.port - b.port);
+    // --exclude 端口黑名单;--limit 截断
+    const filteredList = EXCLUDE.length
+        ? identified.filter(svc => !EXCLUDE.includes(svc.port))
+        : identified;
+    const finalList = Number.isFinite(LIMIT) ? filteredList.slice(0, LIMIT) : filteredList;
+    if (filteredList.length !== identified.length) {
+        log(`${C.dim}  · --exclude 排除 ${identified.length - filteredList.length} 个${C.x}`);
+    }
+
+    finalList.sort((a, b) => a.category.localeCompare(b.category, 'zh-CN') || a.port - b.port);
     const byCategory = {};
     identified.forEach(l => (byCategory[l.category] ||= []).push(l));
 
     log(`${C.b}识别结果：${C.x}`);
     let lastCat = '';
-    for (const svc of identified) {
+    for (const svc of finalList) {
         if (svc.category !== lastCat) {
             log(`${C.g}  ▸ ${svc.category}${C.x}`);
             lastCat = svc.category;
@@ -389,7 +402,7 @@ async function main() {
         log(`    ${String(svc.port).padEnd(6)} ${svc.name.padEnd(28)} ${src}${flag}`);
     }
 
-    const links = identified.map((svc, i) => ({
+    const links = finalList.map((svc, i) => ({
         ID: i + 1,
         name: svc.name,
         url: svc.url,
