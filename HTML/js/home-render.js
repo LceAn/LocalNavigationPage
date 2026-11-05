@@ -375,7 +375,7 @@ function createHomeLinkElement(link) {
     linkCard.setAttribute('tabindex', '0');
     linkCard.setAttribute('aria-label', `${link.name || '未命名'}，打开${preferredUrlInfo.label || '默认'}地址`);
     // 悬浮提示：磁贴模式下名称最多两行，截断时仍可看全文与地址
-    linkCard.title = `${link.name || '未命名'}\n${preferredUrlInfo.address}`;
+    linkCard.title = (link.remarks ? '📌 ' + link.remarks + '\n' : '') + `${link.name || '未命名'}\n${preferredUrlInfo.address}`;
 
     const thumbnail = document.createElement('div');
     thumbnail.className = 'link-card-thumbnail';

@@ -569,6 +569,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-name').value = '';
         document.getElementById('edit-category').value = '';
         document.getElementById('edit-tag').value = '';
+        const rm0 = document.getElementById('edit-remarks'); if (rm0) rm0.value = '';
         document.getElementById('edit-thumbnail').value = '';
         // URL 列表预置一行空地址，新链接可直接填写
         currentUrls = [{ address: '', label: '', priority: 1 }];
@@ -590,6 +591,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-name').value = link.name;
         document.getElementById('edit-category').value = link.category;
         document.getElementById('edit-tag').value = link.tag || '';
+        const rm1 = document.getElementById('edit-remarks'); if (rm1) rm1.value = link.remarks || '';
         document.getElementById('edit-thumbnail').value = link.thumbnail || '';
         renderThumbnailPreview(link.thumbnail || '');
         
@@ -888,6 +890,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const name = document.getElementById('edit-name').value.trim();
         const category = document.getElementById('edit-category').value.trim();
         const tag = document.getElementById('edit-tag').value.trim();
+        const remarks = (document.getElementById('edit-remarks')?.value || '').trim();
         const thumbnail = document.getElementById('edit-thumbnail').value.trim();
 
         // 获取 URL 列表，过滤掉空地址
@@ -934,6 +937,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 links[linkIndex].category = category || '未分类';
                 links[linkIndex].tag = tag;
+                links[linkIndex].remarks = remarks;
                 links[linkIndex].thumbnail = thumbnail || defaultThumbnailFor(firstUrl);
             }
             showMessage('已更新链接');
@@ -945,6 +949,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 name: name,
                 category: category || '未分类',
                 tag: tag,
+                remarks: remarks,
                 thumbnail: thumbnail || defaultThumbnailFor(firstUrl)
             };
             // 如果只有一个 URL，使用旧格式兼容
