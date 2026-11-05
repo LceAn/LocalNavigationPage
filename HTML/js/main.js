@@ -1984,6 +1984,19 @@ document.addEventListener("DOMContentLoaded", function () {
         runCustomJs(getSetting('customJs', ''));
     }
 
+    // favicon 提供商切换(即时重渲染)
+    {
+        const fpSel = document.getElementById('favicon-provider-select');
+        if (fpSel) {
+            fpSel.value = getSetting('faviconProvider', 'google');
+            fpSel.addEventListener('change', () => {
+                setSetting('faviconProvider', fpSel.value);
+                renderLinksByCategory(links);
+                showMessage('favicon 提供商已切换');
+            });
+        }
+    }
+
     // 分组排序：名称 / 链接数量（即时重渲染）
     {
         const sortSel = document.getElementById('group-sort-select');

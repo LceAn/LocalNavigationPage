@@ -403,7 +403,10 @@ function createHomeLinkElement(link) {
             if (host && host !== window.location.hostname) {
                 const fav = document.createElement('img');
                 fav.className = 'link-card-favicon';
-                fav.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+                                const provider = getSetting('faviconProvider', 'google');
+                fav.src = provider === 'duckduckgo'
+                    ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`
+                    : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
                 fav.alt = '';
                 fav.loading = 'lazy';
                 fav.decoding = 'async';
