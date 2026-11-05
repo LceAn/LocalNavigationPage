@@ -2756,6 +2756,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
             }
+            if (typeof recordSearchTerm === 'function') {
+                const rawTrim = searchInput.value.trim();
+                const pfx = rawTrim.match(/^\/(\S+)\s+(.+)$/);
+                recordSearchTerm(pfx ? pfx[2] : rawTrim);
+            }
             performSearch(getDefaultSearchEngine());
         });
     }

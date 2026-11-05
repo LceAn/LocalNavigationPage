@@ -3154,3 +3154,7 @@ body.compact-mode .category-container .link-list {
 .ctx-menu-item.selected i {
   color: var(--primary-color);
 }
+
+
+.launcher-item.launcher-history { color: var(--text-secondary); }
+.launcher-history i { color: var(--text-tertiary); margin-right: 8px; }

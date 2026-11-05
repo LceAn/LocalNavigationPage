@@ -96,6 +96,21 @@ function recordVisitCount(linkId) {
     setSetting(LINK_VISIT_COUNTS_KEY, Object.fromEntries(top));
 }
 
+const SEARCH_HISTORY_KEY = 'searchHistory';
+const SEARCH_HISTORY_MAX = 8;
+
+function recordSearchTerm(term) {
+    const t = String(term || '').trim();
+    if (!t || t.startsWith('/')) return; // 前缀搜索不入历史
+    const list = getSetting(SEARCH_HISTORY_KEY, []) || [];
+    const next = [t, ...list.filter(x => x !== t)].slice(0, SEARCH_HISTORY_MAX);
+    setSetting(SEARCH_HISTORY_KEY, next);
+}
+
+function getSearchHistory() {
+    return getSetting(SEARCH_HISTORY_KEY, []) || [];
+}
+
 function getVisitCounts() {
     return getSetting(LINK_VISIT_COUNTS_KEY, {}) || {};
 }

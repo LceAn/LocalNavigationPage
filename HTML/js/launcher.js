@@ -114,6 +114,15 @@ if (launcherInput) {
 }
 if (launcherResults) {
     launcherResults.addEventListener('click', e => {
+        // 搜索历史项:回填关键词
+        const hist = e.target.closest('.launcher-history');
+        if (hist) {
+            const term = hist.dataset.term || '';
+            launcherInput.value = term;
+            renderLauncherResults(term);
+            launcherInput.focus();
+            return;
+        }
         const li = e.target.closest('.launcher-item');
         if (!li) return;
         selectLauncherItem(Number(li.dataset.idx));
