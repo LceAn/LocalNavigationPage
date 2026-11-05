@@ -1940,7 +1940,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const saved = getSetting('customPrimary', 'indigo');
             swatches.innerHTML = PRIMARY_PRESETS.map(p =>
                 '<button type="button" class="theme-swatch" data-preset="' + p.id + '" title="' + p.name +
-                '" aria-label="主题色 ' + p.name + '"><span class="swatch-dot" style="background:' + p.light + '"></span><span class="swatch-name">' + p.name + '</span></button>'
+                '" aria-label="主题色 ' + p.name + '"><span class="swatch-dot" style="background:' + p.light + '"></span><span class="swatch-name">' + p.name + (p.id === 'indigo' ? '（默认）' : '') + '</span></button>'
             ).join('');
             applyCustomPrimary(saved);
             [...swatches.querySelectorAll('.theme-swatch')].forEach(btn => {
