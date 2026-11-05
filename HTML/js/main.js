@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let messageHideTimer = null;
     function showMessage(message, type = 'success') {
+        message = (typeof t === 'function') ? t(message) : message;
         messageContainer.textContent = message;
         // 类型样式：success 保持默认渐变，warning/error 换色区分
         messageContainer.classList.toggle('type-warning', type === 'warning');
@@ -1398,7 +1399,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.14.0';
+    const currentVersion = '1.15.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1548,6 +1549,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const savedTitle = getSetting('siteTitle', '我的导航');
     siteTitleInput.value = savedTitle;
     document.querySelector('.page-header h1').textContent = savedTitle;
+
+    // i18n:应用语言到主要静态文案(起步覆盖,逐步扩大)
+    {
+        const lang = getSetting('language', 'zh-CN');
+        if (lang !== 'zh-CN') {
+            document.title = (typeof t === 'function') ? t('我的导航') : document.title;
+            const searchInput2 = document.getElementById('search-input');
+            if (searchInput2) searchInput2.placeholder = (typeof t === 'function') ? t('输入搜索词') : searchInput2.placeholder;
+        }
+    }
     document.title = savedTitle;
 
     siteTitleInput.addEventListener('input', function() {
@@ -1982,6 +1993,19 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
         runCustomJs(getSetting('customJs', ''));
+    }
+
+    // 界面语言(刷新生效——静态文案分布广,一次性重载最可靠)
+    {
+        const langSel = document.getElementById('language-select');
+        if (langSel) {
+            langSel.value = getSetting('language', 'zh-CN');
+            langSel.addEventListener('change', () => {
+                setSetting('language', langSel.value);
+                showMessage('Language changed — reloading…');
+                setTimeout(() => window.location.reload(), 500);
+            });
+        }
     }
 
     // favicon 提供商切换(即时重渲染)
