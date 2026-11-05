@@ -1543,6 +1543,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const savedTitle = getSetting('siteTitle', '我的导航');
     siteTitleInput.value = savedTitle;
     document.querySelector('.page-header h1').textContent = savedTitle;
+    document.title = savedTitle;
 
     siteTitleInput.addEventListener('input', function() {
         const title = this.value.trim() || '我的导航';
@@ -1925,6 +1926,12 @@ document.addEventListener("DOMContentLoaded", function () {
             ':root { --primary-color: ' + preset.light + '; --primary-rgb: ' + preset.rgbLight + '; --primary-dark: ' + preset.dark + '; }',
             '.dark-mode { --primary-color: ' + preset.dark + '; --primary-rgb: ' + preset.rgbDark + '; --primary-dark: ' + preset.light + '; }'
         ].join('\n');
+
+        // 浏览器外壳主题色跟随主色(移动端状态栏)
+        const metaLight = document.querySelector('meta[name="theme-color"]:not([media])');
+        const metaDark = document.querySelector('meta[name="theme-color"][media]');
+        if (metaLight) metaLight.content = preset.light;
+        if (metaDark) metaDark.content = preset.dark;
     }
 
     {
@@ -3450,6 +3457,19 @@ function toggleShortcutCheatSheet() {
         }
     }
     }
+
+    // 全局错误边界：未捕获异常以一次性提示告知（不过度打扰）
+    let globalErrShown = false;
+    window.addEventListener('error', (e) => {
+        if (globalErrShown) return;
+        globalErrShown = true;
+        showMessage('页面发生异常，建议刷新或导出备份', 'error');
+    });
+    window.addEventListener('unhandledrejection', () => {
+        if (globalErrShown) return;
+        globalErrShown = true;
+        showMessage('页面发生异常，建议刷新或导出备份', 'error');
+    });
 
 // Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）
 if ('serviceWorker' in navigator) {
