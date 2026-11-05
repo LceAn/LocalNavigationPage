@@ -728,6 +728,8 @@ document.addEventListener('keydown', (event) => {
     const columns = Math.max(1, Math.round(current.parentElement.offsetWidth / (current.offsetWidth || 1)));
     const idx = cards.indexOf(current);
     let next = idx;
+    if (event.key === 'Home') { next = 0; }
+    if (event.key === 'End') { next = cards.length - 1; }
     if (event.key === 'ArrowRight') next = idx + 1;
     if (event.key === 'ArrowLeft') next = idx - 1;
     if (event.key === 'ArrowDown') next = idx + columns;
@@ -760,10 +762,10 @@ document.addEventListener('keydown', (event) => {
             const items = [...menu.querySelectorAll('.ctx-menu-item')];
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                ctxSelected = Math.min(ctxSelected + 1, items.length - 1);
+                ctxSelected = (ctxSelected + 1) % items.length; // 循环
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                ctxSelected = Math.max(ctxSelected - 1, 0);
+                ctxSelected = (ctxSelected - 1 + items.length) % items.length; // 循环
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (ctxSelected >= 0 && items[ctxSelected]) items[ctxSelected].click();
@@ -819,6 +821,11 @@ document.addEventListener('keydown', (event) => {
             window.open(preferred.address, '_blank', 'noopener,width=1100,height=780');
             recordRecentLink(link);
             rememberLastUsedLinkUrl(link, preferred.address);
+        }));
+        m.appendChild(item('复制名称', 'ri-text', () => {
+            navigator.clipboard?.writeText(link.name || '')
+                .then(() => window.showMessage?.('名称已复制', 'success'))
+                .catch(() => window.showMessage?.('复制失败', 'error'));
         }));
         m.appendChild(item('复制地址', 'ri-file-copy-line', () => {
             navigator.clipboard?.writeText(preferred.address)
