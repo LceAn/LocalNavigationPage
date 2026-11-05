@@ -3436,6 +3436,19 @@ function toggleShortcutCheatSheet() {
             if (sc.classList.contains('show')) renderVisitStats();
         }).observe(sc, { attributes: true });
         setTimeout(renderVisitStats, 600);
+
+    // 访问统计清零
+    {
+        const clearBtn = document.getElementById('clear-visit-stats');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (!confirm('确定清零所有访问统计？此操作不可恢复。')) return;
+                setSetting('linkVisitCounts', {});
+                renderVisitStats();
+                showMessage('访问统计已清零');
+            });
+        }
+    }
     }
 
 // Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）

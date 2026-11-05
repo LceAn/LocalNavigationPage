@@ -61,6 +61,9 @@
                 <kbd class="launcher-hint">Esc</kbd>
             </div>
             <ul id="launcher-results" class="launcher-results" role="listbox"></ul>
+            <div class="launcher-hint">
+                <span><kbd>↑↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>Esc</kbd> 关闭</span><span><kbd>/g 词</kbd> 指定引擎</span>
+            </div>
             <div class="launcher-footer">
                 <span><kbd>↑</kbd><kbd>↓</kbd> 选择</span>
                 <span><kbd>Enter</kbd> 打开</span>
@@ -1371,6 +1374,11 @@
                         </div>
                         <div class="section-content">
                             <div id="visit-stats" class="visit-stats"></div>
+                                <div class="visit-stats-actions">
+                                    <button type="button" class="btn-secondary btn-sm" id="clear-visit-stats">
+                                        <i class="ri-delete-bin-line"></i> 清零统计
+                                    </button>
+                                </div>
                         </div>
                     </div>
                     <div class="settings-section" data-section-id="data.import-export">
