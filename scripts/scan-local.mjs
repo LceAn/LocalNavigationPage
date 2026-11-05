@@ -10,6 +10,7 @@
 //   npm run scan -- --host <ip>     生成局域网地址（默认 127.0.0.1）
 //   npm run scan -- --out <path>    自定义输出路径
 //   npm run scan -- --list          只打印表格，不写文件
+//   npm run scan -- --json          纯 JSON 输出到 stdout（管道友好）
 //   npm run scan -- --no-color      关闭彩色输出
 //
 // 零依赖；Windows(netstat+tasklist) / Linux(ss) / macOS(lsof)；WSL2 兼容。
@@ -28,6 +29,7 @@ if (process.argv.includes('--probe')) process.env.NODE_TLS_REJECT_UNAUTHORIZED =
 const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
 const val = (f) => { const i = args.indexOf(f); return i !== -1 ? args[i + 1] : undefined; };
+const JSON_OUT = has('--json');
 const PROBE = has('--probe');
 const MERGE = has('--merge');
 const LIST_ONLY = has('--list');
@@ -40,7 +42,7 @@ const LINKS_JSON = join(root, 'HTML', 'data', 'links.json');
 const C = NO_COLOR ? { g: '', y: '', b: '', r: '', dim: '', x: '' } : {
     g: '\x1b[32m', y: '\x1b[33m', b: '\x1b[36m', r: '\x1b[31m', dim: '\x1b[2m', x: '\x1b[0m'
 };
-const log = (s = '') => console.log(s);
+const log = (s = '') => { if (!JSON_OUT) console.log(s); };  // --json 模式静默
 
 // ================= 服务知识库 =================
 const KNOWN_PORTS = new Map([
@@ -74,6 +76,18 @@ const KNOWN_PORTS = new Map([
     [22, ['SSH', '远程访问']], [3389, ['远程桌面', '远程访问']],
     [5900, ['VNC', '远程访问']],
     [9080, ['DownloadSDK', '下载工具']], [9081, ['Thunder', '下载工具']],
+    // 自托管主流服务补充
+    [3300, ['Grafana', '监控']],
+    [8083, ['Cloudreve', '文件共享']], [5244, ['AList', '文件共享']],
+    [5240, ['AList', '文件共享']], [5212, ['Cloudreve', '文件共享']],
+    [8089, ['Calibre-Web', '阅读器']], [9783, ['Stirling PDF', '文档知识']],
+    [8484, ['Stirling PDF', '文档知识']], [8086, ['Adminer', '管理面板']],
+    [8010, ['CyberChef', '开发工具']], [18080, ['Nginx UI', '管理面板']],
+    [9002, ['MinIO Console', '管理面板']], [9003, ['MinIO Console', '管理面板']],
+    [6006, ['TensorBoard', '开发工具']], [8888, ['Jupyter', '开发工具']],
+    [8889, ['Jupyter', '开发工具']], [8087, ['Fider', 'Web 服务']],
+    [14004, ['Outline', '文档知识']], [9899, ['AList HTTPS', '文件共享']],
+    [3001, ['Gitea / Uptime Kuma', '监控']], [4000, ['爬虫服务', '开发工具']],
 ]);
 
 const CONTAINER_CATEGORY_RULES = [
@@ -387,6 +401,11 @@ async function main() {
 
     const payload = { _meta: { scannedAt: new Date().toISOString(), host: HOST, total: links.length, tool: 'scan-local.mjs' }, links };
 
+    if (JSON_OUT) {
+        // 管道友好：纯 JSON 到 stdout,无表格无颜色
+        console.log(JSON.stringify({ scannedAt: new Date().toISOString(), host: HOST, links }, null, 2));
+        return;
+    }
     if (MERGE) {
         let existing = { links: [] };
         if (existsSync(LINKS_JSON)) {
