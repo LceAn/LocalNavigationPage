@@ -2278,6 +2278,27 @@ document.addEventListener("DOMContentLoaded", function () {
         customButtons: []
     };
 
+    // 图标渲染：ri- 类名走字体；iconify:集合:名称 走官方 API(SVG)
+    // img 加载失败由调用点绑定 error 监听回退到 fallback
+    function renderButtonIcon(iconClass, fallback = 'ri-star-line') {
+        const raw = String(iconClass || '').trim();
+        const m = raw.match(/^iconify:([a-z0-9-]+):([a-z0-9-]+)$/i);
+        if (m) {
+            const src = 'https://api.iconify.design/' + m[1] + '/' + m[2] + '.svg?height=20';
+            return '<img class="custom-btn-icon" src="' + src + '" alt="" width="18" height="18" loading="lazy">';
+        }
+        return '<i class="' + sanitizeIconClass(raw, fallback) + '"></i>';
+    }
+    function bindIconFallback(container, fallback = 'ri-star-line') {
+        container.querySelectorAll('img.custom-btn-icon').forEach(img => {
+            img.addEventListener('error', () => {
+                const i = document.createElement('i');
+                i.className = fallback;
+                img.replaceWith(i);
+            });
+        });
+    }
+
     function sanitizeIconClass(iconClass, fallback = 'ri-star-line') {
         const value = String(iconClass || '').trim();
         return /^ri-[a-z0-9-]+$/i.test(value) ? value : fallback;
@@ -2346,7 +2367,8 @@ document.addEventListener("DOMContentLoaded", function () {
             button.className = 'icon-button custom-top-button';
             button.title = buttonConfig.label;
             button.setAttribute('aria-label', buttonConfig.label);
-            button.innerHTML = `<i class="${sanitizeIconClass(buttonConfig.icon)}"></i>`;
+            button.innerHTML = renderButtonIcon(buttonConfig.icon);
+            bindIconFallback(button, 'ri-links-line');
             button.addEventListener('click', () => openSafeUrl(buttonConfig.url));
             fragment.appendChild(button);
         });
@@ -2426,7 +2448,7 @@ document.addEventListener("DOMContentLoaded", function () {
             item.dataset.id = buttonConfig.id;
             item.innerHTML = `
                 <div class="top-button-preview">
-                    <i class="${sanitizeIconClass(buttonConfig.icon)}"></i>
+                    ${renderButtonIcon(buttonConfig.icon)}
                 </div>
                 <div class="top-button-info">
                     <h4>${escapeHTML(buttonConfig.label)}</h4>

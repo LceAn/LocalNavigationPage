@@ -21,6 +21,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+// 探测自签 HTTPS 时放宽证书校验（仅本 CLI 进程；探测目标是拿标题，不是建立信任）
+if (process.argv.includes('--probe')) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 // ================= 参数 =================
 const args = process.argv.slice(2);
 const has = (f) => args.includes(f);
@@ -247,17 +250,27 @@ function getDockerMap() {
 }
 
 async function probeHttp(port, timeoutMs = 2500) {
-    if (port === 443 || port === 8443 || port === 9443) return null;
-    try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-        const res = await fetch(`http://127.0.0.1:${port}/`, { signal: ctrl.signal, redirect: 'follow' });
-        clearTimeout(timer);
-        const server = res.headers.get('server') || '';
-        const html = (await res.text()).slice(0, 20000);
-        const title = html.match(/<title[^>]*>([^<]{1,100})<\/title>/i)?.[1]?.trim() || '';
-        return { title, server };
-    } catch { return null; }
+    // TLS 端口优先 https（自签证书跳过校验——目标是拿标题，不是建信任）
+    const tls = port === 443 || port === 8443 || port === 9443;
+    const schemes = tls ? ['https', 'http'] : ['http'];
+    for (const scheme of schemes) {
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+            const res = await fetch(scheme + '://127.0.0.1:' + port + '/', {
+                signal: ctrl.signal,
+                redirect: 'follow',
+                // 仅探测用途：自签证书也接受
+                ...(scheme === 'https' ? {} : {})
+            });
+            clearTimeout(timer);
+            const server = res.headers.get('server') || '';
+            const html = (await res.text()).slice(0, 20000);
+            const title = html.match(/<title[^>]*>([^<]{1,100})<\/title>/i)?.[1]?.trim() || '';
+            return { title, server };
+        } catch { /* 下一个 scheme */ }
+    }
+    return null;
 }
 
 // ================= 识别管线 =================
