@@ -1986,6 +1986,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
+    function syncHomeLayoutControls(settings = loadHomeLayoutSettings()) {
+        if (homeDensitySelect) homeDensitySelect.value = settings.density;
+        if (homeClickBlankCollapseToggle) homeClickBlankCollapseToggle.checked = settings.clickBlankToCollapse !== false;
+    }
+
     // 初始化一次：把存储里的密度/展开状态应用到首页
     {
         const homeLayoutSettings = loadHomeLayoutSettings();
