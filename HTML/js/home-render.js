@@ -211,7 +211,16 @@ function renderLinksByCategory(allLinks) {
 
         const categoryTitle = document.createElement('h2');
         const categoryIcon = document.createElement('i');
-        categoryIcon.className = categoryIconFor(category);
+        // 用户自定义图标 > 自动推断;iconify: 前缀走 img
+        const customIcons = getCustomCategoryIcons();
+        const customIcon = customIcons[category];
+        if (customIcon && customIcon.startsWith('iconify:')) {
+            const [, col, name] = customIcon.split(':');
+            categoryIcon.className = '';
+            categoryIcon.innerHTML = `<img src="https://api.iconify.design/${col}/${name}.svg?height=18&color=white" alt="" width="18" height="18" style="vertical-align: -3px;">`;
+        } else {
+            categoryIcon.className = customIcon || categoryIconFor(category);
+        }
         categoryTitle.appendChild(categoryIcon);
         categoryTitle.appendChild(document.createTextNode(` ${category}`));
 

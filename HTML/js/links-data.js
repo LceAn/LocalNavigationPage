@@ -425,6 +425,21 @@ function persistLinks() {
     setSetting('lastUpdate', new Date().toISOString());
 }
 
+function getCustomCategoryIcons() {
+    const map = getSetting('customCategoryIcons', {});
+    return map && typeof map === 'object' ? map : {};
+}
+
+function setCategoryIcon(category, iconClass) {
+    const map = getCustomCategoryIcons();
+    if (iconClass && /^ri-[a-z0-9-]+$/i.test(iconClass)) {
+        map[category] = iconClass;
+    } else {
+        delete map[category]; // 清空 = 回退自动推断
+    }
+    setSetting('customCategoryIcons', map);
+}
+
 function getCustomCategories() {
     const categories = getSetting(CUSTOM_CATEGORIES_KEY, []);
     return Array.isArray(categories)

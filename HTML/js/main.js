@@ -719,6 +719,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     <button class="category-action-btn move" title="下移" data-action="down" data-category="${escapeHTML(name)}">
                         <i class="ri-arrow-down-line"></i>
                     </button>
+                    <button class="category-action-btn icon-edit" title="设置图标" data-action="icon" data-category="${escapeHTML(name)}">
+                        <i class="${(getCustomCategoryIcons && getCustomCategoryIcons()[name]) || categoryIconFor(name)}"></i>
+                    </button>
                     <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${escapeHTML(name)}">
                         <i class="ri-edit-line"></i>
                     </button>
@@ -739,6 +742,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     editCategory(category);
                 } else if (action === 'delete') {
                     deleteCategory(category);
+                } else if (action === 'icon') {
+                    const current = getCustomCategoryIcons()[category] || categoryIconFor(category);
+                    const input = prompt('图标类名（ri- 开头，或 iconify:集合:名称；留空恢复自动）：', current);
+                    if (input === null) return; // 取消
+                    const val = input.trim();
+                    if (val.startsWith('iconify:')) {
+                        // iconify 格式:存为 iconify: 前缀,渲染时特殊处理
+                        const map = getCustomCategoryIcons();
+                        map[category] = val;
+                        setSetting('customCategoryIcons', map);
+                    } else {
+                        setCategoryIcon(category, val);
+                    }
+                    renderCategoriesList();
+                    renderLinksByCategory(links);
+                    showMessage(val ? '分组图标已更新' : '已恢复自动图标');
                 } else if (action === 'up' || action === 'down') {
                     moveCategory(category, action === 'up' ? -1 : 1);
                 }
@@ -1399,7 +1418,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.15.0';
+    const currentVersion = '1.15.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
