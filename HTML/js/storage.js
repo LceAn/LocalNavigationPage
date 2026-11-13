@@ -156,9 +156,46 @@ function writeStorage(key, value) {
     }
 }
 
+// ---- i18n 基础设施(1.15.0 起步,仅覆盖主要 UI 字符串) ----
+const I18N_DICT = {
+    'en-US': {
+        '我的导航': 'My Navigation',
+        '输入搜索词': 'Type to search…',
+        '设置': 'Settings',
+        '打开设置': 'Settings',
+        '切换昼夜模式': 'Toggle theme',
+        '展开首个分组': 'Expand first group',
+        '收起所有分组': 'Collapse all groups',
+        '页面布局与密度': 'Layout & density',
+        '回到顶部': 'Back to top',
+        '全部': 'All',
+        '内网': 'LAN',
+        '公网': 'WAN',
+        '隧道': 'Tunnel',
+        '未分类': 'Uncategorized',
+        '最近搜索：': 'Recent searches:',
+        '没有匹配的链接': 'No matching links',
+        '暂无链接': 'No links yet',
+        '已切换默认搜索引擎：': 'Default engine switched: ',
+        '主题色已切换': 'Theme color changed',
+        '顺序已保存': 'Order saved',
+        '已收起分组': 'Groups collapsed',
+        '已打开分组': 'Groups shown',
+    }
+};
+
+// 取翻译:无字典或无命中返回原文
+function t(text) {
+    const lang = getSetting('language', 'zh-CN');
+    if (lang === 'zh-CN') return text;
+    const dict = I18N_DICT[lang];
+    return (dict && dict[text]) || text;
+}
+
 // 暴露给 darkMode.js 等其他脚本使用
 window.getSetting = getSetting;
 window.setSetting = setSetting;
+window.t = t;
 
 // v1 → v2 一次性迁移：把旧 localStorage 散 key 全部读出、写入新容器、删除旧 key
 function migrateV1ToV2(existing) {

@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let messageHideTimer = null;
     function showMessage(message, type = 'success') {
+        message = (typeof t === 'function') ? t(message) : message;
         messageContainer.textContent = message;
         // 类型样式：success 保持默认渐变，warning/error 换色区分
         messageContainer.classList.toggle('type-warning', type === 'warning');
@@ -569,6 +570,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-name').value = '';
         document.getElementById('edit-category').value = '';
         document.getElementById('edit-tag').value = '';
+        const rm0 = document.getElementById('edit-remarks'); if (rm0) rm0.value = '';
         document.getElementById('edit-thumbnail').value = '';
         // URL 列表预置一行空地址，新链接可直接填写
         currentUrls = [{ address: '', label: '', priority: 1 }];
@@ -590,6 +592,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-name').value = link.name;
         document.getElementById('edit-category').value = link.category;
         document.getElementById('edit-tag').value = link.tag || '';
+        const rm1 = document.getElementById('edit-remarks'); if (rm1) rm1.value = link.remarks || '';
         document.getElementById('edit-thumbnail').value = link.thumbnail || '';
         renderThumbnailPreview(link.thumbnail || '');
         
@@ -716,6 +719,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     <button class="category-action-btn move" title="下移" data-action="down" data-category="${escapeHTML(name)}">
                         <i class="ri-arrow-down-line"></i>
                     </button>
+                    <button class="category-action-btn icon-edit" title="设置图标" data-action="icon" data-category="${escapeHTML(name)}">
+                        <i class="${(getCustomCategoryIcons && getCustomCategoryIcons()[name]) || categoryIconFor(name)}"></i>
+                    </button>
                     <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${escapeHTML(name)}">
                         <i class="ri-edit-line"></i>
                     </button>
@@ -736,6 +742,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     editCategory(category);
                 } else if (action === 'delete') {
                     deleteCategory(category);
+                } else if (action === 'icon') {
+                    const current = getCustomCategoryIcons()[category] || categoryIconFor(category);
+                    const input = prompt('图标类名（ri- 开头，或 iconify:集合:名称；留空恢复自动）：', current);
+                    if (input === null) return; // 取消
+                    const val = input.trim();
+                    if (val.startsWith('iconify:')) {
+                        // iconify 格式:存为 iconify: 前缀,渲染时特殊处理
+                        const map = getCustomCategoryIcons();
+                        map[category] = val;
+                        setSetting('customCategoryIcons', map);
+                    } else {
+                        setCategoryIcon(category, val);
+                    }
+                    renderCategoriesList();
+                    renderLinksByCategory(links);
+                    showMessage(val ? '分组图标已更新' : '已恢复自动图标');
                 } else if (action === 'up' || action === 'down') {
                     moveCategory(category, action === 'up' ? -1 : 1);
                 }
@@ -888,6 +910,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const name = document.getElementById('edit-name').value.trim();
         const category = document.getElementById('edit-category').value.trim();
         const tag = document.getElementById('edit-tag').value.trim();
+        const remarks = (document.getElementById('edit-remarks')?.value || '').trim();
         const thumbnail = document.getElementById('edit-thumbnail').value.trim();
 
         // 获取 URL 列表，过滤掉空地址
@@ -934,6 +957,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 links[linkIndex].category = category || '未分类';
                 links[linkIndex].tag = tag;
+                links[linkIndex].remarks = remarks;
                 links[linkIndex].thumbnail = thumbnail || defaultThumbnailFor(firstUrl);
             }
             showMessage('已更新链接');
@@ -945,6 +969,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 name: name,
                 category: category || '未分类',
                 tag: tag,
+                remarks: remarks,
                 thumbnail: thumbnail || defaultThumbnailFor(firstUrl)
             };
             // 如果只有一个 URL，使用旧格式兼容
@@ -1397,7 +1422,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.11.3';
+    const currentVersion = '1.16.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1547,6 +1572,17 @@ document.addEventListener("DOMContentLoaded", function () {
     const savedTitle = getSetting('siteTitle', '我的导航');
     siteTitleInput.value = savedTitle;
     document.querySelector('.page-header h1').textContent = savedTitle;
+
+    // i18n:应用语言到主要静态文案(起步覆盖,逐步扩大)
+    {
+        const lang = getSetting('language', 'zh-CN');
+        if (lang !== 'zh-CN') {
+            document.title = (typeof t === 'function') ? t('我的导航') : document.title;
+            const searchInput2 = document.getElementById('search-input');
+            if (searchInput2) searchInput2.placeholder = (typeof t === 'function') ? t('输入搜索词') : searchInput2.placeholder;
+        }
+    }
+    document.title = savedTitle;
 
     siteTitleInput.addEventListener('input', function() {
         const title = this.value.trim() || '我的导航';
@@ -1929,6 +1965,12 @@ document.addEventListener("DOMContentLoaded", function () {
             ':root { --primary-color: ' + preset.light + '; --primary-rgb: ' + preset.rgbLight + '; --primary-dark: ' + preset.dark + '; }',
             '.dark-mode { --primary-color: ' + preset.dark + '; --primary-rgb: ' + preset.rgbDark + '; --primary-dark: ' + preset.light + '; }'
         ].join('\n');
+
+        // 浏览器外壳主题色跟随主色(移动端状态栏)
+        const metaLight = document.querySelector('meta[name="theme-color"]:not([media])');
+        const metaDark = document.querySelector('meta[name="theme-color"][media]');
+        if (metaLight) metaLight.content = preset.light;
+        if (metaDark) metaDark.content = preset.dark;
     }
 
     {
@@ -1937,7 +1979,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const saved = getSetting('customPrimary', 'indigo');
             swatches.innerHTML = PRIMARY_PRESETS.map(p =>
                 '<button type="button" class="theme-swatch" data-preset="' + p.id + '" title="' + p.name +
-                '" aria-label="主题色 ' + p.name + '"><span class="swatch-dot" style="background:' + p.light + '"></span><span class="swatch-name">' + p.name + '</span></button>'
+                '" aria-label="主题色 ' + p.name + '"><span class="swatch-dot" style="background:' + p.light + '"></span><span class="swatch-name">' + p.name + (p.id === 'indigo' ? '（默认）' : '') + '</span></button>'
             ).join('');
             applyCustomPrimary(saved);
             [...swatches.querySelectorAll('.theme-swatch')].forEach(btn => {
@@ -1974,6 +2016,32 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
         runCustomJs(getSetting('customJs', ''));
+    }
+
+    // 界面语言(刷新生效——静态文案分布广,一次性重载最可靠)
+    {
+        const langSel = document.getElementById('language-select');
+        if (langSel) {
+            langSel.value = getSetting('language', 'zh-CN');
+            langSel.addEventListener('change', () => {
+                setSetting('language', langSel.value);
+                showMessage('Language changed — reloading…');
+                setTimeout(() => window.location.reload(), 500);
+            });
+        }
+    }
+
+    // favicon 提供商切换(即时重渲染)
+    {
+        const fpSel = document.getElementById('favicon-provider-select');
+        if (fpSel) {
+            fpSel.value = getSetting('faviconProvider', 'google');
+            fpSel.addEventListener('change', () => {
+                setSetting('faviconProvider', fpSel.value);
+                renderLinksByCategory(links);
+                showMessage('favicon 提供商已切换');
+            });
+        }
     }
 
     // 分组排序：名称 / 链接数量（即时重渲染）
@@ -2288,6 +2356,27 @@ document.addEventListener("DOMContentLoaded", function () {
         customButtons: []
     };
 
+    // 图标渲染：ri- 类名走字体；iconify:集合:名称 走官方 API(SVG)
+    // img 加载失败由调用点绑定 error 监听回退到 fallback
+    function renderButtonIcon(iconClass, fallback = 'ri-star-line') {
+        const raw = String(iconClass || '').trim();
+        const m = raw.match(/^iconify:([a-z0-9-]+):([a-z0-9-]+)$/i);
+        if (m) {
+            const src = 'https://api.iconify.design/' + m[1] + '/' + m[2] + '.svg?height=20';
+            return '<img class="custom-btn-icon" src="' + src + '" alt="" width="18" height="18" loading="lazy">';
+        }
+        return '<i class="' + sanitizeIconClass(raw, fallback) + '"></i>';
+    }
+    function bindIconFallback(container, fallback = 'ri-star-line') {
+        container.querySelectorAll('img.custom-btn-icon').forEach(img => {
+            img.addEventListener('error', () => {
+                const i = document.createElement('i');
+                i.className = fallback;
+                img.replaceWith(i);
+            });
+        });
+    }
+
     function sanitizeIconClass(iconClass, fallback = 'ri-star-line') {
         const value = String(iconClass || '').trim();
         return /^ri-[a-z0-9-]+$/i.test(value) ? value : fallback;
@@ -2356,7 +2445,8 @@ document.addEventListener("DOMContentLoaded", function () {
             button.className = 'icon-button custom-top-button';
             button.title = buttonConfig.label;
             button.setAttribute('aria-label', buttonConfig.label);
-            button.innerHTML = `<i class="${sanitizeIconClass(buttonConfig.icon)}"></i>`;
+            button.innerHTML = renderButtonIcon(buttonConfig.icon);
+            bindIconFallback(button, 'ri-links-line');
             button.addEventListener('click', () => openSafeUrl(buttonConfig.url));
             fragment.appendChild(button);
         });
@@ -2436,7 +2526,7 @@ document.addEventListener("DOMContentLoaded", function () {
             item.dataset.id = buttonConfig.id;
             item.innerHTML = `
                 <div class="top-button-preview">
-                    <i class="${sanitizeIconClass(buttonConfig.icon)}"></i>
+                    ${renderButtonIcon(buttonConfig.icon)}
                 </div>
                 <div class="top-button-info">
                     <h4>${escapeHTML(buttonConfig.label)}</h4>
@@ -2731,6 +2821,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     performSearch(hit, term);
                     return;
                 }
+            }
+            if (typeof recordSearchTerm === 'function') {
+                const rawTrim = searchInput.value.trim();
+                const pfx = rawTrim.match(/^\/(\S+)\s+(.+)$/);
+                recordSearchTerm(pfx ? pfx[2] : rawTrim);
             }
             performSearch(getDefaultSearchEngine());
         });
@@ -3421,7 +3516,33 @@ function toggleShortcutCheatSheet() {
             if (sc.classList.contains('show')) renderVisitStats();
         }).observe(sc, { attributes: true });
         setTimeout(renderVisitStats, 600);
+
+    // 访问统计清零
+    {
+        const clearBtn = document.getElementById('clear-visit-stats');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                if (!confirm('确定清零所有访问统计？此操作不可恢复。')) return;
+                setSetting('linkVisitCounts', {});
+                renderVisitStats();
+                showMessage('访问统计已清零');
+            });
+        }
     }
+    }
+
+    // 全局错误边界：未捕获异常以一次性提示告知（不过度打扰）
+    let globalErrShown = false;
+    window.addEventListener('error', (e) => {
+        if (globalErrShown) return;
+        globalErrShown = true;
+        showMessage('页面发生异常，建议刷新或导出备份', 'error');
+    });
+    window.addEventListener('unhandledrejection', () => {
+        if (globalErrShown) return;
+        globalErrShown = true;
+        showMessage('页面发生异常，建议刷新或导出备份', 'error');
+    });
 
 // Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）
 if ('serviceWorker' in navigator) {

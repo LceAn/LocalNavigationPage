@@ -1,468 +1,471 @@
 #!/usr/bin/env node
-// scripts/scan-local.mjs — 本地服务自动发现与导入
+// scripts/scan-local.mjs — 本地服务自动发现与导入（产品级）
+//
+// 三层识别：Docker 容器名 → 知名服务库(端口) → 进程/端口段兜底
 //
 // 用法：
-//   npm run scan              扫描并生成 HTML/data/links-local.json（不会覆盖 links.json）
-//   npm run scan -- --probe   对 HTTP 端口做标题探测（更准确但更慢）
-//   npm run scan -- --out ./my-links.json   自定义输出路径
-//   npm run scan -- --host 192.168.1.100   用局域网 IP 代替 127.0.0.1
+//   npm run scan                    扫描并生成 HTML/data/links-local.json
+//   npm run scan -- --probe         HTTP 探测页面标题（更准确，稍慢）
+//   npm run scan -- --merge         合并进 HTML/data/links.json（只增不改不删）
+//   npm run scan -- --host <ip>     生成局域网地址（默认 127.0.0.1）
+//   npm run scan -- --out <path>    自定义输出路径
+//   npm run scan -- --list          只打印表格，不写文件
+//   npm run scan -- --json          纯 JSON 输出到 stdout（管道友好）
+//   npm run scan -- --probe-concurrency N   探测并发数（默认 8）
+//   npm run scan -- --probe-timeout ms      探测超时（默认 2500）
+//   npm run scan -- --exclude 135,9000   排除指定端口
+//   npm run scan -- --limit 30           只取前 N 个服务
+//   npm run scan -- --no-color      关闭彩色输出
 //
-// 零依赖，跨平台（Windows: netstat + tasklist; Linux/macOS: ss/netstat/lsof + ps）
-// 非 HTTP 端口（SSH/MySQL/Redis…）不会生成链接：导航页只接受 http/https，
-// 写进去也是打不开的死链，扫描结束会汇总提示。
+// 零依赖；Windows(netstat+tasklist) / Linux(ss) / macOS(lsof)；WSL2 兼容。
 
 import { execSync } from 'node:child_process';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// ---------- 常见端口分类 ----------
-const PORT_CATEGORIES = {
-    // Web / 代理
-    80: 'Web 服务', 81: 'Web 服务', 443: 'Web 服务', 8080: 'Web 服务', 8000: 'Web 服务',
-    8008: 'Web 服务', 8888: 'Web 服务', 9000: '管理面板', 9001: '管理面板',
-    19000: '管理面板', 19001: '管理面板', 2019: 'Web 服务', 2015: 'Web 服务',
-    8443: 'Web 服务', 10443: 'Web 服务', 10080: 'Web 服务', 8010: 'Web 服务',
-    8011: 'Web 服务', 8085: 'Web 服务', 8091: 'Web 服务',
-    // 代理
-    7890: '代理', 7891: '代理', 7892: '代理', 1080: '代理', 1081: '代理',
-    10808: '代理', 10809: '代理',
-    // 开发
-    3000: '开发工具', 3001: '开发工具', 3002: '开发工具', 3003: '开发工具',
-    3004: '开发工具', 3005: '开发工具', 4000: '开发工具', 5000: '开发工具',
-    5173: '开发工具', 8081: 'Web 服务', 8090: '开发工具', 9229: '开发工具',
-    4533: '开发工具', 5230: '开发工具', 7000: '开发工具',
-    // 数据库
-    3306: '数据库', 5432: '数据库', 6379: '数据库', 27017: '数据库',
-    9042: '数据库', 8529: '数据库', 9200: '数据库', 28317: '数据库',
-    // 容器/编排
-    2375: '容器', 2376: '容器', 10250: '容器', 10255: '容器', 11434: '容器',
-    // 媒体
-    8096: '媒体', 8920: '媒体', 32400: '媒体', 1900: '媒体', 8200: '媒体',
-    // 下载
-    9091: '下载', 51413: '下载', 6881: '下载', 9094: '下载',
-    // 监控
-    9090: '监控', 9093: '监控', 19999: '监控',
-    // 文件共享
-    2049: '文件共享',
-    // DNS / 网络
-    53: '网络服务',
-    // 通信
-    22: '远程访问', 3389: '远程访问', 5900: '远程访问', 5901: '远程访问',
-    2222: '远程访问', 2224: '远程访问',
-    // 消息队列
-    5672: '消息队列', 15672: '消息队列', 1883: '消息队列', 8883: '消息队列',
-    2181: '消息队列', 9092: '消息队列', 5678: '消息队列',
-    // 同步
-    8384: '同步', 22000: '同步', 21027: '同步',
-    // 智能家居
-    8123: '智能家居',
-    // 其他已知服务
-    5001: 'Web 服务', 5003: 'Web 服务', 5005: 'Web 服务', 5006: 'Web 服务',
-    3050: '开发工具', 3080: '开发工具', 8787: '其他服务', 9080: '下载工具',
-    9081: '下载工具', 2100: '其他服务', 17680: '其他服务', 19798: '其他服务',
-};
+// 探测自签 HTTPS 时放宽证书校验（仅本 CLI 进程；探测目标是拿标题，不是建立信任）
+if (process.argv.includes('--probe')) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-// 端口名称映射（更友好的显示名）
-const PORT_NAMES = {
-    80: 'HTTP 服务', 443: 'HTTPS 服务', 22: 'SSH',
-    3306: 'MySQL', 5432: 'PostgreSQL', 6379: 'Redis', 27017: 'MongoDB',
-    8080: 'HTTP :8080', 3000: 'Dev :3000', 3389: '远程桌面',
-    8384: 'Syncthing', 8096: 'Jellyfin', 9000: 'Portainer / MinIO',
-    5672: 'AMQP', 9090: 'Prometheus', 7890: 'Clash / Mihomo 代理',
-};
+// ================= 参数 =================
+const args = process.argv.slice(2);
+const has = (f) => args.includes(f);
+const val = (f) => { const i = args.indexOf(f); return i !== -1 ? args[i + 1] : undefined; };
+const JSON_OUT = has('--json');
+const PROBE = has('--probe');
+const MERGE = has('--merge');
+const LIST_ONLY = has('--list');
+const NO_COLOR = has('--no-color') || process.env.NO_COLOR || !process.stdout.isTTY;
+const EXCLUDE = (val('--exclude') || '').split(',').map(x => parseInt(x, 10)).filter(Number.isInteger);
+const LIMIT = parseInt(val('--limit'), 10) || Infinity;
+const PROBE_CONCURRENCY = Math.max(1, parseInt(val('--probe-concurrency'), 10) || 8);
+const PROBE_TIMEOUT = Math.max(500, parseInt(val('--probe-timeout'), 10) || 2500);
+const HOST = val('--host') || '127.0.0.1';
+const OUT = val('--out') ? resolve(val('--out')) : join(root, 'HTML', 'data', 'links-local.json');
+const LINKS_JSON = join(root, 'HTML', 'data', 'links.json');
 
-// 非 HTTP 端口：浏览器打不开，生成链接只会得到死磁贴
-const NON_HTTP_PORTS = new Set([
-    22,    // SSH
-    53,    // DNS
-    2049,  // NFS
-    3306,  // MySQL
-    3389,  // RDP
-    5432,  // PostgreSQL
-    5672,  // AMQP
-    5900, 5901, // VNC
-    6379,  // Redis
-    6881,  // BitTorrent
-    9042,  // Cassandra
-    9092,  // Kafka
-    1883, 8883, // MQTT
-    2181,  // ZooKeeper
-    27017, // MongoDB
-    21027, 22000, // Syncthing
-    51413, // Transmission
+// ================= 输出 =================
+const C = NO_COLOR ? { g: '', y: '', b: '', r: '', dim: '', x: '' } : {
+    g: '\x1b[32m', y: '\x1b[33m', b: '\x1b[36m', r: '\x1b[31m', dim: '\x1b[2m', x: '\x1b[0m'
+};
+const log = (s = '') => { if (!JSON_OUT) console.log(s); };  // --json 模式静默
+
+// ================= 服务知识库 =================
+const KNOWN_PORTS = new Map([
+    [8096, ['Jellyfin', '媒体']], [8920, ['Jellyfin', '媒体']], [32400, ['Plex', '媒体']],
+    [4533, ['Navidrome', '媒体']], [13378, ['Audiobookshelf', '媒体']],
+    [2342, ['PhotoPrism', '媒体']], [2283, ['Immich', '媒体']],
+    [9091, ['Transmission', '下载']], [6789, ['NZBGet', '下载']], [8112, ['Deluge', '下载']],
+    [6881, ['qBittorrent', '下载']],
+    [9090, ['Prometheus', '监控']], [9093, ['Alertmanager', '监控']], [19999, ['Netdata', '监控']],
+    [10051, ['Zabbix', '监控']],
+    [9000, ['Portainer / MinIO', '管理面板']], [9001, ['Portainer / MinIO', '管理面板']],
+    [9002, ['MinIO Console', '管理面板']],
+    [9443, ['Portainer', '管理面板']], [10000, ['Webmin', '管理面板']],
+    [81, ['Nginx Proxy Manager', '管理面板']],
+    [8123, ['Home Assistant', '智能家居']], [1880, ['Node-RED', '自动化']],
+    [6052, ['ESPHome', '自动化']], [5678, ['n8n', '自动化']],
+    [3002, ['Dev Server', '开发工具']], [3003, ['Dev Server', '开发工具']],
+    [3004, ['Dev Server', '开发工具']], [3005, ['Dev Server', '开发工具']],
+    [4200, ['Angular', '开发工具']], [5173, ['Vite', '开发工具']],
+    [5230, ['Memos', '开发工具']], [4321, ['Astro', '文档知识']],
+    [11434, ['Ollama', 'AI 工具']], [1234, ['LM Studio', 'AI 工具']],
+    [5006, ['One API', 'AI 工具']],
+    [8384, ['Syncthing', '文件同步']], [22000, ['Syncthing', '文件同步']],
+    [3306, ['MySQL', '数据库']], [5432, ['PostgreSQL', '数据库']],
+    [6379, ['Redis', '数据库']], [27017, ['MongoDB', '数据库']],
+    [9042, ['Cassandra', '数据库']], [8529, ['ArangoDB', '数据库']],
+    [9200, ['Elasticsearch', '数据库']], [8086, ['InfluxDB', '数据库']],
+    [5672, ['AMQP', '消息队列']], [15672, ['RabbitMQ 管理', '消息队列']],
+    [1883, ['MQTT', '消息队列']], [9092, ['Kafka', '消息队列']],
+    [8222, ['Vaultwarden', '密码管理']],
+    [22, ['SSH', '远程访问']], [3389, ['远程桌面', '远程访问']],
+    [5900, ['VNC', '远程访问']],
+    [9080, ['DownloadSDK', '下载工具']], [9081, ['Thunder', '下载工具']],
+    // 自托管主流服务补充
+    [3300, ['Grafana', '监控']],
+    [8083, ['Cloudreve', '文件共享']], [5244, ['AList', '文件共享']],
+    [5240, ['AList', '文件共享']], [5212, ['Cloudreve', '文件共享']],
+    [8089, ['Calibre-Web', '阅读器']], [9783, ['Stirling PDF', '文档知识']],
+    [8484, ['Stirling PDF', '文档知识']], [8086, ['Adminer', '管理面板']],
+    [8010, ['CyberChef', '开发工具']], [18080, ['Nginx UI', '管理面板']],
+    [9002, ['MinIO Console', '管理面板']], [9003, ['MinIO Console', '管理面板']],
+    [6006, ['TensorBoard', '开发工具']], [8888, ['Jupyter', '开发工具']],
+    [8889, ['Jupyter', '开发工具']], [8087, ['Fider', 'Web 服务']],
+    [14004, ['Outline', '文档知识']], [9899, ['AList HTTPS', '文件共享']],
+    [3001, ['Gitea / Uptime Kuma', '监控']], [4000, ['爬虫服务', '开发工具']],
 ]);
 
-// 已知走 HTTPS 的端口（其余按 http）
-const HTTPS_PORTS = new Set([443, 8443, 8920, 9443, 10443]);
+const CONTAINER_CATEGORY_RULES = [
+    [/jellyfin|emby|plex|navidrome|audiobook|immich|photoprism|finamp|photo/i, '媒体'],
+    [/uptime|prometheus|grafana|netdata|glances|zabbix|gatus|speedtest/i, '监控'],
+    [/mysql|mariadb|postgres|mongo|redis|clickhouse|influx|elastic/i, '数据库'],
+    [/n8n|node-?red|automation|workflow|home.?assistant|zigbee|esphome/i, '自动化'],
+    [/portainer|cockpit|webmin|dozzle/i, '管理面板'],
+    [/nginx|npm|traefik|caddy|proxy|haproxy|misp/i, '管理面板'],
+    [/gitea|gitlab|gogs|git/i, '版本控制'],
+    [/qbittorrent|transmission|aria2|sab|nzb|deluge|download|thunder/i, '下载'],
+    [/vault|bitwarden|password/i, '密码管理'],
+    [/wiki|bookstack|outline|paperless|doc/i, '文档知识'],
+    [/dify|openai|oneapi|ollama|webui|chatgpt|llm|ai[-_]|one-api/i, 'AI 工具'],
+    [/nextcloud|seafile|filebrowser|webdav|dufs|minio/i, '文件共享'],
+    [/freshrss|miniflux|rss|ttrss/i, '阅读器'],
+    [/matrix|mattermost|rocket|chat/i, '通信协作'],
+    [/firefly|invoice|finance/i, '财务'],
+    [/syncthing/i, '文件同步'],
+    [/auth|sso|keycloak|ldap/i, '认证'],
+    [/cyberchef|it-?tools|navigator|light/i, '开发工具'],
+];
 
-// 已知纯系统端口（不可能是用户服务）
-const SYSTEM_PORTS = new Set([
-    135,   // RPC
-    139,   // NetBIOS
-    445,   // SMB
-    5040,  // Windows 服务
-    5357,  // WSD
-    7680,  // 传递优化
-]);
+const TITLE_RULES = [
+    [/^jellyfin$/i, 'Jellyfin', '媒体'],
+    [/^emby$/i, 'Emby', '媒体'],
+    [/plex/i, 'Plex', '媒体'],
+    [/portainer/i, 'Portainer', '管理面板'],
+    [/home assistant/i, 'Home Assistant', '智能家居'],
+    [/uptime kuma/i, 'Uptime Kuma', '监控'],
+    [/grafana/i, 'Grafana', '监控'],
+    [/prometheus/i, 'Prometheus', '监控'],
+    [/gitea/i, 'Gitea', '版本控制'],
+    [/gitlab/i, 'GitLab', '版本控制'],
+    [/n8n/i, 'n8n', '自动化'],
+    [/node-?red/i, 'Node-RED', '自动化'],
+    [/dify/i, 'Dify', 'AI 工具'],
+    [/open ?webui/i, 'Open WebUI', 'AI 工具'],
+    [/one ?api/i, 'One API', 'AI 工具'],
+    [/nextcloud/i, 'Nextcloud', '文件共享'],
+    [/syncthing/i, 'Syncthing', '文件同步'],
+    [/minio( console)?/i, 'MinIO Console', '文件共享'],
+    [/vaultwarden|bitwarden/i, 'Vaultwarden', '密码管理'],
+    [/paperless/i, 'Paperless', '文档知识'],
+    [/pi-?hole/i, 'Pi-hole', '网络服务'],
+    [/adguard/i, 'AdGuard Home', '网络服务'],
+    [/nginx proxy manager/i, 'Nginx Proxy Manager', '管理面板'],
+    [/immich/i, 'Immich', '媒体'],
+    [/photoprism/i, 'PhotoPrism', '媒体'],
+    [/navidrome/i, 'Navidrome', '媒体'],
+    [/freshrss/i, 'FreshRSS', '阅读器'],
+    [/miniflux/i, 'Miniflux', '阅读器'],
+    [/firefly/i, 'Firefly III', '财务'],
+    [/cockpit/i, 'Cockpit', '管理面板'],
+    [/cyberchef/i, 'CyberChef', '开发工具'],
+    [/it-?tools/i, 'IT Tools', '开发工具'],
+];
 
-export function isExcludedPort(port) {
-    if (!Number.isInteger(port) || port <= 0 || port > 65535) return true;
-    if (SYSTEM_PORTS.has(port)) return true;
-    if (port >= 49152 && port <= 65535) return true; // 动态/临时端口段
-    return false;
+// ================= 工具 =================
+function sh(cmd, timeoutMs = 8000) {
+    try {
+        return execSync(cmd, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: timeoutMs, stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch { return ''; }
 }
 
-export function isNonHttpPort(port) {
-    return NON_HTTP_PORTS.has(port);
+const SYSTEM_PORTS = new Set([135, 139, 445, 5040, 5357, 7680]);
+function isSystemPort(p) {
+    return SYSTEM_PORTS.has(p) || (p >= 49152 && p <= 65535);
 }
 
-export function schemeForPort(port) {
-    return HTTPS_PORTS.has(port) ? 'https' : 'http';
+function friendlyContainerName(raw) {
+    let n = raw.replace(/[-_][0-9a-f]{6,}$/i, '').replace(/[-_](1|2|3)$/, '');
+    n = n.replace(/[_-]+/g, ' ').trim();
+    if (/[A-Z]/.test(n)) return n;
+    return n.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-// ---------- 输出解析（纯函数，便于测试） ----------
-export function parseListeningOutput(output, platform = process.platform) {
-    const ports = new Map(); // key: port，value: { port, pid, addr }
-
-    for (const line of String(output || '').split('\n')) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        let port = 0, pid = 0, addr = '';
-        const cols = trimmed.split(/\s+/);
-
-        if (platform === 'win32') {
-            // TCP  0.0.0.0:22  0.0.0.0:0  LISTENING  6000
-            if (cols[0] !== 'TCP' || cols[3] !== 'LISTENING') continue;
-            const local = cols[1] || '';
-            const colon = local.lastIndexOf(':');
-            if (colon === -1) continue;
-            addr = local.slice(0, colon).replace(/^\[|\]$/g, '');
-            port = parseInt(local.slice(colon + 1), 10);
-            pid = parseInt(cols[4], 10) || 0;
-        } else if (trimmed.startsWith('LISTEN')) {
-            // ss -tlnp：普通用户看不到他人进程，users:(...pid=) 可能整段缺失
-            // LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=6000,fd=3))
-            const local = cols[3] || '';
-            const colon = local.lastIndexOf(':');
-            if (colon === -1) continue;
-            addr = local.slice(0, colon).replace(/^\[|\]$/g, '');
-            port = parseInt(local.slice(colon + 1), 10);
-            pid = parseInt(trimmed.match(/pid=(\d+)/)?.[1] || '0', 10);
-        } else if (/^(tcp|tcp6)$/i.test(cols[0]) && trimmed.includes('LISTEN')) {
-            // netstat -tlnp：tcp 0 0 0.0.0.0:22 0.0.0.0:* LISTEN 1234/sshd
-            const local = cols[3] || '';
-            const colon = local.lastIndexOf(':');
-            if (colon === -1) continue;
-            addr = local.slice(0, colon).replace(/^\[|\]$/g, '');
-            port = parseInt(local.slice(colon + 1), 10);
-            pid = parseInt((cols[6] || '').split('/')[0], 10) || 0;
-        } else {
-            // lsof：sshd 6000 root 3u IPv4 12345 0t0 TCP *:22 (LISTEN)
-            const match = trimmed.match(/^(\S+)\s+(\d+)\s+\S+.*TCP\s+\S*:(\d+)\s+\(LISTEN\)/);
-            if (!match) continue;
-            pid = parseInt(match[2], 10);
-            port = parseInt(match[3], 10);
-        }
-
-        if (isExcludedPort(port)) continue;
-        if (!ports.has(port)) ports.set(port, { port, pid: pid || 0, addr });
+function titleRule(title) {
+    for (const [re, name, cat] of TITLE_RULES) {
+        if (re.test(title)) return { name, category: cat };
     }
-
-    return [...ports.values()].sort((a, b) => a.port - b.port);
+    return null;
 }
 
-export function parseWindowsTasklist(output) {
-    const map = new Map();
-    for (const line of String(output || '').split('\n')) {
-        // "chrome.exe","1234","Console","1","120,000 K"
-        const match = line.match(/^"([^"]+)","(\d+)"/);
-        if (match) map.set(Number(match[2]), match[1]);
-    }
-    return map;
-}
-
-// ---------- 平台适配 ----------
-function runCommand(command, options = {}) {
-    return execSync(command, {
-        encoding: 'utf8',
-        maxBuffer: 10 * 1024 * 1024,
-        stdio: ['ignore', 'pipe', 'ignore'],
-        ...options
-    });
-}
-
-function getListeningPorts() {
+// ================= 收集器 =================
+function collectPorts() {
     const platform = process.platform;
-    const attempts = platform === 'win32'
-        ? ['netstat -ano']
-        : ['ss -tlnp', 'netstat -tlnp', 'lsof -i -P -n'];
+    const ports = new Map();
+    let output = '';
 
-    let lastError = null;
-    for (const command of attempts) {
-        try {
-            const parsed = parseListeningOutput(runCommand(command), platform);
-            if (parsed.length) return parsed;
-        } catch (error) {
-            lastError = error;
+    if (platform === 'win32') {
+        output = sh('netstat -ano', 10000);
+        for (const line of output.split('\n')) {
+            const parts = line.trim().split(/\s+/);
+            if (parts[0] !== 'TCP' || parts[3] !== 'LISTENING') continue;
+            const local = parts[1] || '';
+            const c = local.lastIndexOf(':');
+            if (c === -1) continue;
+            const port = parseInt(local.slice(c + 1), 10);
+            const pid = parseInt(parts[4], 10) || 0;
+            if (!port || isSystemPort(port)) continue;
+            const addr = local.slice(0, c);
+            if (!ports.has(port)) ports.set(port, { port, pid, addrs: new Set() });
+            ports.get(port).addrs.add(addr);
+        }
+    } else {
+        output = sh('ss -tlnp 2>/dev/null || netstat -an -p tcp 2>/dev/null || lsof -i -P -n 2>/dev/null', 10000);
+        for (const line of output.split('\n')) {
+            const ss = line.match(/LISTEN\s+\d+\s+\d+\s+(\[?[^\s\]]+\]?):(\d+)\s/i);
+            if (ss) {
+                const port = parseInt(ss[2], 10);
+                if (!port || isSystemPort(port)) continue;
+                const pidM = line.match(/pid=(\d+)/);
+                const pid = pidM ? parseInt(pidM[1], 10) : 0;
+                if (!ports.has(port)) ports.set(port, { port, pid, addrs: new Set() });
+                ports.get(port).addrs.add(ss[1]);
+                continue;
+            }
+            const lf = line.match(/^(?:\S+)\s+(\d+)\s+.*TCP\s+\[?([^\s\]]+)\]?:(\d+)\s+\(LISTEN\)/);
+            if (lf) {
+                const port = parseInt(lf[3], 10);
+                if (!port || isSystemPort(port)) continue;
+                if (!ports.has(port)) ports.set(port, { port, pid: parseInt(lf[1], 10), addrs: new Set() });
+                ports.get(port).addrs.add(lf[2]);
+            }
         }
     }
-    if (lastError && platform !== 'win32') throw lastError;
-    return [];
+    return ports;
 }
 
-// 批量取进程名：Windows 一次 tasklist，Linux/macOS 一次 ps（旧实现每个端口调用一次）
-function getProcessMap(pids) {
-    const unique = [...new Set(pids.filter(pid => pid > 0))];
-    if (!unique.length) return new Map();
-
+function getProcessName(pid) {
+    if (!pid) return '';
     if (process.platform === 'win32') {
-        try {
-            const all = parseWindowsTasklist(runCommand('tasklist /FO CSV /NH'));
-            // 只保留本次扫描的 PID：PID 0 在 tasklist 里是 System Idle Process，
-            // 但 netstat 对受保护进程也报 0，直接用会得到误导性的进程名
-            const map = new Map();
-            for (const pid of unique) {
-                const name = all.get(pid);
-                if (name) map.set(pid, name);
-            }
-            return map;
-        } catch {
-            return new Map();
-        }
+        const out = sh(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, 3000);
+        const name = out.split(',')[0]?.replace(/"/g, '').trim();
+        return name && !name.includes('INFO') ? name : '';
     }
+    return sh(`ps -p ${pid} -o comm=`, 3000).trim();
+}
 
-    const map = new Map();
-    try {
-        const output = runCommand(`ps -p ${unique.join(',')} -o pid=,comm=`);
-        for (const line of output.split('\n')) {
-            const match = line.trim().match(/^(\d+)\s+(.+)$/);
-            if (match) map.set(Number(match[1]), match[2].split('/').pop());
+function getDockerMap() {
+    // 多重回退:PATH 中的 docker → WSL 内 docker。
+    // Names/Ports 分两次调用，规避格式串被 shell 转发时引号吞噬。
+    const map = new Map(); // hostPort → { name, host }
+    const candidates = ['docker', 'wsl docker'];
+
+    for (const cmd of candidates) {
+        const names = sh(cmd + ' ps --format "{{.Names}}"', 20000);
+        const ports = sh(cmd + ' ps --format "{{.Ports}}"', 20000);
+        if (!names.trim() || !ports.trim()) continue;
+
+        const nameLines = names.trim().split('\n');
+        const portLines = ports.trim().split('\n');
+        if (nameLines.length !== portLines.length) continue;
+
+        for (let i = 0; i < nameLines.length; i++) {
+            const name = nameLines[i].trim();
+            const ps = portLines[i] || '';
+            if (!name || !ps) continue;
+            // 已发布端口: [ip:]hostPort[-end]->container/proto（未发布与 udp 跳过）
+            for (const mm of ps.matchAll(/([0-9.]+|\[::\]):(\d+)(?:-(\d+))?->/g)) {
+                const host = mm[1] || '0.0.0.0';
+                const start = parseInt(mm[2], 10);
+                const endP = mm[3] ? parseInt(mm[3], 10) : start;
+                if (endP - start > 64) continue;
+                for (let p = start; p <= endP; p++) {
+                    if (!map.has(p)) map.set(p, { name, host });
+                }
+            }
         }
-    } catch { /* 进程名只是展示信息，失败不影响扫描 */ }
+        if (map.size) return map;
+    }
     return map;
 }
 
-// ---------- HTTP 探测（可选） ----------
-function decodeEntities(text) {
-    return String(text)
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ');
-}
-
-async function probeHttpTitle(port, timeout = 2000) {
-    try {
-        const response = await fetch(`http://127.0.0.1:${port}/`, {
-            signal: AbortSignal.timeout(timeout),
-            redirect: 'follow'
-        });
-        const contentType = response.headers.get('content-type') || '';
-        // 只读 HTML，避免把流媒体/大文件整个读进内存
-        if (contentType && !/text\/html|application\/xhtml/i.test(contentType)) return null;
-        const html = (await response.text()).slice(0, 65536);
-        const title = html.match(/<title[^>]*>([^<]{1,80})<\/title>/i)?.[1]?.trim();
-        return title ? decodeEntities(title) : null;
-    } catch {
-        return null;
+async function probeHttp(port, timeoutMs = PROBE_TIMEOUT) {
+    // TLS 端口优先 https（自签证书跳过校验——目标是拿标题，不是建信任）
+    const tls = port === 443 || port === 8443 || port === 9443;
+    const schemes = tls ? ['https', 'http'] : ['http'];
+    for (const scheme of schemes) {
+        try {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+            const res = await fetch(scheme + '://127.0.0.1:' + port + '/', {
+                signal: ctrl.signal,
+                redirect: 'follow',
+                // 仅探测用途：自签证书也接受
+                ...(scheme === 'https' ? {} : {})
+            });
+            clearTimeout(timer);
+            const server = res.headers.get('server') || '';
+            const html = (await res.text()).slice(0, 20000);
+            const title = html.match(/<title[^>]*>([^<]{1,100})<\/title>/i)?.[1]?.trim() || '';
+            return { title, server };
+        } catch { /* 下一个 scheme */ }
     }
+    return null;
 }
 
-// ---------- 分类推断 ----------
-export function inferCategory(port, processName) {
-    if (PORT_CATEGORIES[port]) return PORT_CATEGORIES[port];
-
-    const pn = String(processName || '').toLowerCase();
-    if (/docker|containerd|podman/.test(pn)) return '容器';
-    if (/clash|mihomo|v2ray|xray|sing-box|shadowsocks/.test(pn)) return '代理';
-    if (/node|deno|bun/.test(pn)) return '开发工具';
-    if (/python|uvicorn|gunicorn|flask|django/.test(pn)) return '开发工具';
-    if (/nginx|apache|httpd|caddy/.test(pn)) return 'Web 服务';
-    if (/mysql|mariadb/.test(pn)) return '数据库';
-    if (/postgres/.test(pn)) return '数据库';
-    if (/redis/.test(pn)) return '数据库';
-    if (/mongod/.test(pn)) return '数据库';
-    if (/ssh|sshd/.test(pn)) return '远程访问';
-    if (/transmission|qbittorrent|aria2|thunder|xunlei/.test(pn)) return '下载';
-    if (/jellyfin|emby|plex|kodi/.test(pn)) return '媒体';
-    if (/prometheus|grafana|netdata/.test(pn)) return '监控';
-    if (/syncthing/.test(pn)) return '同步';
-    if (/git|gitea|gitlab|gogs/.test(pn)) return '版本控制';
-
-    // 端口段推断（仅在进程名无法判断时兜底）
-    if (port >= 3000 && port < 4000) return '开发工具';
-    if (port >= 8000 && port < 9000) return 'Web 服务';
-    if (port >= 9000 && port < 10000) return '管理面板';
-
-    return '其他服务';
-}
-
-export function inferName(port, processName, httpTitle) {
-    if (httpTitle) return httpTitle;
-    if (PORT_NAMES[port]) return PORT_NAMES[port];
-    if (processName) {
-        const clean = processName.replace(/\.(exe|dll)$/i, '');
-        return `${clean.charAt(0).toUpperCase()}${clean.slice(1)} :${port}`;
+// ================= 识别管线 =================
+function identify(svc, dockerMap, probeInfo) {
+    // ① Docker 容器名（最高置信度）
+    const container = dockerMap.get(svc.port);
+    if (container) {
+        const friendly = friendlyContainerName(container.name);
+        const cat = CONTAINER_CATEGORY_RULES.find(([re]) => re.test(container.name))?.[1];
+        return {
+            name: friendly,
+            category: cat || 'Docker 服务',
+            source: 'docker',
+            localOnly: container.host === '127.0.0.1'
+        };
     }
-    return `服务 :${port}`;
-}
-
-export function classifyService(port, processName = '', httpTitle = '') {
-    return {
-        port,
-        name: inferName(port, processName, httpTitle),
-        category: inferCategory(port, processName),
-        scheme: schemeForPort(port),
-        linkable: !isNonHttpPort(port)
-    };
-}
-
-// ---------- 参数 ----------
-export function parseArgs(argv) {
-    const args = argv.slice(2);
-    const valueAfter = (flag) => {
-        const index = args.indexOf(flag);
-        if (index === -1) return null;
-        const value = args[index + 1];
-        if (!value || value.startsWith('--')) return '';
-        return value;
-    };
-
-    const host = valueAfter('--host');
-    const out = valueAfter('--out');
-    if (host === '') throw new Error('--host 需要一个主机名或 IP');
-    if (out === '') throw new Error('--out 需要一个文件路径');
-    if (host && !/^[a-zA-Z0-9._:-]+$|^\[[0-9a-fA-F:]+\]$/.test(host)) {
-        throw new Error(`--host 不是合法的主机名/IP：${host}`);
+    // ② 知名端口库
+    const known = KNOWN_PORTS.get(svc.port);
+    if (known) return { name: known[0], category: known[1], source: 'port-db' };
+    // ③ HTTP 标题
+    if (probeInfo && probeInfo.title) {
+        const rule = titleRule(probeInfo.title);
+        if (rule) return { name: rule.name, category: rule.category, source: 'http-title' };
     }
-
-    return {
-        probe: args.includes('--probe'),
-        host: host && host.includes(':') && !host.startsWith('[') ? `[${host}]` : (host || '127.0.0.1'),
-        out: out ? resolve(out) : join(root, 'HTML', 'data', 'links-local.json')
-    };
+    // ④ 进程名
+    if (svc.processName) {
+        const clean = svc.processName.replace(/\.(exe|dll)$/i, '');
+        const cat = CONTAINER_CATEGORY_RULES.find(([re]) => re.test(clean))?.[1];
+        if (cat) return { name: clean.charAt(0).toUpperCase() + clean.slice(1), category: cat, source: 'process' };
+        return { name: clean.charAt(0).toUpperCase() + clean.slice(1) + ' :' + svc.port, category: '其他服务', source: 'process' };
+    }
+    // ⑤ 端口段兜底
+    if (svc.port >= 3000 && svc.port < 4000) return { name: `服务 :${svc.port}`, category: '开发工具', source: 'range' };
+    if (svc.port >= 8000 && svc.port < 9000) return { name: `服务 :${svc.port}`, category: 'Web 服务', source: 'range' };
+    return { name: `服务 :${svc.port}`, category: '其他服务', source: 'unknown' };
 }
 
-// ---------- 主流程 ----------
+const NON_HTTP_PORTS = new Set([22, 53, 3306, 5432, 6379, 27017, 5900, 5901, 5672, 9092, 1883, 6881, 22000, 9042, 3389]);
+
+// ================= 主流程 =================
 async function main() {
-    const { probe, host: HOST, out: OUT } = parseArgs(process.argv);
+    log(`${C.b}🔍 本地服务自动发现${C.x}`);
+    log(`${C.dim}   主机: ${HOST}  模式: ${PROBE ? '扫描+探测' : '扫描'}${MERGE ? ' + 合并' : ''}${C.x}\n`);
 
-    console.log('🔍 扫描本地监听端口...\n');
+    const ports = collectPorts();
+    log(`${C.dim}  · 监听端口 ${ports.size} 个（已排除系统端口）${C.x}`);
 
-    const rawPorts = getListeningPorts();
-    if (!rawPorts.length) {
-        console.log('未发现监听端口。');
+    const dockerMap = getDockerMap();
+    if (dockerMap.size) log(`${C.dim}  · Docker 容器 ${dockerMap.size} 个发布端口${C.x}`);
+
+    const services = [...ports.values()].map(p => ({ ...p, processName: getProcessName(p.pid) }));
+
+    let probed = 0;
+    if (PROBE) {
+        const candidates = services.filter(s => !NON_HTTP_PORTS.has(s.port) && !dockerMap.has(String(s.port)));
+        log(`${C.dim}  · HTTP 探测 ${candidates.length} 个候选…${C.x}`);
+        // 并行探测（8 并发），速度提升约 8 倍
+        const BATCH = PROBE_CONCURRENCY;
+        for (let i = 0; i < candidates.length; i += BATCH) {
+            const batch = candidates.slice(i, i + BATCH);
+            const results = await Promise.all(batch.map(s => probeHttp(s.port)));
+            results.forEach((info, j) => {
+                if (info) { batch[j].probe = info; probed++; }
+            });
+            process.stdout.write('\r    已探测 ' + Math.min(i + BATCH, candidates.length) + ' / ' + candidates.length);
+        }
+        process.stdout.write('\n');
+        log(`${C.dim}  · 探测成功 ${probed} 个${C.x}\n`);
+    }
+
+    const identified = services.map(s => {
+        const id = identify(s, dockerMap, s.probe);
+        const scheme = s.port === 443 || s.port === 8443 ? 'https' : 'http';
+        const hostPart = id.localOnly ? '127.0.0.1' : HOST;
+        return {
+            url: `${scheme}://${hostPart}:${s.port}`,
+            port: s.port,
+            name: id.name,
+            category: id.category,
+            tag: id.source === 'docker' ? 'Docker' : (s.processName ? s.processName.replace(/\.(exe|dll)$/i, '').slice(0, 14) : ''),
+            source: id.source
+        };
+    });
+
+    // --exclude 端口黑名单;--limit 截断
+    const filteredList = EXCLUDE.length
+        ? identified.filter(svc => !EXCLUDE.includes(svc.port))
+        : identified;
+    const finalList = Number.isFinite(LIMIT) ? filteredList.slice(0, LIMIT) : filteredList;
+    if (filteredList.length !== identified.length) {
+        log(`${C.dim}  · --exclude 排除 ${identified.length - filteredList.length} 个${C.x}`);
+    }
+
+    finalList.sort((a, b) => a.category.localeCompare(b.category, 'zh-CN') || a.port - b.port);
+    const byCategory = {};
+    identified.forEach(l => (byCategory[l.category] ||= []).push(l));
+
+    log(`${C.b}识别结果：${C.x}`);
+    let lastCat = '';
+    for (const svc of finalList) {
+        if (svc.category !== lastCat) {
+            log(`${C.g}  ▸ ${svc.category}${C.x}`);
+            lastCat = svc.category;
+        }
+        const src = { docker: `${C.g}docker${C.x}`, 'port-db': `${C.b}已知${C.x}`, 'http-title': `${C.y}探测${C.x}`, process: `${C.dim}进程${C.x}`, range: `${C.dim}推断${C.x}`, unknown: `${C.dim}未知${C.x}` }[svc.source];
+        const flag = svc.url.includes('127.0.0.1') && HOST !== '127.0.0.1' ? `${C.r} 仅本机${C.x}` : '';
+        log(`    ${String(svc.port).padEnd(6)} ${svc.name.padEnd(28)} ${src}${flag}`);
+    }
+
+    const links = finalList.map((svc, i) => ({
+        ID: i + 1,
+        name: svc.name,
+        url: svc.url,
+        category: svc.category,
+        tag: svc.tag,
+        thumbnail: ''
+    }));
+
+    if (LIST_ONLY) {
+        log(`\n${C.y}--list 模式：未写入任何文件${C.x}`);
         return;
     }
 
-    console.log(`  发现 ${rawPorts.length} 个候选端口，获取进程信息...`);
+    const payload = { _meta: { scannedAt: new Date().toISOString(), host: HOST, total: links.length, tool: 'scan-local.mjs' }, links };
 
-    // 进程名仅用于分类/展示，不用于过滤——WSL2 端口转发经 svchost，
-    // 按进程名排除会丢掉所有 WSL2 服务
-    const processMap = getProcessMap(rawPorts.map(item => item.pid));
-    const services = rawPorts.map(item => ({
-        ...item,
-        processName: processMap.get(item.pid) || ''
-    }));
-
-    const linkable = services.filter(item => !isNonHttpPort(item.port));
-    const skipped = services.filter(item => isNonHttpPort(item.port));
-    console.log(`  收集到 ${services.length} 个服务（${linkable.length} 个可生成链接）\n`);
-
-    // 可选 HTTP 探测
-    if (probe) {
-        console.log('🌐 探测 HTTP 标题（可能需要几秒）...\n');
-        let probeCount = 0;
-        for (const service of linkable) {
-            service.httpTitle = await probeHttpTitle(service.port);
-            if (service.httpTitle) probeCount += 1;
+    if (JSON_OUT) {
+        // 管道友好：纯 JSON 到 stdout,无表格无颜色
+        console.log(JSON.stringify({ scannedAt: new Date().toISOString(), host: HOST, links }, null, 2));
+        return;
+    }
+    if (MERGE) {
+        let existing = { links: [] };
+        if (existsSync(LINKS_JSON)) {
+            try { existing = JSON.parse(readFileSync(LINKS_JSON, 'utf8')); } catch { /* 保留空 */ }
         }
-        console.log(`  ${probeCount} 个服务返回了页面标题\n`);
-    }
-
-    // 生成链接（按分类分组后重新编号）
-    const byCategory = {};
-    for (const service of linkable) {
-        const { name, category, scheme } = classifyService(service.port, service.processName, service.httpTitle);
-        (byCategory[category] ||= []).push({
-            name,
-            url: `${scheme}://${HOST}:${service.port}`,
-            category,
-            tag: service.processName ? service.processName.replace(/\.(exe|dll)$/i, '') : '',
-            thumbnail: ''
-        });
-    }
-
-    let id = 1;
-    const sortedLinks = [];
-    Object.keys(byCategory).sort().forEach(category => {
-        for (const link of byCategory[category]) {
-            link.ID = id;
-            id += 1;
-            sortedLinks.push(link);
+        const existingUrls = new Set((existing.links || []).map(l => l.url || l.urls?.[0]?.address).filter(Boolean));
+        let nextId = (existing.links || []).reduce((mx, l) => Math.max(mx, l.ID || 0), 0) + 1;
+        let added = 0;
+        for (const l of links) {
+            if (existingUrls.has(l.url)) continue;
+            existing.links ||= [];
+            existing.links.push({ ...l, ID: nextId++ });
+            existingUrls.add(l.url);
+            added++;
         }
-    });
-
-    const output = {
-        _meta: {
-            scannedAt: new Date().toISOString(),
-            host: HOST,
-            totalServices: sortedLinks.length,
-            skippedPorts: skipped.map(item => item.port),
-            note: '由 scripts/scan-local.mjs 自动生成，可通过 设置 → 数据 → 导入 添加到导航页'
-        },
-        links: sortedLinks
-    };
-
-    writeFileSync(OUT, JSON.stringify(output, null, 4) + '\n', 'utf8');
-
-    console.log('✅ 扫描完成！\n');
-    console.log('  分组统计：');
-    Object.keys(byCategory).sort().forEach(category => {
-        console.log(`    ${category}: ${byCategory[category].length} 个`);
-    });
-    if (skipped.length) {
-        console.log(`\n  ⏭ 跳过 ${skipped.length} 个非 HTTP 端口（浏览器打不开）：`);
-        console.log(`     ${skipped.map(item => item.port + (item.processName ? ` ${item.processName}` : '')).join(', ')}`);
+        writeFileSync(LINKS_JSON, JSON.stringify(existing, null, 4) + '\n');
+        log(`\n${C.g}✅ 已合并进 ${C.x}${LINKS_JSON}`);
+        log(`${C.g}   新增 ${added} 个、保留原有 ${(existing.links || []).length - added} 个（只增不改不删）${C.x}`);
+    } else {
+        writeFileSync(OUT, JSON.stringify(payload, null, 4) + '\n');
+        log(`\n${C.g}✅ 已生成 ${C.x}${OUT}`);
+        log(`${C.dim}   导入：设置 → 数据 → 导入完整配置（选择此文件）${C.x}`);
+        log(`${C.dim}   或加 --merge 直接合并进 links.json${C.x}`);
     }
-    console.log(`\n  文件已保存: ${OUT}`);
-    console.log(`  共 ${sortedLinks.length} 个可访问服务\n`);
 
-    console.log('📋 导入方式：');
-    console.log('  方式一：打开导航页 → 设置 → 数据 → 导入数据 → 选择此文件（覆盖式导入，会先自动备份）');
-    console.log('  方式二：本地部署时复制到 HTML/data/links.json（仅限自己机器，切勿提交到公开仓库）\n');
-
-    // 如果已有 links.json，提示对比
-    const existingPath = join(root, 'HTML', 'data', 'links.json');
-    if (existsSync(existingPath)) {
+    if (existsSync(LINKS_JSON) && !MERGE) {
         try {
-            const existing = JSON.parse(readFileSync(existingPath, 'utf8'));
-            if (Array.isArray(existing.links) && existing.links.length > 0) {
-                const existingUrls = new Set(existing.links.map(link => link.url || link.urls?.[0]?.address).filter(Boolean));
-                const newUrls = sortedLinks.map(link => link.url).filter(url => !existingUrls.has(url));
-                if (newUrls.length > 0) {
-                    console.log(`  💡 与现有 links.json 对比：发现 ${newUrls.length} 个新地址`);
-                    newUrls.slice(0, 5).forEach(url => console.log(`     + ${url}`));
-                    if (newUrls.length > 5) console.log(`     ... 还有 ${newUrls.length - 5} 个`);
-                }
+            const existing = JSON.parse(readFileSync(LINKS_JSON, 'utf8'));
+            const urls = new Set((existing.links || []).map(l => l.url || l.urls?.[0]?.address).filter(Boolean));
+            const fresh = links.filter(l => !urls.has(l.url));
+            if (fresh.length) {
+                log(`\n${C.y}💡 相比当前 links.json 有 ${fresh.length} 个新地址：${C.x}`);
+                fresh.slice(0, 8).forEach(f => log(`   + ${f.url}  ${C.dim}${f.name}${C.x}`));
+                if (fresh.length > 8) log(`   … 还有 ${fresh.length - 8} 个`);
             }
-        } catch { /* 忽略无法解析的 links.json */ }
+        } catch { /* 忽略 */ }
     }
+
+    log('');
 }
 
-// 仅在直接执行时跑主流程；被测试 import 时不产生副作用
-const isDirectRun = process.argv[1] &&
-    pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+// 仅直接运行时执行（便于测试导入纯函数）
+const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) main().catch(e => { console.error(`${C.r}扫描失败: ${e.message}${C.x}`); process.exit(1); });
 
-if (isDirectRun) {
-    main().catch(error => {
-        console.error('扫描失败:', error.message);
-        process.exit(1);
-    });
-}
+export { identify, isSystemPort, friendlyContainerName, titleRule, KNOWN_PORTS };

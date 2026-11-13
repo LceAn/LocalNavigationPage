@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.11.3-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.16.1-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地/内网导航页：零依赖、零构建，数据存浏览器本地，支持 Docker 或任意静态服务器部署。字体与图标已本地化，**断网或纯内网环境界面完整可用**（仅网站缩略图 / favicon 需要外网）。
@@ -52,6 +52,7 @@
 - PWA：可安装、Service Worker 离线缓存（数据网络优先、静态资源缓存优先 + 后台更新）
 - 打印样式：Ctrl+P 输出平面清单
 - 私密导航页保护：robots.txt 禁止索引 + 页面 noindex；nginx 全站安全响应头
+- **REST API + MCP 链接维护**：`npm run serve` 自带增删改查 API；`npm run mcp` 启动 MCP Server，AI 助主可直接管理导航链接（详见 docs/API.md）
 - 数据层 20 个单元测试（`npm test`，零依赖沙箱执行器）+ CI 三道关（测试 / 校验 / Docker 构建）
 
 ## 快速开始
@@ -67,9 +68,11 @@ npm run serve          # 默认 8080，可带端口参数：npm run serve -- 300
 **首次部署？一键扫描本机所有服务**：
 
 ```bash
-npm run scan                    # 扫描并生成 links-local.json
-npm run scan -- --probe         # 同时探测 HTTP 页面标题（更准确但更慢）
+npm run scan                          # 扫描并生成 links-local.json
+npm run scan -- --probe               # HTTP 标题探测：服务名更准确（并行，约 20s）
+npm run scan -- --merge               # 直接合并进 links.json（只增不改不删）
 npm run scan -- --host 192.168.1.100  # 生成局域网 IP 地址（手机也能访问）
+npm run scan -- --list                # 只预览表格，不写文件
 ```
 
 扫描自动发现监听端口 → 按端口号/进程名智能分类（Web/开发/媒体/监控…）→ 生成可导入的 JSON。
@@ -120,6 +123,22 @@ docker compose up -d --build
 
 只允许 `http` 和 `https` 示例地址；数据在规范化与渲染两层都强制协议白名单，`javascript:` 等危险地址会被直接丢弃。
 
+## 与主流导航页对比
+
+| 能力 | Homepage | Homarr | Dashy | Sun-Panel | Flare | Flame | **本项目** |
+|---|---|---|---|---|---|---|---|
+| 多地址链接(内网/隧道/公网) | – | – | – | 手动切换 | – | – | ✅ **自动智能选路** |
+| 状态探测(延迟毫秒) | ✅ | ✅ | ✅ | – | – | – | ✅ 可配频率 |
+| 主题色预设 | CSS | ✅ | 15 主题 | CSS/JS | – | 15 主题 | ✅ 8 预设 + 自定义 CSS/JS |
+| 离线可用(纯静态) | – | – | – | – | ✅ | – | ✅ 字体全本地化 |
+| 前缀搜索 /g 词 | – | – | ✅ | – | – | ✅ | ✅ |
+| 导入前自动备份 | – | ✅ | ✓ | – | ✅ | – | ✅ |
+| 键盘启动器 /g | ✅ | ⌘K | ✅ | – | – | ✅ | ✅ 多关键词 |
+| 书签 HTML 导入/导出 | – | – | – | – | ✅ | – | ✅ 双向 |
+| 零依赖零构建 | – | – | – | – | ✅ | – | ✅ 单文件可跑 |
+
+> 需要后端的能力(容器监控、系统资源、多账号)不在本项目范围内——那些请配合 Portainer / Glances 使用,导航页只放入口。
+
 ## 自定义
 
 **主题色**：设置 → 外观 → 主题色，8 组预设一键切换（无需改代码）。
@@ -168,7 +187,7 @@ docker build --tag local-navigation-page:test .
 - `HTML/CSS/`：页面样式（`tokens.css` 为设计令牌）
 - `HTML/data/`：公开示例与 Docker 默认配置
 - `HTML/sw.js`：Service Worker 离线缓存
-- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器）、`scan-local.mjs`（本机端口扫描）、`test/`（单元测试）
+- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器 + REST API）、`mcp-server.mjs`（MCP 服务器）、`scan-local.mjs`（本机端口扫描）、`test/`（单元测试）
 - `docker/`：Nginx 配置与数据初始化脚本
 - `docs/`：更新日志、路线图与设计文档
 
@@ -196,12 +215,12 @@ docker build --tag local-navigation-page:test .
 - [x] 主题定制（8 组预设主题色 + 自定义 CSS / JS）
 - [x] 内网多地址与智能选路
 - [ ] 多语言切换（zh-CN / en-US）
-- [ ] 图标库扩展（Iconify 集成）
+- [x] 图标自定义（分组图标 ri-/iconify:，搜索引擎/按钮 iconify:）
 
 ---
 
 **最后更新：** 2026-11-03
-**当前版本：** 1.11.3
+**当前版本：** 1.16.1
 
 ---
 
@@ -210,3 +229,4 @@ docker build --tag local-navigation-page:test .
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — 更新日志
 - [docs/FEATURES_ROADMAP.md](docs/FEATURES_ROADMAP.md) — 功能规划与路线图
 - [SECURITY.md](SECURITY.md) — 安全策略
+- [docs/API.md](docs/API.md) — REST API 与 MCP 接口文档

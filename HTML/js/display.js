@@ -240,6 +240,26 @@ function initDisplaySettings() {
 }
 
 // 更新天气功能（支持多地区）
+const WEATHER_CACHE_MS = 15 * 60 * 1000; // wttr.in 限流防护:15 分钟内复用上次结果
+
+function getCachedWeather(cities, unit) {
+    try {
+        const c = JSON.parse(localStorage.getItem('weatherCache') || 'null');
+        if (!c) return null;
+        if (c.cities !== cities.join(',') || c.unit !== unit) return null;
+        if (Date.now() - c.ts > WEATHER_CACHE_MS) return null;
+        return c;
+    } catch { return null; }
+}
+
+function setCachedWeather(cities, unit, payload) {
+    try {
+        localStorage.setItem('weatherCache', JSON.stringify({
+            cities: cities.join(','), unit, ts: Date.now(), ...payload
+        }));
+    } catch { /* 配额满则忽略 */ }
+}
+
 function updateWeather() {
     const settings = loadDisplaySettings();
     const cities = settings.weatherCity.split(',').map(c => c.trim()).filter(c => c);
@@ -255,6 +275,13 @@ function updateWeather() {
     // 如果只有一个城市，不显示地区名称
     if (cities.length === 1) {
         if (weatherLocationsEl) weatherLocationsEl.style.display = 'none';
+        // 15 分钟缓存：命中则直接渲染,避免频繁请求 wttr.in 触发限流
+        const cached = getCachedWeather(cities, unit);
+        if (cached && cached.text) {
+            renderWeatherTextFromCache(cached);
+            return;
+        }
+
         fetchWeatherForCity(cities[0], unit, 'weather-text');
     } else {
         // 多城市：显示第一个城市的天气，并在后面显示所有城市名称
@@ -411,6 +438,15 @@ function fetchWeatherForCity(city, unit, elementId) {
             }
             renderWeatherText(`${description} ${temp}°${unit}`);
 
+            // 写入 15 分钟缓存（存翻译后的文本，命中时免再翻译）
+            try {
+                setCachedWeather(cities, unit, {
+                    text: translateWeatherText(description) + ' ' + temp + '°' + unit,
+                    unit,
+                    detail
+                });
+            } catch (e) { /* 配额满则忽略 */ }
+
             // 保存详细数据，供 hover 详情显示
             const detail = {
                 humidity: current?.humidity,          // 湿度 %
@@ -457,3 +493,16 @@ updateWeather();
     window.addEventListener('offline', () => show(true));
     if (!navigator.onLine) show(true);
 })();
+
+// 用缓存数据渲染天气文本与详情
+function renderWeatherTextFromCache(cached) {
+    const weatherText = document.getElementById('weather-text');
+    if (weatherText) {
+        weatherText.textContent = cached.text;
+        weatherText.classList.remove('loading');
+        weatherText.classList.add('loaded');
+    }
+    if (cached.detail && typeof attachWeatherDetail !== 'undefined') {
+        attachWeatherDetail(cached.detail, cached.unit || 'C');
+    }
+}

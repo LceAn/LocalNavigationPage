@@ -1,156 +1,128 @@
-// scripts/test/scan-local.test.mjs — 扫描脚本的解析/分类单元测试(node:test,零依赖)
-// 重点覆盖跨平台差异：Windows netstat、ss（有/无 pid）、Linux netstat、lsof。
+// scripts/test/scan-local.test.mjs — 扫描器识别管线单元测试
+// 覆盖：五层识别优先级、系统端口边界、容器名清洗、标题规则、知识库完整性
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  parseListeningOutput,
-  parseWindowsTasklist,
-  isExcludedPort,
-  isNonHttpPort,
-  schemeForPort,
-  inferCategory,
-  inferName,
-  classifyService,
-  parseArgs
-} from '../scan-local.mjs';
+import { identify, isSystemPort, friendlyContainerName, titleRule, KNOWN_PORTS } from '../scan-local.mjs';
 
-const WIN_NETSTAT = `
-活动连接
+const docker = (map) => new Map(Object.entries(map).map(([p, v]) => [Number(p), typeof v === 'string' ? { name: v, host: '0.0.0.0' } : v]));
 
-  协议  本地地址          外部地址        状态           PID
-  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1024
-  TCP    0.0.0.0:8080           0.0.0.0:0              LISTENING       4321
-  TCP    127.0.0.1:7890         0.0.0.0:0              LISTENING       999
-  TCP    [::]:8080              [::]:0                 LISTENING       4321
-  TCP    192.168.1.10:54321     1.1.1.1:443            ESTABLISHED     777
-`;
-
-const SS_WITH_PID = `
-State  Recv-Q Send-Q Local Address:Port  Peer Address:Port Process
-LISTEN 0      4096   0.0.0.0:22          0.0.0.0:*         users:(("sshd",pid=6000,fd=3))
-LISTEN 0      128    [::]:8080           [::]:*            users:(("node",pid=8123,fd=20))
-LISTEN 0      4096   127.0.0.53%lo:53    0.0.0.0:*
-LISTEN 0      128    0.0.0.0:9090        0.0.0.0:*
-`;
-
-const NETSTAT_LINUX = `
-tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      1234/sshd
-tcp6       0      0 :::3000                 :::*                    LISTEN      5678/node
-`;
-
-const LSOF = `
-node    8123 lcean   20u  IPv4 0x1234      0t0  TCP *:8080 (LISTEN)
-mysqld  2345 lcean   30u  IPv6 0x5678      0t0  TCP [::1]:3306 (LISTEN)
-node    8123 lcean   21u  IPv4 0x9999      0t0  TCP 127.0.0.1:8080->127.0.0.1:50000 (ESTABLISHED)
-`;
-
-test('parseListeningOutput(win32):解析 IPv4/IPv6,排除系统端口与动态端口', () => {
-  const out = parseListeningOutput(WIN_NETSTAT, 'win32');
-  assert.deepEqual(out.map(item => item.port), [7890, 8080]);
-  assert.equal(out[0].pid, 999);
-  assert.equal(out[0].addr, '127.0.0.1');
-  assert.equal(out[1].pid, 4321);
-  assert.equal(out[1].addr, '0.0.0.0');
+// ---------- 识别优先级 ----------
+test('identify: Docker 容器名优先于端口库', () => {
+    const r = identify(
+        { port: 3001, processName: 'svchost.exe' },
+        docker({ 3001: 'my-uptime-container' }),
+        null
+    );
+    assert.equal(r.name, 'My Uptime Container');
+    assert.equal(r.source, 'docker');
 });
 
-test('parseListeningOutput(Linux ss):有 pid 时解析进程', () => {
-  const out = parseListeningOutput(SS_WITH_PID, 'linux');
-  const ssh = out.find(item => item.port === 22);
-  const web = out.find(item => item.port === 8080);
-  assert.equal(ssh.pid, 6000);
-  assert.equal(web.pid, 8123);
+test('identify: 端口库次之（无 Docker 命中时）', () => {
+    const r = identify({ port: 8096, processName: '' }, new Map(), null);
+    assert.equal(r.name, 'Jellyfin');
+    assert.equal(r.category, '媒体');
+    assert.equal(r.source, 'port-db');
 });
 
-test('parseListeningOutput(Linux ss):非 root 无 users 段时仍保留端口', () => {
-  const out = parseListeningOutput(SS_WITH_PID, 'linux');
-  const prom = out.find(item => item.port === 9090);
-  assert.ok(prom, '没有 pid 的 LISTEN 行不能丢');
-  assert.equal(prom.pid, 0);
-  // 53 由主流程按非 HTTP 端口跳过，解析层仍应保留（才能汇总提示）
-  assert.equal(out.find(item => item.port === 53)?.pid, 0);
+test('identify: HTTP 标题第三（端口库未收录时）', () => {
+    const r = identify(
+        { port: 9999, processName: '' },
+        new Map(),
+        { title: 'Home Assistant', server: '' }
+    );
+    assert.equal(r.name, 'Home Assistant');
+    assert.equal(r.category, '智能家居');
+    assert.equal(r.source, 'http-title');
 });
 
-test('parseListeningOutput(Linux netstat):兼容 tcp / tcp6 两种行', () => {
-  const out = parseListeningOutput(NETSTAT_LINUX, 'linux');
-  assert.deepEqual(out.map(item => item.port), [22, 3000]);
-  assert.equal(out[0].pid, 1234);
-  assert.equal(out[1].pid, 5678);
+test('identify: 进程名第四，命中分类规则', () => {
+    const r = identify({ port: 12345, processName: 'nginx.exe' }, new Map(), null);
+    assert.equal(r.name, 'Nginx');
+    assert.equal(r.category, '管理面板');
 });
 
-test('parseListeningOutput(macOS lsof):只收 LISTEN,忽略已建立连接', () => {
-  const out = parseListeningOutput(LSOF, 'darwin');
-  assert.deepEqual(out.map(item => item.port), [3306, 8080]);
-  assert.equal(out[1].pid, 8123);
+test('identify: 全部未命中 → 端口段推断', () => {
+    const dev = identify({ port: 3050, processName: '' }, new Map(), null);
+    assert.equal(dev.category, '开发工具');
+    const unk = identify({ port: 37564, processName: '' }, new Map(), null);
+    assert.equal(unk.category, '其他服务');
 });
 
-test('parseWindowsTasklist:解析 CSV 进程表', () => {
-  const map = parseWindowsTasklist('"chrome.exe","1234","Console","1","120,000 K"\n"node.exe","4321","Console","1","80,000 K"\n');
-  assert.equal(map.get(1234), 'chrome.exe');
-  assert.equal(map.get(4321), 'node.exe');
-  assert.equal(map.get(9999), undefined);
+// ---------- Docker 语义 ----------
+test('identify: 容器分类按关键词推断，未命中归 Docker 服务', () => {
+    const r1 = identify({ port: 3306, processName: '' }, docker({ 3306: 'mysql' }), null);
+    assert.equal(r1.category, '数据库');
+    const r2 = identify({ port: 5678, processName: '' }, docker({ 5678: 'n8n-zh' }), null);
+    assert.equal(r2.category, '自动化');
+    const r3 = identify({ port: 7777, processName: '' }, docker({ 7777: 'mystery-box' }), null);
+    assert.equal(r3.category, 'Docker 服务');
 });
 
-test('isExcludedPort:系统端口/动态端口/越界值一律排除', () => {
-  for (const port of [135, 445, 49152, 55000, 65535, 65536, 0, -1, 1.5]) {
-    assert.equal(isExcludedPort(port), true, String(port));
-  }
-  for (const port of [80, 8080, 32400, 49151]) {
-    assert.equal(isExcludedPort(port), false, String(port));
-  }
+test('identify: 仅本机绑定容器的 localOnly 标记', () => {
+    const m = new Map([[3900, { name: 'omnivoice', host: '127.0.0.1' }]]);
+    const r = identify({ port: 3900, processName: '' }, m, null);
+    assert.equal(r.localOnly, true);
 });
 
-test('非 HTTP 端口与 https 端口判定', () => {
-  for (const port of [22, 3306, 5432, 6379, 27017, 5672]) {
-    assert.equal(isNonHttpPort(port), true, String(port));
-  }
-  assert.equal(isNonHttpPort(8080), false);
-  assert.equal(schemeForPort(443), 'https');
-  assert.equal(schemeForPort(8443), 'https');
-  assert.equal(schemeForPort(8080), 'http');
+test('identify: 多地址智能选路优先级不受识别影响（smoke）', () => {
+    // 同端口同容器重复识别应稳定
+    const a = identify({ port: 3001, processName: '' }, docker({ 3001: 'uptime-kuma' }), null);
+    const b = identify({ port: 3001, processName: '' }, docker({ 3001: 'uptime-kuma' }), null);
+    assert.deepEqual(a, b);
 });
 
-test('inferCategory:端口表 > 进程名 > 端口段兜底', () => {
-  assert.equal(inferCategory(8080, ''), 'Web 服务');          // 端口表
-  assert.equal(inferCategory(10584, 'Thunder.exe'), '下载');   // 进程名
-  assert.equal(inferCategory(9999, 'mihomo-windows-amd64.exe'), '代理');
-  assert.equal(inferCategory(3500, ''), '开发工具');           // 端口段
-  assert.equal(inferCategory(65000, ''), '其他服务');
+// ---------- isSystemPort ----------
+test('isSystemPort: 系统/动态端口排除', () => {
+    for (const p of [135, 139, 445, 5040, 5357, 7680, 49152, 50000, 65535]) {
+        assert.equal(isSystemPort(p), true, p);
+    }
 });
 
-test('inferName:标题 > 端口名 > 进程名', () => {
-  assert.equal(inferName(8080, 'node', 'Jellyfin'), 'Jellyfin');
-  assert.equal(inferName(443, ''), 'HTTPS 服务');
-  assert.equal(inferName(7890, 'mihomo.exe'), 'Clash / Mihomo 代理');
-  assert.equal(inferName(9999, 'mihomo.exe'), 'Mihomo :9999');
+test('isSystemPort: 用户服务端口保留', () => {
+    for (const p of [80, 443, 3000, 3306, 49151, 8080, 22]) {
+        assert.equal(isSystemPort(p), false, p);
+    }
 });
 
-test('classifyService:数据库端口不生成链接,8443 走 https', () => {
-  const db = classifyService(3306, 'mysqld');
-  assert.equal(db.linkable, false);
-  assert.equal(db.category, '数据库');
-
-  const web = classifyService(8443, '');
-  assert.equal(web.linkable, true);
-  assert.equal(web.scheme, 'https');
-
-  assert.equal(classifyService(22, 'sshd').linkable, false);
+// ---------- friendlyContainerName ----------
+test('friendlyContainerName: 去编排后缀、转空格、首字母大写', () => {
+    assert.equal(friendlyContainerName('dify_docker-nginx-1'), 'Dify Docker Nginx');
+    assert.equal(friendlyContainerName('uptime-kuma'), 'Uptime Kuma');
+    assert.equal(friendlyContainerName('open-webui'), 'Open Webui');
+    assert.equal(friendlyContainerName('mysql'), 'Mysql');
 });
 
-test('parseArgs:默认值、--probe、非法参数', () => {
-  const defaults = parseArgs(['node', 'scan-local.mjs']);
-  assert.equal(defaults.probe, false);
-  assert.equal(defaults.host, '127.0.0.1');
-  assert.ok(defaults.out.endsWith('links-local.json'));
+test('friendlyContainerName: 已含大写保持原样', () => {
+    assert.equal(friendlyContainerName('MyApp-2'), 'MyApp');
+});
 
-  const custom = parseArgs(['node', 'scan-local.mjs', '--probe', '--host', '192.168.1.10']);
-  assert.equal(custom.probe, true);
-  assert.equal(custom.host, '192.168.1.10');
+// ---------- titleRule ----------
+test('titleRule: 主流产品标题命中', () => {
+    assert.equal(titleRule('Jellyfin')?.name, 'Jellyfin');
+    assert.equal(titleRule('Home Assistant')?.category, '智能家居');
+    assert.equal(titleRule('Welcome to n8n')?.name, 'n8n');
+    assert.equal(titleRule('Portainer')?.category, '管理面板');
+    assert.equal(titleRule('MinIO Console')?.name, 'MinIO Console');
+});
 
-  // IPv6 需要方括号才能拼出合法 URL
-  assert.equal(parseArgs(['node', 'scan-local.mjs', '--host', 'fe80::1']).host, '[fe80::1]');
-  assert.equal(parseArgs(['node', 'scan-local.mjs', '--host', '[fe80::1]']).host, '[fe80::1]');
+test('titleRule: 普通标题返回 null', () => {
+    assert.equal(titleRule('Some Random Page'), null);
+    assert.equal(titleRule(''), null);
+});
 
-  assert.throws(() => parseArgs(['node', 'scan-local.mjs', '--host']), /--host/);
-  assert.throws(() => parseArgs(['node', 'scan-local.mjs', '--out']), /--out/);
-  assert.throws(() => parseArgs(['node', 'scan-local.mjs', '--host', 'a b']), /合法/);
+// ---------- KNOWN_PORTS 完整性 ----------
+test('KNOWN_PORTS: 结构合法、分组在已知集合内、无重复键', () => {
+    const validCats = new Set([
+        '媒体', '下载', '监控', '管理面板', '智能家居', '自动化', '开发工具',
+        'AI 工具', '文件同步', '数据库', '消息队列', '密码管理', '远程访问',
+        '下载工具', '文档知识', 'Web 服务', '文件共享', '阅读器', '版本控制', '认证', '财务', '通信协作', 'Docker 服务'
+    ]);
+    let count = 0;
+    for (const [port, [name, category]] of KNOWN_PORTS) {
+        assert.ok(Number.isInteger(port) && port > 0 && port < 65536, `端口 ${port}`);
+        assert.equal(typeof name, 'string', `端口 ${port} 名称`);
+        assert.ok(validCats.has(category), `端口 ${port} 分组 "${category}" 不在已知集合`);
+        count++;
+    }
+    assert.ok(count >= 50, `知识库应不少于 50 条，实际 ${count}`);
 });

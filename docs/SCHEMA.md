@@ -49,6 +49,17 @@
 | `collapsedSections` | array | 设置面板已折叠的 section id |
 | `collapsedCategories` 相关 | mixed | 首页分组折叠状态 |
 | `recentLinks` / `linkVisitCounts` | object | 最近使用时间戳 / 访问计数 |
+| `customPrimary` | string | 主题色预设 id(indigo/violet/teal/green/orange/pink/red/blue) |
+| `customCss` / `customJs` | string | 自定义 CSS / JS(页面加载时注入/执行) |
+| `probeIntervalMs` | number | 状态探测间隔毫秒(0 = 关闭,默认 60000) |
+| `smartRouting` | boolean | 智能选路开关(首选离线时自动切换) |
+| `groupSortMode` | string | `name` / `count` / `custom` |
+| `customCategoryOrder` | array | 手动分组排序的分组名顺序 |
+| `customTileOrder` | object | 首页磁贴手动排序(按分组名 → ID 数组) |
+| `defaultExpandFirst` | boolean | 打开时仅展开首个分组 |
+| `siteTitle` | string | 自定义站点标题(默认「我的导航」) |
+| `topButtonSettings` | object | 顶栏按钮配置(system 开关 + customButtons 数组) |
+| `customButtons[].icon` | string | `ri-xxx` 字体类名或 `iconify:集合:名称` |
 | `lastUsedLinkUrls` | object | 多地址链接「记住的地址」 |
 
 未知键在导入时被忽略(白名单合并),因此手工加入的自定义键不会破坏兼容性,但也不会被恢复。

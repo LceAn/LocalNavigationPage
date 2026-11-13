@@ -85,9 +85,28 @@ function selectLauncherItem(idx) {
 }
 function launchSelectedItem() {
     const item = launcherItems[launcherSelected];
-    if (!item) return;
+    if (item) {
+        closeLauncher();
+        openLinkUrl(item.link, item.preferredUrl.address);
+        return;
+    }
+    // 无候选：尝试 /前缀 关键词直达搜索（与主搜索框同规则）
+    const q = (document.getElementById('launcher-input')?.value || '').trim();
+    const pm = q.match(/^\/(\S+)\s+(.+)$/);
+    if (!pm) return;
+    const prefix = pm[1].toLowerCase();
+    const term = pm[2];
+    const engines = loadSearchEngines();
+    const hit = engines.find(en => en.name.toLowerCase().startsWith(prefix))
+        ?? engines.find(en => (en.prefix || '').toLowerCase() === prefix)
+        ?? engines.find(en => { try { return new URL(en.url).hostname.replace(/^www\./, '').toLowerCase().startsWith(prefix); } catch { return false; } });
+    if (!hit) { if (typeof showMessage === "function") showMessage("未找到前缀为 /" + prefix + " 的引擎", "warning"); return; }
     closeLauncher();
-    openLinkUrl(item.link, item.preferredUrl.address);
+    const url = hit.url.replace('%s', encodeURIComponent(term));
+    if (typeof isSafeUrl === 'function' && isSafeUrl(url, ['http:', 'https:'])) {
+        window.open(url, '_blank', 'noopener');
+        if (typeof showMessage === 'function') showMessage('已用 ' + hit.name + ' 搜索');
+    }
 }
 
 if (launcherInput) {
@@ -95,6 +114,15 @@ if (launcherInput) {
 }
 if (launcherResults) {
     launcherResults.addEventListener('click', e => {
+        // 搜索历史项:回填关键词
+        const hist = e.target.closest('.launcher-history');
+        if (hist) {
+            const term = hist.dataset.term || '';
+            launcherInput.value = term;
+            renderLauncherResults(term);
+            launcherInput.focus();
+            return;
+        }
         const li = e.target.closest('.launcher-item');
         if (!li) return;
         selectLauncherItem(Number(li.dataset.idx));

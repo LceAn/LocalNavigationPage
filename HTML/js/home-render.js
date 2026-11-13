@@ -195,6 +195,13 @@ function renderLinksByCategory(allLinks) {
         categoryContainer.dataset.category = category;
         categoryContainer.dataset.linkCount = categoryLinks.length;
 
+        // 组内磁贴手动排序(customTileOrder[分组名] = ID 数组)
+        const tileOrderMap = getSetting('customTileOrder', {}) || {};
+        if (Array.isArray(tileOrderMap[category])) {
+            const rank = new Map(tileOrderMap[category].map((id, i) => [id, i]));
+            categoryLinks.sort((a, b) => (rank.get(a.ID) ?? 1e9) - (rank.get(b.ID) ?? 1e9));
+        }
+
         const categoryHeader = document.createElement('div');
         categoryHeader.className = 'category-header';
 
@@ -203,7 +210,16 @@ function renderLinksByCategory(allLinks) {
 
         const categoryTitle = document.createElement('h2');
         const categoryIcon = document.createElement('i');
-        categoryIcon.className = categoryIconFor(category);
+        // 用户自定义图标 > 自动推断;iconify: 前缀走 img
+        const customIcons = getCustomCategoryIcons();
+        const customIcon = customIcons[category];
+        if (customIcon && customIcon.startsWith('iconify:')) {
+            const [, col, name] = customIcon.split(':');
+            categoryIcon.className = '';
+            categoryIcon.innerHTML = `<img src="https://api.iconify.design/${col}/${name}.svg?height=18&color=white" alt="" width="18" height="18" style="vertical-align: -3px;">`;
+        } else {
+            categoryIcon.className = customIcon || categoryIconFor(category);
+        }
         categoryTitle.appendChild(categoryIcon);
         categoryTitle.appendChild(document.createTextNode(` ${category}`));
 
@@ -256,6 +272,44 @@ function renderLinksByCategory(allLinks) {
 
         renderBatch.appendChild(categoryContainer);
     }
+
+    // 磁贴拖拽排序：组内 HTML5 DnD,落下即持久化
+    linkContainer.querySelectorAll('.category-container').forEach(container => {
+        const list = container.querySelector('.link-list');
+        const cat = container.dataset.category;
+        if (!list) return;
+        let dragged = null;
+        list.querySelectorAll('li').forEach(li => {
+            li.addEventListener('dragstart', (e) => {
+                dragged = li;
+                li.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', li.dataset.linkId || '');
+            });
+            li.addEventListener('dragend', () => {
+                li.classList.remove('dragging');
+                dragged = null;
+            });
+            li.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (!dragged || dragged === li) return;
+                const rect = li.getBoundingClientRect();
+                const after = (e.clientY - rect.top) > rect.height / 2;
+                if (after) list.insertBefore(dragged, li.nextSibling);
+                else list.insertBefore(dragged, li);
+            });
+        });
+        list.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const ids = [...list.querySelectorAll('.link-card')].map(a => Number(a.dataset.linkId));
+            const order = getSetting('customTileOrder', {}) || {};
+            order[cat] = ids;
+            setSetting('customTileOrder', order);
+            if (typeof showMessage === 'function') showMessage('顺序已保存');
+        });
+        list.addEventListener('dragover', (e) => e.preventDefault());
+    });
 
     // 空状态：没有任何分组时给出引导，而不是留白
     if (sortedCategories.length === 0) {
@@ -313,6 +367,7 @@ function refreshLinkStatusDots() {
 
 function createHomeLinkElement(link, preferredType = '') {
     const listItem = document.createElement('li');
+    listItem.draggable = true;
     const safeUrls = getSafeLinkUrls(link);
     // 网络筛选激活时，直接采用该路线的地址：避免「筛内网、点开却是公网」的错位
     const routeMatched = preferredType
@@ -329,24 +384,26 @@ function createHomeLinkElement(link, preferredType = '') {
     linkCard.href = effectiveAddress;
     linkCard.className = 'link-card';
     linkCard.dataset.linkId = link.ID;
+    listItem.dataset.linkId = link.ID;
     linkCard.setAttribute('role', 'button');
     linkCard.setAttribute('tabindex', '0');
     linkCard.setAttribute('aria-label', `${link.name || '未命名'}，打开${preferredUrlInfo.label || '默认'}地址`);
+
+    // 悬浮提示：名称 + 当前地址；有备注时置顶
+    const cardTitle = (address) => (link.remarks ? '📌 ' + link.remarks + '\n' : '') + `${link.name || '未命名'}\n${address}`;
 
     // 统一的地址更新入口：角标切换、下拉选择、筛选都用它，保证 href 与点击目标一致
     const applyAddress = (address) => {
         effectiveAddress = address;
         linkCard.href = address;
-        linkCard.title = `${link.name || '未命名'}\n${address}`;
+        linkCard.title = cardTitle(address);
     };
-    // 悬浮提示：磁贴模式下名称最多两行，截断时仍可看全文与地址
-    linkCard.title = `${link.name || '未命名'}\n${effectiveAddress}`;
+    linkCard.title = cardTitle(effectiveAddress);
 
     const thumbnail = document.createElement('div');
     thumbnail.className = 'link-card-thumbnail';
     const thumbnailUrl = sanitizeUrl(link.thumbnail, '', ['http:', 'https:']);
-    // 外部截图服务访问不到内网地址，内网链接的 mshots 缩略图必然加载失败；
-    // 直接跳过，省一次注定失败的请求。
+    // 外部截图服务访问不到内网/隧道地址，mshots 缩略图必然加载失败；直接跳过
     let thumbnailReachable = Boolean(thumbnailUrl);
     if (thumbnailReachable && preferredMeta.type !== 'remote') {
         try {
@@ -369,7 +426,10 @@ function createHomeLinkElement(link, preferredType = '') {
             if (host && host !== window.location.hostname && preferredMeta.type === 'remote') {
                 const fav = document.createElement('img');
                 fav.className = 'link-card-favicon';
-                fav.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+                const provider = getSetting('faviconProvider', 'google');
+                fav.src = provider === 'duckduckgo'
+                    ? `https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`
+                    : `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
                 fav.alt = '';
                 fav.loading = 'lazy';
                 fav.decoding = 'async';
@@ -707,6 +767,8 @@ document.addEventListener('keydown', (event) => {
     const columns = Math.max(1, Math.round(current.parentElement.offsetWidth / (current.offsetWidth || 1)));
     const idx = cards.indexOf(current);
     let next = idx;
+    if (event.key === 'Home') { next = 0; }
+    if (event.key === 'End') { next = cards.length - 1; }
     if (event.key === 'ArrowRight') next = idx + 1;
     if (event.key === 'ArrowLeft') next = idx - 1;
     if (event.key === 'ArrowDown') next = idx + columns;
@@ -732,8 +794,24 @@ document.addEventListener('keydown', (event) => {
         document.addEventListener('click', (e) => {
             if (!menu.contains(e.target)) hide();
         });
+        let ctxSelected = -1;
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') hide();
+            if (e.key === 'Escape') { hide(); return; }
+            if (menu.hidden || menu.querySelectorAll('.ctx-menu-item').length === 0) return;
+            const items = [...menu.querySelectorAll('.ctx-menu-item')];
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                ctxSelected = (ctxSelected + 1) % items.length; // 循环
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                ctxSelected = (ctxSelected - 1 + items.length) % items.length; // 循环
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (ctxSelected >= 0 && items[ctxSelected]) items[ctxSelected].click();
+                return;
+            } else return;
+            items.forEach((it, i) => it.classList.toggle('selected', i === ctxSelected));
+            items[ctxSelected]?.scrollIntoView({ block: 'nearest' });
         });
         window.addEventListener('blur', hide);
         return menu;
@@ -782,6 +860,11 @@ document.addEventListener('keydown', (event) => {
             window.open(preferred.address, '_blank', 'noopener,width=1100,height=780');
             recordRecentLink(link);
             rememberLastUsedLinkUrl(link, preferred.address);
+        }));
+        m.appendChild(item('复制名称', 'ri-text', () => {
+            navigator.clipboard?.writeText(link.name || '')
+                .then(() => window.showMessage?.('名称已复制', 'success'))
+                .catch(() => window.showMessage?.('复制失败', 'error'));
         }));
         m.appendChild(item('复制地址', 'ri-file-copy-line', () => {
             navigator.clipboard?.writeText(preferred.address)

@@ -3151,3 +3151,31 @@ body.compact-mode .category-container .link-list {
   color: #fff;
   backdrop-filter: blur(6px);
 }
+
+
+/* 磁贴拖拽排序 */
+.category-container .link-list li {
+  cursor: grab;
+}
+.category-container .link-list li:active {
+  cursor: grabbing;
+}
+.category-container .link-list li.dragging {
+  opacity: 0.35;
+}
+.category-container .link-list li.dragging .link-card {
+  border-style: dashed;
+}
+
+
+.ctx-menu-item.selected {
+  background: var(--primary-light);
+  color: var(--primary-color);
+}
+.ctx-menu-item.selected i {
+  color: var(--primary-color);
+}
+
+
+.launcher-item.launcher-history { color: var(--text-secondary); }
+.launcher-history i { color: var(--text-tertiary); margin-right: 8px; }

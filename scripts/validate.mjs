@@ -67,6 +67,32 @@ if (runtimeLinks && defaultLinks && JSON.stringify(runtimeLinks) !== JSON.string
 
 readJSON('HTML/manifest.webmanifest');
 
+
+// 版本一致性:package.json 的版本必须同步到所有发版引用点
+{
+  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  const version = pkg.version;
+  const refs = [
+    ['Dockerfile', new RegExp('LABEL version="' + version.replace(/\./g, '\\.') + '"')],
+    ['HTML/js/main.js', new RegExp("const currentVersion = '" + version.replace(/\./g, '\\.') + "';")],
+    ['HTML/sw.js', new RegExp("const CACHE_VERSION = 'lnp-v" + version.replace(/\./g, '\\.') + "';")],
+  ];
+  for (const [file, re] of refs) {
+    const src = readFileSync(join(root, file), 'utf8');
+    if (!re.test(src)) {
+      errors.push('版本不一致: ' + file + ' 未同步到 ' + version + '（package.json 为准）');
+    }
+  }
+  // 资源缓存参数:所有 ?v= 必须等于当前版本
+  const html = readFileSync(join(root, 'HTML/index.html'), 'utf8');
+  for (const m of html.matchAll(/\?v=([0-9.]+)/g)) {
+    if (m[1] !== version) {
+      errors.push('HTML/index.html: 缓存参数 ?v=' + m[1] + ' 未同步到 ' + version);
+      break;
+    }
+  }
+}
+
 // 经典脚本共享全局词法环境:同名顶层 const/let 会造成后加载脚本整体解析失败
 {
   const declared = new Map();
