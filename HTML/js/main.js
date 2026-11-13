@@ -3228,11 +3228,24 @@ function ensureCategoryPanel() {
 }
 
 function getCategoryPanelLinks(category) {
+    // 记忆组内拖拽顺序；未记录过的链接按 ID 降序附后
+    const tileOrder = getSetting('customTileOrder', {}) || {};
+    const rank = Array.isArray(tileOrder[category])
+        ? new Map(tileOrder[category].map((id, index) => [Number(id), index]))
+        : null;
+
     return links
         .filter(link => (link.category || '未分类') === category)
         // 网络筛选生效时，分组展开的列表也必须只保留该路线的链接
         .filter(link => !currentViewType || getSafeLinkUrls(link).some(url => getUrlChoiceMeta(url).type === currentViewType))
-        .sort((a, b) => b.ID - a.ID);
+        .sort((a, b) => {
+            if (rank) {
+                const rankA = rank.get(Number(a.ID));
+                const rankB = rank.get(Number(b.ID));
+                if (rankA !== undefined || rankB !== undefined) return (rankA ?? 1e9) - (rankB ?? 1e9);
+            }
+            return b.ID - a.ID;
+        });
 }
 
 function positionCategoryPanel(container) {

@@ -273,44 +273,6 @@ function renderLinksByCategory(allLinks) {
         renderBatch.appendChild(categoryContainer);
     }
 
-    // 磁贴拖拽排序：组内 HTML5 DnD,落下即持久化
-    linkContainer.querySelectorAll('.category-container').forEach(container => {
-        const list = container.querySelector('.link-list');
-        const cat = container.dataset.category;
-        if (!list) return;
-        let dragged = null;
-        list.querySelectorAll('li').forEach(li => {
-            li.addEventListener('dragstart', (e) => {
-                dragged = li;
-                li.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/plain', li.dataset.linkId || '');
-            });
-            li.addEventListener('dragend', () => {
-                li.classList.remove('dragging');
-                dragged = null;
-            });
-            li.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                if (!dragged || dragged === li) return;
-                const rect = li.getBoundingClientRect();
-                const after = (e.clientY - rect.top) > rect.height / 2;
-                if (after) list.insertBefore(dragged, li.nextSibling);
-                else list.insertBefore(dragged, li);
-            });
-        });
-        list.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const ids = [...list.querySelectorAll('.link-card')].map(a => Number(a.dataset.linkId));
-            const order = getSetting('customTileOrder', {}) || {};
-            order[cat] = ids;
-            setSetting('customTileOrder', order);
-            if (typeof showMessage === 'function') showMessage('顺序已保存');
-        });
-        list.addEventListener('dragover', (e) => e.preventDefault());
-    });
-
     // 空状态：没有任何分组时给出引导，而不是留白
     if (sortedCategories.length === 0) {
         const empty = document.createElement('div');
@@ -324,6 +286,47 @@ function renderLinksByCategory(allLinks) {
     }
     // 分组先汇集到 fragment，一次性插入，减少重排次数
     linkContainer.appendChild(renderBatch);
+
+    // 磁贴拖拽排序：组内 HTML5 DnD,落下即持久化
+    linkContainer.querySelectorAll('.category-container').forEach(container => {
+        const list = container.querySelector('.link-list');
+        const cat = container.dataset.category;
+        if (!list) return;
+        let dragged = null;
+        // 事件委托：磁贴是手风琴展开时才懒渲染的，不能在 render 阶段绑到具体 li 上
+        list.addEventListener('dragstart', (e) => {
+            const li = e.target.closest('li');
+            if (!li || !list.contains(li)) return;
+            dragged = li;
+            li.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', li.dataset.linkId || '');
+        });
+        list.addEventListener('dragend', (e) => {
+            e.target.closest('li')?.classList.remove('dragging');
+            dragged = null;
+        });
+        list.addEventListener('dragover', (e) => {
+            const li = e.target.closest('li');
+            if (!dragged || !li || li === dragged) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const rect = li.getBoundingClientRect();
+            const after = (e.clientY - rect.top) > rect.height / 2;
+            if (after) list.insertBefore(dragged, li.nextSibling);
+            else list.insertBefore(dragged, li);
+        });
+        list.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const ids = [...list.querySelectorAll('.link-card')].map(a => Number(a.dataset.linkId));
+            const order = getSetting('customTileOrder', {}) || {};
+            order[cat] = ids;
+            setSetting('customTileOrder', order);
+            if (typeof showMessage === 'function') showMessage('顺序已保存');
+        });
+        list.addEventListener('dragover', (e) => e.preventDefault());
+    });
+
 
     if (getSetting('showThumbnails', true) === false) {
         linkContainer.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
