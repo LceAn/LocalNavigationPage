@@ -1,5 +1,26 @@
 # 更新日志 (CHANGELOG)
 
+## [1.17.1] - 2026-11-13
+
+### ✨ 新增
+
+- **分组常显布局**：所有分组直接铺在页面上，磁贴全部可见，不再需要点击展开；
+  顶部分类标签改为页内锚点，右上角文件夹按钮跳到首个分组。移除底部托盘、
+  「点击空白收起」等失效交互；组内拖拽排序与内网/隧道/公网筛选继续生效
+- **MCP / 技能目录**：右上角机器人入口，全屏收纳本机已部署的 MCP 服务与技能。
+  MCP 卡片显示传输方式 / 端点或命令 / 工具数 / 凭据键名，HTTP 端点探测可达性；
+  技能卡片显示描述 / 分类 / 路径；支持搜索、类型切换、复制端点 / 命令 / 路径
+- **`npm run catalog`**：零依赖扫描 `~/.workbuddy/mcp.json` 与 `~/.workbuddy/skills`,
+  生成 `HTML/data/catalog.json`（已 gitignore / dockerignore）；env 与 headers 只保留
+  键名，args 中的 token / URL 凭据自动打码。仓库提供 `catalog.json.default` 示例
+
+### 🔧 工程
+
+- `validate` 覆盖 `catalog.json.default`、`catalog.js`、`scan-catalog.mjs`
+- 新增 5 例目录生成器单测（脱敏、stdio/http 解析、SKILL.md frontmatter）
+- `serve.mjs` 默认监听 `::` 双栈，修复 `localhost` 解析到 `::1` 时预览连不上
+- 版本号 1.17.1
+
 ## [1.16.1] - 2026-11-13
 
 ### 🐛 修复（合并 1.11 分支的修复批次）

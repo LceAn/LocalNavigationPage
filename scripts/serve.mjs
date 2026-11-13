@@ -8,7 +8,7 @@
 //   DELETE /api/links/:id      删除链接
 //   POST   /api/links/import   批量导入（JSON body: {links: [...]}，只增不删）
 //
-// 安全：API 默认仅绑定 SERVE_HOST（默认 0.0.0.0）；部署到公网时建议
+// 安全：API 默认绑定 SERVE_HOST（默认 :: 双栈）；部署到公网时建议
 // 前置代理限制 /api/ 路径，或设 SERVE_HOST=127.0.0.1。
 import { createServer } from 'node:http';
 import { stat, readFile, writeFile } from 'node:fs/promises';
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)), 'HTML');
 const linksJsonPath = join(root, 'data', 'links.json');
 const port = Number.parseInt(process.argv[2], 10) || 8080;
-const bindHost = process.env.SERVE_HOST || '0.0.0.0';
+const bindHost = process.env.SERVE_HOST || '::';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

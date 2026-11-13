@@ -118,6 +118,7 @@ function renderViewTabs(allLinks) {
             event.stopPropagation();
             const type = btn.dataset.net;
             currentViewType = (currentViewType === type) ? '' : type; // 再点一次取消
+            currentViewCategory = '';
             renderLinksByCategory(links);
         });
     });
@@ -126,9 +127,21 @@ function renderViewTabs(allLinks) {
             // 重渲染会替换 #view-tabs 的 DOM，导致本节点脱离文档树，
             // 事件冒泡到 document 时 closest 失效会被误判为"点空白收起"。故阻止冒泡。
             event.stopPropagation();
+            // 分类标签现在是页内锚点：不重渲染、不隐藏其它分组
             const name = btn.dataset.view;
             currentViewCategory = (name === '全部') ? '' : name;
-            renderLinksByCategory(links);
+            tabsEl.querySelectorAll('.view-tab:not(.view-tab-net)').forEach(item => {
+                const active = item === btn;
+                item.classList.toggle('active', active);
+                item.setAttribute('aria-pressed', String(active));
+            });
+            if (name === '全部') {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                const target = [...document.querySelectorAll('.category-container')]
+                    .find(container => container.dataset.category === name);
+                target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
     });
 }
@@ -144,10 +157,8 @@ function renderLinksByCategory(allLinks) {
     closeCategoryPanel(false);
     linkContainer.innerHTML = '';
 
-    // 多视图：按选中的分组过滤（空=全部），再按网络类型过滤（空=全部）
-    let links = currentViewCategory
-        ? allLinks.filter(l => (l.category || '未分类') === currentViewCategory)
-        : [...allLinks];
+    // 所有分组始终全部展示；只有网络类型筛选会过滤链接
+    let links = [...allLinks];
     if (currentViewType) {
         links = links.filter(l => getSafeLinkUrls(l).some(u => getUrlChoiceMeta(u).type === currentViewType));
     }
@@ -191,7 +202,7 @@ function renderLinksByCategory(allLinks) {
     const renderBatch = document.createDocumentFragment();
     for (const [category, categoryLinks] of sortedCategories) {
         const categoryContainer = document.createElement('div');
-        categoryContainer.className = 'category-container';
+        categoryContainer.className = 'category-container expanded';
         categoryContainer.dataset.category = category;
         categoryContainer.dataset.linkCount = categoryLinks.length;
 
@@ -222,26 +233,7 @@ function renderLinksByCategory(allLinks) {
         }
         categoryTitle.appendChild(categoryIcon);
         categoryTitle.appendChild(document.createTextNode(` ${category}`));
-
-        // 摘要 chip：链接较多时显示「前 2 个 + +N」帮助预览；链接少（≤2）时
-        // 不显示——否则会与下方卡片完全重复（如只有 1 个链接时就是重复显示那个名字）。
         categoryHeaderMain.appendChild(categoryTitle);
-        const previewCount = 2;
-        if (categoryLinks.length > previewCount) {
-            const categoryPreview = document.createElement('div');
-            categoryPreview.className = 'category-preview';
-            categoryLinks.slice(0, previewCount).forEach(link => {
-                const previewChip = document.createElement('span');
-                previewChip.className = 'category-preview-chip';
-                previewChip.textContent = link.name || '未命名';
-                categoryPreview.appendChild(previewChip);
-            });
-            const moreChip = document.createElement('span');
-            moreChip.className = 'category-preview-chip category-preview-more';
-            moreChip.textContent = `+${categoryLinks.length - previewCount}`;
-            categoryPreview.appendChild(moreChip);
-            categoryHeaderMain.appendChild(categoryPreview);
-        }
 
         const categoryHeaderActions = document.createElement('div');
         categoryHeaderActions.className = 'category-header-actions';
@@ -253,21 +245,16 @@ function renderLinksByCategory(allLinks) {
         cardCount.appendChild(cardCountIcon);
         cardCount.appendChild(document.createTextNode(` ${categoryLinks.length}`));
 
-        const toggleButton = document.createElement('button');
-        toggleButton.className = 'toggle-button';
-        toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-        toggleButton.title = '打开分组';
-
         categoryHeaderActions.appendChild(cardCount);
-        categoryHeaderActions.appendChild(toggleButton);
         categoryHeader.appendChild(categoryHeaderMain);
         categoryHeader.appendChild(categoryHeaderActions);
         categoryContainer.appendChild(categoryHeader);
 
         const linkList = document.createElement('ul');
         linkList.className = 'link-list';
-        // 默认收起，由 CSS 的 collapsed 类控制
         linkList.style.cssText = 'margin: 0; border: none;';
+        // 全部展开：直接渲染所有磁贴，不再等待点击
+        linkList.replaceChildren(...categoryLinks.map(link => createHomeLinkElement(link, currentViewType)));
         categoryContainer.appendChild(linkList);
 
         renderBatch.appendChild(categoryContainer);
@@ -334,13 +321,15 @@ function renderLinksByCategory(allLinks) {
         });
     }
 
-    updateHomeCategorySummary(links);
     applyHomeCategoryDisplayMode();
-    
-    // 在 DOM 加载完成后初始化展开状态（绑定事件并设置初始状态）
-    requestAnimationFrame(() => {
-        initCategoryToggles();
-    });
+
+    // 「加载后定位首个分组」：仅在首屏执行一次
+    if (!window.__lnpAutoScrolled && getSetting('defaultExpandFirst', false) === true) {
+        window.__lnpAutoScrolled = true;
+        requestAnimationFrame(() => {
+            document.querySelector('.category-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
 }
 
 // 刷新首页所有状态点（探测完成后调用）

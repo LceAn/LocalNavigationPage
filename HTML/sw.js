@@ -9,16 +9,16 @@
  *
  * 发版时同步修改 CACHE_VERSION，激活时会自动清理旧缓存。
  */
-const CACHE_VERSION = 'lnp-v1.16.1';
+const CACHE_VERSION = 'lnp-v1.17.1';
 const APP_SHELL = [
     './',
     './index.html',
-    './CSS/fonts.css?v=1.16.1',
-    './CSS/remixicon.css?v=1.16.1',
-    './CSS/tokens.css?v=1.16.1',
-    './CSS/styles.css?v=1.16.1',
-    './CSS/search_input.css?v=1.16.1',
-    './CSS/settings_box.css?v=1.16.1',
+    './CSS/fonts.css?v=1.17.1',
+    './CSS/remixicon.css?v=1.17.1',
+    './CSS/tokens.css?v=1.17.1',
+    './CSS/styles.css?v=1.17.1',
+    './CSS/search_input.css?v=1.17.1',
+    './CSS/settings_box.css?v=1.17.1',
     './assets/fonts/remixicon.woff2',
     './assets/fonts/inter-var-latin.woff2'
 ];
@@ -50,7 +50,8 @@ self.addEventListener('fetch', event => {
 
     // HTML 导航与数据文件：网络优先
     if (request.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname === '/' ||
-        url.pathname.endsWith('/data/links.json')) {
+        url.pathname.endsWith('/data/links.json') || url.pathname.endsWith('/data/catalog.json') ||
+        url.pathname.endsWith('/data/catalog.json.default')) {
         event.respondWith(
             fetch(request)
                 .then(response => {

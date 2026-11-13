@@ -25,3 +25,4 @@ Thumbs.db
 # 测试数据 / 本机扫描产物（含真实端口，绝不能烘进镜像）
 HTML/data/links.json
 HTML/data/links-local.json
+HTML/data/catalog.json

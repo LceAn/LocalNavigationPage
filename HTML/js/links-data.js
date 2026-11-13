@@ -525,8 +525,7 @@ function getAllCategoryNames(sourceLinks = links) {
 }
 
 const defaultHomeLayoutSettings = {
-    density: 'balanced',
-    clickBlankToCollapse: true
+    density: 'balanced'
 };
 
 function loadHomeLayoutSettings() {
@@ -534,10 +533,7 @@ function loadHomeLayoutSettings() {
     const density = ['balanced', 'compact', 'spacious'].includes(saved?.density)
         ? saved.density
         : defaultHomeLayoutSettings.density;
-    return {
-        density,
-        clickBlankToCollapse: saved?.clickBlankToCollapse !== false
-    };
+    return { density };
 }
 
 function saveHomeLayoutSettings(settings) {
@@ -547,53 +543,15 @@ function saveHomeLayoutSettings(settings) {
     });
 }
 
-function isHomeCategoryTrayOpen() {
-    // 默认展开：导航页首屏必须能看到分组和链接；用户手动收起后记住 false
-    return getSetting(HOME_CATEGORY_TRAY_OPEN_KEY, true) !== false;
-}
-
-function setHomeCategoryTrayOpen(open) {
-    setSetting(HOME_CATEGORY_TRAY_OPEN_KEY, Boolean(open));
-}
-
-function ensureHomeCategoriesVisibleForAction() {
-    // 分类列表未展开时，先展开（底部小标始终可见，故不再有 hidden 模式）
-    if (!document.body.classList.contains('home-categories-open')) {
-        setHomeCategoryTrayOpen(true);
-        applyHomeCategoryDisplayMode(loadHomeLayoutSettings());
-    }
-    return true;
-}
-
-function updateHomeCategorySummary(sourceLinks = links) {
-    const summary = document.getElementById('home-category-summary');
-    if (!summary) return;
-
-    const categories = getAllCategoryNames(sourceLinks);
-    const linkCount = Array.isArray(sourceLinks) ? sourceLinks.length : 0;
-    summary.textContent = `${categories.length} 个分组 · ${linkCount} 个链接`;
-}
-
+// 所有分组常显，不再有收起/展开托盘
 function applyHomeCategoryDisplayMode(settings = loadHomeLayoutSettings()) {
     const body = document.body;
-    const toggle = document.getElementById('home-category-toggle');
     if (!body) return;
 
     const density = settings.density || defaultHomeLayoutSettings.density;
-    const shouldShowCategories = isHomeCategoryTrayOpen();
-
     body.classList.remove('home-density-balanced', 'home-density-compact', 'home-density-spacious');
     body.classList.add(`home-density-${density}`);
-    body.classList.toggle('home-categories-open', shouldShowCategories);
-
-    if (toggle) {
-        toggle.setAttribute('aria-expanded', String(shouldShowCategories));
-        toggle.title = shouldShowCategories ? '收起分组' : '显示分组';
-    }
-
-    if (!shouldShowCategories && typeof closeCategoryPanel === 'function') {
-        closeCategoryPanel(false);
-    }
+    body.classList.add('home-categories-open');
 
     window.updateCategoryActionButtonState?.();
 }

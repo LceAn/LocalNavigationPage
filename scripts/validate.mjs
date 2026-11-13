@@ -67,6 +67,11 @@ if (runtimeLinks && defaultLinks && JSON.stringify(runtimeLinks) !== JSON.string
 
 readJSON('HTML/manifest.webmanifest');
 
+const catalogDefault = readJSON('HTML/data/catalog.json.default');
+if (catalogDefault && (!Array.isArray(catalogDefault.mcpServers) || !Array.isArray(catalogDefault.skills))) {
+  errors.push('HTML/data/catalog.json.default: mcpServers / skills 必须是数组');
+}
+
 
 // 版本一致性:package.json 的版本必须同步到所有发版引用点
 {
@@ -130,7 +135,7 @@ for (const reference of references) {
   }
 }
 
-for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js', 'HTML/js/home-render.js', 'HTML/js/settings-links.js', 'HTML/js/launcher.js', 'HTML/js/search-engines.js', 'HTML/js/display.js', 'HTML/sw.js', 'scripts/scan-local.mjs', 'scripts/serve.mjs']) {
+for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js', 'HTML/js/home-render.js', 'HTML/js/settings-links.js', 'HTML/js/launcher.js', 'HTML/js/search-engines.js', 'HTML/js/display.js', 'HTML/js/catalog.js', 'HTML/sw.js', 'scripts/scan-local.mjs', 'scripts/scan-catalog.mjs', 'scripts/serve.mjs']) {
   const result = spawnSync(process.execPath, ['--check', join(root, relativePath)], { encoding: 'utf8' });
   if (result.status !== 0) errors.push(`${relativePath}: JavaScript 语法检查失败\n${result.stderr.trim()}`);
 }

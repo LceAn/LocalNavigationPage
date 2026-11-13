@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.16.1-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.17.1-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地/内网导航页：零依赖、零构建，数据存浏览器本地，支持 Docker 或任意静态服务器部署。字体与图标已本地化，**断网或纯内网环境界面完整可用**（仅网站缩略图 / favicon 需要外网）。
@@ -19,11 +19,18 @@
 - 一个链接可配置多个地址（内网 / 隧道 / 公网），卡片角标一键切换并记住选择
 - 路线按主机名自动识别（私网段 / Tailscale 域名与 CGNAT 段 / 标签补注），三色贯穿磁贴描边、角标与筛选
 - 分组标签栏按内网 / 隧道 / 公网筛选，可与分组叠加（如「云服务 + 内网」）；筛选后点击直接走对应路线，不会「筛内网、开公网」
+- **分组常显**：所有分组直接铺在页面上，磁贴全部可见，无需点击展开；分类标签改为页内锚点，网络筛选继续可用
 - **智能选路**（独有能力）：首选地址探测离线时，自动切换到在线且延迟最低的地址
 - 在线状态探测：可配置频率（30s–5min 或关闭），状态点呼吸动画 + 悬停延迟毫秒数
 - 分组三种排序：名称（拼音）/ 链接数量 / 手动（管理分组弹窗上下移），卡片、标签栏、设置三处同序
 - 分组图标按名称自动匹配（服务器 / 影片 / 机器人 / 路由器…），磁贴首字母多彩着色
 - 删除链接 8 秒内可点击提示撤销
+
+**MCP / 技能目录**
+
+- 右上角机器人入口：全屏收纳本机已部署的 MCP 服务与技能
+- MCP 卡片显示传输方式 / 端点或命令 / 工具数 / 凭据键名，HTTP 端点探测可达性；技能卡片显示描述 / 分类 / 路径
+- 支持搜索、按类型切换、复制端点 / 命令 / 路径；`npm run catalog` 自动扫描并脱敏生成数据
 
 **搜索与效率**
 
@@ -80,6 +87,14 @@ npm run scan -- --list                # 只预览表格，不写文件
 - SSH、MySQL、Redis 这类非 HTTP 端口不会生成链接（浏览器打不开），扫描结束会汇总提示
 - 输出文件 `HTML/data/links-local.json` 已在 `.gitignore` / `.dockerignore` 中，不会进仓库或镜像
 - 导入是**覆盖式**的：设置 → 数据 → 导入会替换现有全部链接（导入前会自动备份当前配置）
+
+**已部署的 MCP / 技能也想收进来**：
+
+```bash
+npm run catalog        # 读取 ~/.workbuddy/mcp.json + ~/.workbuddy/skills
+```
+
+生成 `HTML/data/catalog.json`（已 gitignore / dockerignore），页面右上角机器人图标打开目录。支持 `--mcp <path>` / `--skills <dir>` / `--out <path>`；env 与 headers 只保留键名，args 中的 token 自动打码。
 
 或使用 Python 静态服务器：
 
@@ -177,6 +192,7 @@ docker build --tag local-navigation-page:test .
 - `HTML/js/`（按加载顺序）：
   - `storage.js` — 设置容器、v1→v2 迁移、跨标签页同步
   - `links-data.js` — 链接模型、URL 协议白名单、多地址选择、状态探测
+  - `catalog.js` — MCP / 技能目录（全屏、搜索、可达性探测）
   - `home-render.js` — 首页分组渲染、磁贴构建、视图标签
   - `settings-links.js` — 设置面板链接列表、筛选、拖拽排序
   - `display.js` — 时钟 / 日期 / 天气
@@ -187,7 +203,7 @@ docker build --tag local-navigation-page:test .
 - `HTML/CSS/`：页面样式（`tokens.css` 为设计令牌）
 - `HTML/data/`：公开示例与 Docker 默认配置
 - `HTML/sw.js`：Service Worker 离线缓存
-- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器 + REST API）、`mcp-server.mjs`（MCP 服务器）、`scan-local.mjs`（本机端口扫描）、`test/`（单元测试）
+- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器 + REST API）、`mcp-server.mjs`（MCP 服务器）、`scan-local.mjs`（本机端口扫描）、`scan-catalog.mjs`（MCP / 技能目录）、`test/`（单元测试）
 - `docker/`：Nginx 配置与数据初始化脚本
 - `docs/`：更新日志、路线图与设计文档
 
@@ -220,7 +236,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-03
-**当前版本：** 1.16.1
+**当前版本：** 1.17.1
 
 ---
 

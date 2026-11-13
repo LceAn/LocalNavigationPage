@@ -56,13 +56,31 @@
 | `groupSortMode` | string | `name` / `count` / `custom` |
 | `customCategoryOrder` | array | 手动分组排序的分组名顺序 |
 | `customTileOrder` | object | 首页磁贴手动排序(按分组名 → ID 数组) |
-| `defaultExpandFirst` | boolean | 打开时仅展开首个分组 |
+| `defaultExpandFirst` | boolean | 加载后滚动定位到首个分组 |
 | `siteTitle` | string | 自定义站点标题(默认「我的导航」) |
 | `topButtonSettings` | object | 顶栏按钮配置(system 开关 + customButtons 数组) |
 | `customButtons[].icon` | string | `ri-xxx` 字体类名或 `iconify:集合:名称` |
 | `lastUsedLinkUrls` | object | 多地址链接「记住的地址」 |
 
 未知键在导入时被忽略(白名单合并),因此手工加入的自定义键不会破坏兼容性,但也不会被恢复。
+
+## catalog.json(MCP / 技能目录)
+
+由 `npm run catalog` 生成,默认读取 `~/.workbuddy/mcp.json` 与 `~/.workbuddy/skills`,写入 `HTML/data/catalog.json`。该文件含本机端点与路径,已在 `.gitignore` / `.dockerignore` 中排除;仓库只保留 `catalog.json.default` 公开示例。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `_meta` | object | 生成时间、来源、数量统计 |
+| `mcpServers[].name` | string | 服务名 |
+| `mcpServers[].transport` | string | `stdio` / `http` / `sse` |
+| `mcpServers[].url` | string | HTTP 端点(stdio 为空) |
+| `mcpServers[].command` / `args` | string / array | stdio 启动命令(敏感参数已打码) |
+| `mcpServers[].envKeys` / `headerKeys` | array | 凭据键名,**不含值** |
+| `mcpServers[].tools` | number | 工具数(可选) |
+| `skills[].name` / `description` | string | 技能名与描述(取自 SKILL.md frontmatter) |
+| `skills[].category` / `tags` | string / array | 分类与标签(可选) |
+| `skills[].path` | string | 技能目录(家目录以 `~` 缩写) |
+| `skills[].enabled` | boolean | 是否启用(当前扫描默认 true) |
 
 ## 安全约定
 

@@ -1422,7 +1422,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.16.1';
+    const currentVersion = '1.17.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1877,10 +1877,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // 首页布局设置（密度 / 点击空白收起）
+    // 首页布局设置（密度）
     const homeDensitySelect = document.getElementById('home-density-select');
-    const homeClickBlankCollapseToggle = document.getElementById('home-click-blank-collapse');
-    const homeCategoryToggle = document.getElementById('home-category-toggle');
 
 
     // 在线状态探测频率：变更即时生效（重启监控循环）
@@ -2061,7 +2059,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // 把存储里的布局设置同步回控件（模块拆分时遗漏，初始化会直接抛异常）
     function syncHomeLayoutControls(settings = loadHomeLayoutSettings()) {
         if (homeDensitySelect) homeDensitySelect.value = settings.density;
-        if (homeClickBlankCollapseToggle) homeClickBlankCollapseToggle.checked = settings.clickBlankToCollapse !== false;
     }
 
     // 初始化一次：把存储里的密度/展开状态应用到首页
@@ -2083,14 +2080,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 spacious: '首页已切换为舒展密度'
             };
             showMessage(densityMessages[this.value] || '已更新首页密度');
-        });
-    }
-
-    if (homeClickBlankCollapseToggle) {
-        homeClickBlankCollapseToggle.addEventListener('change', function() {
-            const settings = { ...loadHomeLayoutSettings(), clickBlankToCollapse: this.checked };
-            saveHomeLayoutSettings(settings);
-            showMessage(this.checked ? '已启用空白区域收起分组' : '已关闭空白区域收起分组');
         });
     }
 
@@ -2247,71 +2236,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    if (homeCategoryToggle) {
-        homeCategoryToggle.addEventListener('click', function() {
-            const nextOpen = !document.body.classList.contains('home-categories-open');
-            setHomeCategoryTrayOpen(nextOpen);
-            applyHomeCategoryDisplayMode();
-            // 打开时若启用了「展开首个分类」，自动展开第一张手风琴卡
-            if (nextOpen && getSetting('defaultExpandFirst', false) === true) {
-                requestAnimationFrame(() => {
-                    const firstCategory = document.querySelector('.category-container');
-                    if (firstCategory && !firstCategory.classList.contains('expanded')) {
-                        toggleCategoryAccordion(firstCategory);
-                    }
-                });
-            }
-            showMessage(nextOpen ? '已显示分组' : '已收起分组');
-        });
-    }
-
-    function dismissHomeCategoryTray(options = {}) {
-        const settings = loadHomeLayoutSettings();
-        const canDismiss = settings.clickBlankToCollapse !== false
-            && document.body.classList.contains('home-categories-open');
-
-        if (!canDismiss) return false;
-
-        closeCategoryPanel(false);
-        collapseAllCategoryAccordions();
-        setHomeCategoryTrayOpen(false);
-        applyHomeCategoryDisplayMode(settings);
-
-        if (options.message) {
-            showMessage('已收起分组');
-        }
-
-        return true;
-    }
-
-    window.dismissHomeCategoryTray = dismissHomeCategoryTray;
-
-    document.addEventListener('click', event => {
-        const settings = loadHomeLayoutSettings();
-        const canDismiss = settings.clickBlankToCollapse !== false
-            && document.body.classList.contains('home-categories-open');
-
-        if (!canDismiss || event.defaultPrevented) return;
-
-        const interactiveArea = event.target.closest([
-            '.category-container',
-            '.category-panel',
-            '.search-container-wrapper',
-            '.view-tabs',
-            '.recent-links',
-            '#launcher',
-            '.top-right-buttons',
-            '#settings-container',
-            '#message-container',
-            '.dropdown-menu',
-            '.url-dropdown'
-        ].join(','));
-
-        if (interactiveArea) return;
-
-        dismissHomeCategoryTray();
-    }, { passive: true });
-    
     // 默认展开所有分类设置
     const defaultExpandFirstToggle = document.getElementById('default-expand-first');
     if (defaultExpandFirstToggle) {
@@ -2320,11 +2244,8 @@ document.addEventListener("DOMContentLoaded", function () {
         defaultExpandFirstToggle.addEventListener('change', function() {
             setSetting('defaultExpandFirst', this.checked);
             if (this.checked) {
-                toggleAllCategories(true);
-                showMessage('已打开第一个分组');
-            } else {
-                toggleAllCategories(false);
-                showMessage('已收起分组');
+                document.querySelector('.category-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                showMessage('已定位到首个分组');
             }
         });
     }
@@ -2863,74 +2784,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function updateCategoryActionButtonState() {
         const icon = toggleAllGroupsBtn.querySelector('i');
-        const categoriesVisible = document.body.classList.contains('home-categories-open');
-        const anyExpanded = Boolean(document.querySelector('.category-container.expanded'));
-
-        toggleAllGroupsBtn.classList.toggle('active', anyExpanded && categoriesVisible);
-
-        if (!categoriesVisible) {
-            toggleAllGroupsBtn.title = '显示分组并展开首个';
-            toggleAllGroupsBtn.setAttribute('aria-label', '显示分组并展开首个');
-            if (icon) icon.className = 'ri-folder-open-line';
-            return;
-        }
-
-        if (anyExpanded) {
-            toggleAllGroupsBtn.title = '收起所有分组';
-            toggleAllGroupsBtn.setAttribute('aria-label', '收起所有分组');
-            if (icon) icon.className = 'ri-close-line';
-            return;
-        }
-
-        toggleAllGroupsBtn.title = '展开首个分组';
-        toggleAllGroupsBtn.setAttribute('aria-label', '展开首个分组');
+        toggleAllGroupsBtn.title = '跳到第一个分组';
+        toggleAllGroupsBtn.setAttribute('aria-label', '跳到第一个分组');
+        toggleAllGroupsBtn.classList.remove('active');
         if (icon) icon.className = 'ri-folder-open-line';
     }
 
     window.updateCategoryActionButtonState = updateCategoryActionButtonState;
 
-    function revealCategoriesForToolbar() {
-        setHomeCategoryTrayOpen(true);
-        applyHomeCategoryDisplayMode();
-        return loadHomeLayoutSettings();
-    }
-
     function runCategoryToolbarAction() {
-        // 列表未展开 → 打开列表并展开首个分类（手风琴就地展开）
-        if (!document.body.classList.contains('home-categories-open')) {
-            revealCategoriesForToolbar();
-            const firstCategory = getFirstCategoryContainer();
-            if (!firstCategory) {
-                showMessage('暂无分组可打开');
-                return;
-            }
-            requestAnimationFrame(() => {
-                if (!firstCategory.classList.contains('expanded')) {
-                    toggleCategoryAccordion(firstCategory);
-                }
-                updateCategoryActionButtonState();
-                firstCategory.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            });
-            showMessage('已打开分组');
-            return;
-        }
-
-        // 列表已展开且有分类展开 → 收起所有分类
-        if (document.querySelector('.category-container.expanded')) {
-            collapseAllCategoryAccordions();
-            updateCategoryActionButtonState();
-            showMessage('已收起分组');
-            return;
-        }
-
-        // 列表已展开但无分类展开 → 展开首个分类
         const firstCategory = getFirstCategoryContainer();
-        if (firstCategory) {
-            toggleCategoryAccordion(firstCategory);
-            updateCategoryActionButtonState();
-            firstCategory.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            showMessage('已展开首个分组');
+        if (!firstCategory) {
+            showMessage('暂无分组');
+            return;
         }
+        firstCategory.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     toggleAllGroupsBtn.addEventListener('click', () => {
@@ -3335,141 +3203,6 @@ function closeCategoryPanel(saveState = true) {
     window.updateCategoryActionButtonState?.();
 }
 
-// 手风琴：就地展开某张分类卡，把该分类的链接填进它的 .link-list（按需渲染）
-function toggleCategoryAccordion(container) {
-    if (!container) return;
-
-    const isExpanded = container.classList.contains('expanded');
-    const linkList = container.querySelector('.link-list');
-    const toggleButton = container.querySelector('.toggle-button');
-    const categoryHeader = container.querySelector('.category-header');
-
-    if (isExpanded) {
-        // 收起：清空已渲染的链接以释放 DOM
-        container.classList.remove('expanded');
-        if (linkList) linkList.replaceChildren();
-        if (toggleButton) {
-            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-            toggleButton.title = '展开分组';
-        }
-        if (categoryHeader) categoryHeader.setAttribute('aria-expanded', 'false');
-        return;
-    }
-
-    // 展开：按需填充链接（首次展开才渲染，避免空闪）
-    const category = container.dataset.category;
-    const categoryLinks = getCategoryPanelLinks(category);
-    if (linkList) {
-        linkList.replaceChildren(...categoryLinks.map(link => createHomeLinkElement(link, currentViewType)));
-        if (getSetting('showThumbnails', true) === false) {
-            linkList.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
-                thumbnail.style.display = 'none';
-            });
-        }
-    }
-    container.classList.add('expanded');
-    if (toggleButton) {
-        toggleButton.innerHTML = '<i class="ri-arrow-down-s-line"></i>';
-        toggleButton.title = '收起分组';
-    }
-    if (categoryHeader) categoryHeader.setAttribute('aria-expanded', 'true');
-}
-
-// 收起所有手风琴卡（清空 DOM）
-function collapseAllCategoryAccordions() {
-    document.querySelectorAll('.category-container.expanded').forEach(container => {
-        container.classList.remove('expanded');
-        const linkList = container.querySelector('.link-list');
-        if (linkList) linkList.replaceChildren();
-        const toggleButton = container.querySelector('.toggle-button');
-        if (toggleButton) {
-            toggleButton.innerHTML = '<i class="ri-arrow-right-s-line"></i>';
-            toggleButton.title = '展开分组';
-        }
-        const categoryHeader = container.querySelector('.category-header');
-        if (categoryHeader) categoryHeader.setAttribute('aria-expanded', 'false');
-    });
-}
-
-// 切换分类展开状态（手风琴就地展开，不再走浮层 panel）
-function toggleCategory(container) {
-    if (!container) return;
-    toggleCategoryAccordion(container);
-}
-
-    // 初始化分类展开状态
-    function initCategoryToggles() {
-    const categoryContainers = document.querySelectorAll('.category-container');
-
-    categoryContainers.forEach(container => {
-        const linkList = container.querySelector('.link-list');
-        const toggleButton = container.querySelector('.toggle-button');
-        const categoryHeader = container.querySelector('.category-header');
-        
-        if (!linkList || !toggleButton) return;
-        
-        resetCategoryContainer(container);
-        if (categoryHeader) {
-            categoryHeader.setAttribute('role', 'button');
-            categoryHeader.setAttribute('tabindex', '0');
-            categoryHeader.setAttribute('aria-expanded', 'false');
-        }
-        
-        // 点击标题切换展开状态
-        if (categoryHeader) {
-            categoryHeader.addEventListener('click', function(e) {
-                e.stopPropagation();
-                toggleCategory(container, true);
-            });
-
-            categoryHeader.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleCategory(container, true);
-                }
-            });
-        }
-        
-        // 点击按钮切换展开状态
-        if (toggleButton) {
-            toggleButton.addEventListener('click', function(event) {
-                event.stopPropagation();
-                event.preventDefault();
-                toggleCategory(container, true);
-            });
-        }
-    });
-
-    if (
-        getSetting('defaultExpandFirst', false) === true
-        && document.body.classList.contains('home-categories-open')
-    ) {
-        const firstCategory = categoryContainers[0];
-        if (firstCategory && !firstCategory.classList.contains('expanded')) {
-            toggleCategoryAccordion(firstCategory);
-        }
-    }
-}
-
-// 一键展开/收起所有分类（手风琴）
-window.toggleAllCategories = function(expand) {
-    const categoryContainers = document.querySelectorAll('.category-container');
-
-    if (expand) {
-        if (!ensureHomeCategoriesVisibleForAction()) return;
-        const firstCategory = categoryContainers[0];
-        if (firstCategory && !firstCategory.classList.contains('expanded')) {
-            toggleCategoryAccordion(firstCategory);
-        }
-        window.updateCategoryActionButtonState?.();
-        return;
-    }
-
-    collapseAllCategoryAccordions();
-    closeCategoryPanel(false);
-    window.updateCategoryActionButtonState?.();
-};
-
 // 快捷键速查面板（"?" 键切换）
 function toggleShortcutCheatSheet() {
     let panel = document.getElementById('shortcut-cheatsheet');
@@ -3485,7 +3218,7 @@ function toggleShortcutCheatSheet() {
         ['Esc', '关闭设置 / 弹窗 / 启动器 / 面板'],
         ['Shift + 点击磁贴', '以小窗打开链接'],
         ['右键磁贴', '复制地址 / 小窗 / 编辑 / 按路径直达'],
-        ['展开分组内 ↑ ↓ ← →', '磁贴间导航，Enter 打开'],
+        ['分组内 ↑ ↓ ← →', '磁贴间导航，Enter 打开'],
     ];
     panel = document.createElement('div');
     panel.id = 'shortcut-cheatsheet';

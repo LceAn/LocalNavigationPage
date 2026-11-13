@@ -1,0 +1,45 @@
+{
+    "_meta": {
+        "generatedAt": "示例",
+        "source": "catalog.json.default",
+        "note": "公开示例。运行 npm run catalog 生成私有 catalog.json（含本机 MCP / 技能）"
+    },
+    "mcpServers": [
+        {
+            "name": "filesystem",
+            "description": "本地文件读写（示例）",
+            "transport": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem", "/data"],
+            "tools": 12,
+            "tags": ["官方", "文件"]
+        },
+        {
+            "name": "lab-security",
+            "description": "实验室安全工具集（示例地址）",
+            "transport": "http",
+            "url": "http://192.168.1.10:3000/mcp",
+            "tools": 120,
+            "tags": ["安全", "逆向"],
+            "headerKeys": ["Authorization"]
+        }
+    ],
+    "skills": [
+        {
+            "name": "solve-ai-ctf",
+            "description": "CTF 题目分析与求解流程（示例）",
+            "category": "安全",
+            "tags": ["ctf", "reverse"],
+            "path": "~/.workbuddy/skills/solve-ai-ctf",
+            "enabled": true
+        },
+        {
+            "name": "review-agent",
+            "description": "只读代码审查与缺陷优先报告（示例）",
+            "category": "工程",
+            "tags": ["review"],
+            "path": "~/.workbuddy/skills/review-agent",
+            "enabled": true
+        }
+    ]
+}
