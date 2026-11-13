@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.15.1-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.16.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地/内网导航页：零依赖、零构建，数据存浏览器本地，支持 Docker 或任意静态服务器部署。字体与图标已本地化，**断网或纯内网环境界面完整可用**（仅网站缩略图 / favicon 需要外网）。
@@ -50,6 +50,7 @@
 - PWA：可安装、Service Worker 离线缓存（数据网络优先、静态资源缓存优先 + 后台更新）
 - 打印样式：Ctrl+P 输出平面清单
 - 私密导航页保护：robots.txt 禁止索引 + 页面 noindex；nginx 全站安全响应头
+- **REST API + MCP 链接维护**：`npm run serve` 自带增删改查 API；`npm run mcp` 启动 MCP Server，AI 助主可直接管理导航链接（详见 docs/API.md）
 - 数据层 20 个单元测试（`npm test`，零依赖沙箱执行器）+ CI 三道关（测试 / 校验 / Docker 构建）
 
 ## 快速开始
@@ -179,7 +180,7 @@ docker build --tag local-navigation-page:test .
 - `HTML/CSS/`：页面样式（`tokens.css` 为设计令牌）
 - `HTML/data/`：公开示例与 Docker 默认配置
 - `HTML/sw.js`：Service Worker 离线缓存
-- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器）、`test/`（单元测试）
+- `scripts/`：`validate.mjs`（校验）、`serve.mjs`（零依赖服务器 + REST API）、`mcp-server.mjs`（MCP 服务器）、`test/`（单元测试）
 - `docker/`：Nginx 配置与数据初始化脚本
 - `docs/`：更新日志、路线图与设计文档
 
@@ -221,3 +222,4 @@ docker build --tag local-navigation-page:test .
 - [docs/CHANGELOG.md](docs/CHANGELOG.md) — 更新日志
 - [docs/FEATURES_ROADMAP.md](docs/FEATURES_ROADMAP.md) — 功能规划与路线图
 - [SECURITY.md](SECURITY.md) — 安全策略
+- [docs/API.md](docs/API.md) — REST API 与 MCP 接口文档

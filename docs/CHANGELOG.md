@@ -1,5 +1,25 @@
 # 更新日志 (CHANGELOG)
 
+## [1.16.0] - 2026-11-13
+
+### 🚀 新增：API 与 MCP 链接维护
+
+- **REST API**（`npm run serve` 自带）：
+  - `GET /api/links` — 列出全部链接
+  - `POST /api/links` — 新增链接（JSON body）
+  - `PUT /api/links/:id` — 更新链接
+  - `DELETE /api/links/:id` — 删除链接
+  - `POST /api/links/import` — 批量导入（自动去重）
+  - 全链路实测通过（增→改→删→验证）
+- **MCP Server**（`npm run mcp` 或 `node scripts/mcp-server.mjs`）：
+  - 零依赖 stdio JSON-RPC，可配置到 Claude Desktop / 其他 MCP 客户端
+  - 6 个工具：`list_links` / `add_link` / `update_link` / `remove_link` /
+    `import_links` / `get_stats`
+  - 与 REST API 共用 `HTML/data/links.json`，数据即时同步
+  - 实测通过（初始化→列工具→增→查→删→验证持久化）
+- `docs/API.md` — REST API 与 MCP 的完整文档与配置示例
+
+
 ## [1.15.1] - 2026-11-10
 
 ### ✨ 新增

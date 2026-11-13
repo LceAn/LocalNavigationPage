@@ -1,11 +1,12 @@
 {
   "name": "local-navigation-page",
-  "version": "1.15.1",
+  "version": "1.16.0",
   "private": true,
   "scripts": {
     "validate": "node scripts/validate.mjs",
     "serve": "node scripts/serve.mjs",
     "test": "node --test scripts/test/*.test.mjs",
-    "scan": "node scripts/scan-local.mjs"
+    "scan": "node scripts/scan-local.mjs",
+    "mcp": "node scripts/mcp-server.mjs"
   }
 }
