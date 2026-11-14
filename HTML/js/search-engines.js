@@ -107,6 +107,13 @@ function saveSearchEngines(engines) {
     setSetting('searchEngines', engines);
 }
 
+function renderSearchEngineIcon(engine) {
+    const icon = getSearchEngineIcon(engine);
+    return icon
+        ? `<img src="${escapeHTML(icon.src)}" alt="${escapeHTML(engine.name)}" loading="lazy">`
+        : '<i class="ri-search-line"></i>';
+}
+
 // 渲染搜索引擎列表
 function renderSearchEngines() {
     const engines = loadSearchEngines();
@@ -128,7 +135,7 @@ function renderSearchEngines() {
                 <i class="ri-draggable"></i>
             </div>
             <div class="search-engine-icon">
-                ${isSafeUrl(engine.icon, ['http:', 'https:']) ? `<img src="${escapeHTML(engine.icon)}" alt="${escapeHTML(engine.name)}">` : '<i class="ri-search-line"></i>'}
+                ${renderSearchEngineIcon(engine)}
             </div>
             <div class="search-engine-info">
                 <h4 class="search-engine-name">${escapeHTML(engine.name)}</h4>
@@ -304,7 +311,7 @@ function saveSearchEngine() {
 
 // 搜索引擎 logo 内置 SVG（按域名匹配；内联无外部依赖，清晰稳定）
 const builtinEngineIcons = {
-    'baidu.com': "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232932E1' d='M15.5 2C13.6 2 12 3.9 12 6.3c0 1.4.5 2.6 1.4 3.4-1.1.9-1.8 2.4-1.8 4.1 0 2.9 2 5.2 4.5 5.2s4.5-2.3 4.5-5.2c0-1.9-.8-3.5-2.1-4.4 1-.8 1.6-2 1.6-3.5C20.1 3.9 17.4 2 15.5 2zM6.4 7.5c-2 0-3.6 1.9-3.6 4.3 0 1.5.6 2.8 1.6 3.6-.9.8-1.5 2-1.5 3.4 0 2.4 1.6 4.2 3.6 4.2s3.6-1.9 3.6-4.2c0-1.4-.6-2.6-1.5-3.4 1-.8 1.6-2.1 1.6-3.6C9.9 9.4 8.3 7.5 6.4 7.5z'/%3E%3C/svg%3E",
+    'baidu.com': "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzI5MzJFMSIgZD0iTTkuMTU0IDBDNy43MSAwIDYuNTQgMS42NTggNi41NCAzLjcwN2MwIDIuMDUxIDEuMTcxIDMuNzEgMi42MTUgMy43MSAxLjQ0NiAwIDIuNjE0LTEuNjU5IDIuNjE0LTMuNzFDMTEuNzY4IDEuNjU4IDEwLjYgMCA5LjE1NCAwem03LjAyNS41OTRDMTQuODYuNTggMTMuMzQ3IDIuNTg5IDEzLjIgMy45MjdjLS4xODcgMS43NDUuMjUgMy40ODcgMi4xNzkgMy43MzUgMS45MzMuMjUgMy4xNzUtMS44MDYgMy40MjItMy4zNjQuMjUyLTEuNTU1LS45OTUtMy4zNjQtMi4zNjItMy42NzRhMS4yMTggMS4yMTggMCAwIDAtLjI2MS0uMDN6TTMuNTgyIDUuNTM1YTIuODExIDIuODExIDAgMCAwLS4xNTYuMDA4Yy0yLjExOC4xOS0yLjQyOCAzLjI0LTIuNDI4IDMuMjQtLjI4NyAxLjQxLjY4NiA0LjQyNSAzLjI5NyAzLjg2NCAyLjYxNy0uNTYxIDIuMjYyLTMuNjggMi4xODMtNC4zNjItLjEyNS0xLjAxOC0xLjI5Mi0yLjc3My0yLjg5Ni0yLjc1em0xNi41MzQgMS43NTNjLTIuMzA4IDAtMi42MTcgMi4xMTktMi42MTcgMy42MTYgMCAxLjQzLjEyMSAzLjQyNSAyLjk4OCAzLjM2MiAyLjg2Ny0uMDYzIDIuNTUzLTMuMjM4IDIuNTUzLTMuOTg4IDAtLjc0NS0uNjItMi45OS0yLjkyNC0yLjk5em0tOC4yNjQgMi40NzhjLTEuNDI0LjAxNC0yLjcwOC45MjUtMy4zMjMgMS45NDctMS4xMTggMS44NjgtMi44NjMgMy4wNS0zLjExMiAzLjM2My0uMjUuMzA5LTMuNjEgMi4xMTYtMi44NjQgNS40Mi43NDYgMy4zMDEgMy4zNjUgMy4yMzcgMy4zNjUgMy4yMzdzMS45My4xOSA0LjE3MS0uMzFjMi4yNC0uNDk1IDQuMTcuMTIzIDQuMTcuMTIzczUuMjMzIDEuNzQ4IDYuNjY1LTEuNjE2YzEuNDMtMy4zNjQtLjgwOC01LjEwOS0uODA4LTUuMTA5cy0yLjk5LTIuMzA2LTQuNzM2LTQuNzk4Yy0xLjA3Mi0xLjY2NS0yLjM0OC0yLjI2OC0zLjUyOC0yLjI1N3ptLTIuMjM0IDMuODRsMS41NDIuMDI0djguMTk3SDcuNzU4Yy0xLjQ3LS4yOTEtMi4wNTUtMS4yOTItMi4xMy0xLjQ2Mi0uMDcyLS4xNzMtLjQ4OC0uOTc2LS4yNjgtMi4zNDMuNjM1LTIuMDQ5IDIuNDQ3LTIuMTk2IDIuNDQ3LTIuMTk2aDEuODF6bTMuOTY0IDIuMzl2My44ODFjLjA5Ni40MTMuNjEyLjQ4OC42MTIuNDg4aDEuNjE0di00LjM0M2gxLjY4OXY1Ljc4MmgtMy45MTVjLTEuNTE3LS4zOS0xLjU5LTEuNDY1LTEuNTktMS40NjV2LTQuMzE3em0tNS40NTggMS4xNDdjLS42Ni4xOTctLjk3OC43MDgtMS4wNS45MjgtLjA3Ni4yMi0uMjQ3Ljc4LS4xIDEuMjY5LjI5NCAxLjA5NSAxLjI0OCAxLjE0NCAxLjI0OCAxLjE0NGgxLjM3di0zLjM0eiIvPjwvc3ZnPg==",
     'google.com': "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%234285F4' d='M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z'/%3E%3Cpath fill='%2334A853' d='M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z'/%3E%3Cpath fill='%23FBBC05' d='M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z'/%3E%3Cpath fill='%23EA4335' d='M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z'/%3E%3C/svg%3E",
     'bing.com': "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23008373' d='M5 3v15.5l4.7 2.5 6.3-3.6v-3.7L11 11l-2 1V6L5 3zm6 3v3.2l4.7 2.7 2.3-1.3V8L11 6z'/%3E%3C/svg%3E"
 };
