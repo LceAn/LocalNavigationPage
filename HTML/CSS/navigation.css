@@ -623,3 +623,55 @@ body.liquid-home .route-popover .icon-button { width: 25px; height: 25px; font-s
 @media (prefers-reduced-motion: reduce) {
     #navigation-view .shortcut-card, #navigation-view .route-chip, .url-state { transition: none; animation: none; }
 }
+
+/* 时间样式预设：只改视觉排版，12/24 小时与秒数仍由现有开关控制 */
+#current-time .clock-period {
+  margin-left: .28em;
+  font-size: .62em;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+#current-time .clock-seconds { font-variant-numeric: tabular-nums; }
+
+body.liquid-home #current-time.clock-style-bold {
+  font-weight: 700;
+  letter-spacing: -.055em;
+}
+body.liquid-home #current-time.clock-style-mono {
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+  font-weight: 500;
+  letter-spacing: -.02em;
+}
+body.liquid-home #current-time.clock-style-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--text-primary);
+}
+body.liquid-home #current-time.clock-style-stacked {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 28px;
+  line-height: 1.02;
+  letter-spacing: -.035em;
+}
+body.liquid-home #current-time.clock-style-stacked .clock-colon { display: none; }
+body.liquid-home #current-time.clock-style-stacked .clock-seconds {
+  margin-top: 1px;
+  font-size: .52em;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+body.liquid-home #current-time.clock-style-stacked .clock-period {
+  margin: 2px 0 0;
+  font-size: .45em;
+  color: var(--text-secondary);
+}
+body.liquid-home #current-time.clock-style-light {
+  font-weight: 260;
+  letter-spacing: .015em;
+}
+body.liquid-home.navigation-open #current-time.clock-style-stacked { font-size: 20px; }
+body.liquid-home .datetime-display:has(#current-time.clock-style-stacked) {
+  flex-direction: column;
+  gap: 6px;
+}

@@ -14,6 +14,7 @@ const showTimeToggle = document.getElementById('show-time-toggle');
 const showDateToggle = document.getElementById('show-date-toggle');
 const showSecondsToggle = document.getElementById('show-seconds-toggle');
 const show24HourToggle = document.getElementById('24hour-toggle');
+const clockStyleSelect = document.getElementById('clock-style-select');
 const dateFormatSelect = document.getElementById('date-format-select');
 const showWeatherToggle = document.getElementById('show-weather-toggle');
 const weatherCityInput = document.getElementById('weather-city-input');
@@ -26,6 +27,7 @@ const defaultDisplaySettings = {
     showDate: true,
     showSeconds: true,
     use24Hour: true,
+    clockStyle: 'default',
     dateFormat: 'cn',
     showWeather: true,
     weatherCity: 'shanghai',
@@ -122,6 +124,13 @@ function updateTimeDisplay(force = false) {
             : `${hours}:${minutes}:${seconds} ${ampm}`;
     }
 
+    // 用 span 拆分时/分/秒，便于竖排等样式在 CSS 层重排，不改时间格式逻辑
+    const secondsPart = settings.showSeconds
+        ? `<span class="clock-seconds"><span class="clock-colon" aria-hidden="true">:</span>${seconds}</span>`
+        : '';
+    const periodPart = settings.use24Hour ? '' : `<span class="clock-period">${ampm}</span>`;
+    const timeMarkup = `<span class="clock-hours">${hours}</span><span class="clock-colon" aria-hidden="true">:</span><span class="clock-minutes">${minutes}</span>${secondsPart}${periodPart}`;
+
     const dateText = formatDate(now, settings.dateFormat);
     const visibilityKey = [
         settings.showTime,
@@ -130,7 +139,10 @@ function updateTimeDisplay(force = false) {
     ].join('|');
 
     if (timeDisplayCache.timeElement && (force || timeDisplayCache.lastTimeText !== timeText)) {
-        timeDisplayCache.timeElement.textContent = timeText;
+        timeDisplayCache.timeElement.innerHTML = timeMarkup;
+        if (typeof timeDisplayCache.timeElement.setAttribute === 'function') {
+            timeDisplayCache.timeElement.setAttribute('aria-label', timeText);
+        }
         timeDisplayCache.lastTimeText = timeText;
     }
 
@@ -147,6 +159,15 @@ function updateTimeDisplay(force = false) {
     }
 }
 
+const CLOCK_STYLES = ['default', 'bold', 'mono', 'outline', 'stacked', 'light'];
+
+function applyClockStyle(style = 'default') {
+    const element = timeDisplayCache.timeElement;
+    if (!element || typeof element.classList?.toggle !== 'function') return;
+    const selected = CLOCK_STYLES.includes(style) ? style : 'default';
+    CLOCK_STYLES.forEach(name => element.classList.toggle(`clock-style-${name}`, name === selected));
+}
+
 // 初始化显示设置 UI
 function initDisplaySettings() {
     const settings = loadDisplaySettings();
@@ -155,7 +176,10 @@ function initDisplaySettings() {
     if (showDateToggle) showDateToggle.checked = settings.showDate;
     if (showSecondsToggle) showSecondsToggle.checked = settings.showSeconds;
     if (show24HourToggle) show24HourToggle.checked = settings.use24Hour;
+    if (clockStyleSelect) clockStyleSelect.value = settings.clockStyle || 'default';
     if (dateFormatSelect) dateFormatSelect.value = settings.dateFormat;
+    applyClockStyle(settings.clockStyle);
+    updateTimeDisplay(true);
     if (showWeatherToggle) showWeatherToggle.checked = settings.showWeather;
     if (weatherCityInput) weatherCityInput.value = settings.weatherCity;
     if (weatherUnitSelect) weatherUnitSelect.value = settings.weatherUnit;
@@ -192,6 +216,17 @@ function initDisplaySettings() {
         });
     }
     
+    if (clockStyleSelect) {
+        clockStyleSelect.addEventListener('change', function() {
+            const settings = loadDisplaySettings();
+            settings.clockStyle = this.value;
+            saveDisplaySettings(settings);
+            applyClockStyle(this.value);
+            updateTimeDisplay(true);
+            showMessage('已更新时间样式');
+        });
+    }
+
     if (show24HourToggle) {
         show24HourToggle.addEventListener('change', function() {
             const settings = loadDisplaySettings();

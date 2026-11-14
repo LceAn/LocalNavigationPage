@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.28.3-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.29.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -95,6 +95,7 @@
 - 日 / 夜模式，刷新不闪白
 - **主题色选择器**：8 组预设主色一键切换全站配色（日 / 夜自动适配明度）
 - 自定义 CSS 与自定义 JS：设置中输入即生效，随备份导出
+- 时间样式 6 种预设：标准 / 大号粗体 / 等宽数字 / 空心描边 / 竖排数字 / 细体宽间距，设置中即时切换
 - 三档显示密度（均衡 / 紧凑 / 舒展）、玻璃质感、页面位置布局
 - PWA：可安装、Service Worker 离线缓存（数据网络优先、静态资源缓存优先 + 后台更新）
 - 打印样式：`Ctrl+P` 输出平面清单
@@ -324,7 +325,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-14
-**当前版本：** 1.28.3
+**当前版本：** 1.29.0
 
 ---
 
