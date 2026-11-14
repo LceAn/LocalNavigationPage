@@ -15,6 +15,7 @@ const showDateToggle = document.getElementById('show-date-toggle');
 const showSecondsToggle = document.getElementById('show-seconds-toggle');
 const show24HourToggle = document.getElementById('24hour-toggle');
 const clockStyleSelect = document.getElementById('clock-style-select');
+const clockLayoutSelect = document.getElementById('clock-layout-select');
 const dateFormatSelect = document.getElementById('date-format-select');
 const showWeatherToggle = document.getElementById('show-weather-toggle');
 const weatherCityInput = document.getElementById('weather-city-input');
@@ -28,6 +29,7 @@ const defaultDisplaySettings = {
     showSeconds: true,
     use24Hour: true,
     clockStyle: 'default',
+    clockLayout: 'default',
     dateFormat: 'cn',
     showWeather: true,
     weatherCity: 'shanghai',
@@ -160,12 +162,20 @@ function updateTimeDisplay(force = false) {
 }
 
 const CLOCK_STYLES = ['default', 'bold', 'mono', 'outline', 'stacked', 'light'];
+const CLOCK_LAYOUTS = ['default', 'right-rail', 'hero', 'watermark', 'corner'];
 
 function applyClockStyle(style = 'default') {
     const element = timeDisplayCache.timeElement;
     if (!element || typeof element.classList?.toggle !== 'function') return;
     const selected = CLOCK_STYLES.includes(style) ? style : 'default';
     CLOCK_STYLES.forEach(name => element.classList.toggle(`clock-style-${name}`, name === selected));
+}
+
+function applyClockLayout(layout = 'default') {
+    const body = document.body;
+    if (!body || typeof body.classList?.toggle !== 'function') return;
+    const selected = CLOCK_LAYOUTS.includes(layout) ? layout : 'default';
+    CLOCK_LAYOUTS.forEach(name => body.classList.toggle(`clock-layout-${name}`, name === selected));
 }
 
 // 初始化显示设置 UI
@@ -177,8 +187,10 @@ function initDisplaySettings() {
     if (showSecondsToggle) showSecondsToggle.checked = settings.showSeconds;
     if (show24HourToggle) show24HourToggle.checked = settings.use24Hour;
     if (clockStyleSelect) clockStyleSelect.value = settings.clockStyle || 'default';
+    if (clockLayoutSelect) clockLayoutSelect.value = settings.clockLayout || 'default';
     if (dateFormatSelect) dateFormatSelect.value = settings.dateFormat;
     applyClockStyle(settings.clockStyle);
+    applyClockLayout(settings.clockLayout);
     updateTimeDisplay(true);
     if (showWeatherToggle) showWeatherToggle.checked = settings.showWeather;
     if (weatherCityInput) weatherCityInput.value = settings.weatherCity;
@@ -224,6 +236,16 @@ function initDisplaySettings() {
             applyClockStyle(this.value);
             updateTimeDisplay(true);
             showMessage('已更新时间样式');
+        });
+    }
+
+    if (clockLayoutSelect) {
+        clockLayoutSelect.addEventListener('change', function() {
+            const settings = loadDisplaySettings();
+            settings.clockLayout = this.value;
+            saveDisplaySettings(settings);
+            applyClockLayout(this.value);
+            showMessage('已更新时间布局');
         });
     }
 

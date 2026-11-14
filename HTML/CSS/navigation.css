@@ -675,3 +675,133 @@ body.liquid-home .datetime-display:has(#current-time.clock-style-stacked) {
   flex-direction: column;
   gap: 6px;
 }
+
+/* ================================================================
+   时间布局：不只是字体，直接把时钟搬到页面不同位置
+   ================================================================ */
+
+/* 右侧竖排大钟 */
+body.clock-layout-right-rail .datetime-display {
+  position: fixed;
+  top: 50%;
+  right: clamp(18px, 4vw, 56px);
+  transform: translateY(-50%);
+  z-index: 5;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 0;
+  pointer-events: none;
+}
+body.clock-layout-right-rail #current-time {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: clamp(64px, 8.5vw, 132px);
+  line-height: .82;
+  letter-spacing: -.07em;
+  font-weight: 300;
+}
+body.clock-layout-right-rail #current-time .clock-colon { display: none; }
+body.clock-layout-right-rail #current-time .clock-seconds {
+  margin-top: 8px;
+  font-size: .3em;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+body.clock-layout-right-rail #current-time .clock-period {
+  margin: 8px 0 0;
+  font-size: .22em;
+  color: var(--text-secondary);
+}
+body.clock-layout-right-rail #current-date,
+body.clock-layout-right-rail #weather-info {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* 顶部巨幕 */
+body.clock-layout-hero .datetime-display {
+  flex-direction: column;
+  gap: 6px;
+  margin: clamp(8px, 2vh, 24px) 0 10px;
+}
+body.clock-layout-hero #current-time {
+  font-size: clamp(76px, 13vw, 190px);
+  line-height: .84;
+  letter-spacing: -.075em;
+  font-weight: 350;
+}
+body.clock-layout-hero #current-time .clock-period {
+  font-size: .16em;
+  letter-spacing: 0;
+}
+body.clock-layout-hero #current-date,
+body.clock-layout-hero #weather-info { font-size: 12px; }
+
+/* 全屏水印 */
+body.clock-layout-watermark #current-time {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  z-index: 0;
+  pointer-events: none;
+  font-size: clamp(140px, 25vw, 380px);
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: -.08em;
+  color: color-mix(in oklch, var(--text-primary) 7%, transparent);
+}
+body.clock-layout-watermark .datetime-display {
+  position: relative;
+  z-index: 1;
+  margin-top: 0;
+}
+
+/* 右下角大字 */
+body.clock-layout-corner .datetime-display {
+  position: fixed;
+  right: clamp(18px, 4vw, 56px);
+  bottom: clamp(18px, 4vh, 48px);
+  top: auto;
+  transform: none;
+  z-index: 5;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  margin: 0;
+  pointer-events: none;
+}
+body.clock-layout-corner #current-time {
+  font-size: clamp(48px, 6.5vw, 96px);
+  line-height: .95;
+  letter-spacing: -.06em;
+  font-weight: 350;
+}
+body.clock-layout-corner #current-date,
+body.clock-layout-corner #weather-info {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* 抽屉展开时让位，避免压在快捷方式上 */
+body.navigation-open.clock-layout-right-rail .datetime-display,
+body.navigation-open.clock-layout-corner .datetime-display {
+  opacity: 0;
+  visibility: hidden;
+}
+body.navigation-open.clock-layout-watermark #current-time { opacity: 0; }
+body.clock-layout-hero.navigation-open #current-time { font-size: 38px; letter-spacing: -.04em; }
+
+@media (max-width: 760px) {
+  body.clock-layout-right-rail .datetime-display { top: auto; bottom: 16px; right: 12px; transform: none; gap: 4px; }
+  body.clock-layout-right-rail #current-time { font-size: 52px; }
+  body.clock-layout-right-rail #current-date,
+  body.clock-layout-right-rail #weather-info { font-size: 10px; }
+  body.clock-layout-corner #current-time { font-size: 40px; }
+  body.clock-layout-hero #current-time { font-size: clamp(56px, 18vw, 96px); }
+  body.clock-layout-watermark #current-time { font-size: 30vw; }
+}

@@ -46,7 +46,8 @@
 | `smartRouting` | boolean | 旧配置兼容字段，自动模式已统一按实测延迟选路 |
 | `defaultSearchEngine` | string | 默认搜索引擎名 |
 | `weatherCity` / 单位键 | string | 天气城市与 °C/°F |
-| `displaySettings.clockStyle` | string | 时间样式：`default` / `bold` / `mono` / `outline` / `stacked` / `light`，按浏览器保存 |
+| `displaySettings.clockStyle` | string | 时间字体：`default` / `bold` / `mono` / `outline` / `stacked` / `light`，按浏览器保存 |
+| `displaySettings.clockLayout` | string | 时间布局：`default` / `right-rail` / `hero` / `watermark` / `corner`，按浏览器保存 |
 | `displaySettings.weatherEffects` | boolean | 全屏天气特效，默认 true，跟随 `displaySettings.weatherCity` 的首个城市，按浏览器保存 |
 | `weatherAtmosphereHistory` | object | 当前城市最近一次有效观测的 `city`、`temperatureC`、`at`、`coldUntil`，用于检测六小时内至少 5°C 的降温 |
 | `collapsedSections` | array | 设置面板已折叠的 section id |
