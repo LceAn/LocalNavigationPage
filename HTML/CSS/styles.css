@@ -588,13 +588,6 @@ body.home-categories-open .home-category-toggle-arrow {
   transform: rotate(180deg);
 }
 
-/* 手风琴列表默认收起，点小标加 .home-categories-open 展开。
-   用 !important 确保 display 优先级，避免被下方的 #link-container{display:grid} 覆盖。 */
-body:not(.home-categories-open) #link-container,
-body:not(.home-categories-open) #view-tabs {
-  display: none !important;
-}
-
 /* 最近使用：一行快捷访问胶囊，常驻搜索框下方（已隐藏） */
 .recent-links {
   display: none !important;
@@ -1678,37 +1671,6 @@ body.compact-mode .category-container.expanded .link-list {
   transition: all var(--transition-fast) ease;
 }
 
-/* 右上角工具栏图标按钮：自定义 tooltip（取自 aria-label），零延迟、带样式。
-   原生 title 提示延迟且难看；这里用 ::before 在悬停时立即显示。 */
-.top-right-buttons .icon-button {
-  position: relative;
-}
-.top-right-buttons .icon-button::after {
-  content: attr(aria-label);
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  white-space: nowrap;
-  padding: 5px 10px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: var(--rounded-sm);
-  box-shadow: var(--shadow-md);
-  font-size: 12px;
-  font-weight: 500;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity var(--transition-fast) ease, transform var(--transition-fast) var(--ease-out-expo);
-  z-index: 1001;
-}
-.top-right-buttons .icon-button:hover::after,
-.top-right-buttons .icon-button:focus-visible::after {
-  opacity: 1;
-  transform: translateY(0);
-}
-
 .icon-button:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
@@ -1986,62 +1948,6 @@ body.minimal-mode .minimal-sub-option {
 
 @media (prefers-reduced-motion: reduce) {
   .minimal-wave-layer { animation: none; }
-}
-
-/* 极简模式：右上角按钮组收起为一个胶囊，悬停时展开。
-   用 max-height + overflow:hidden 物理裁剪（flex-wrap 会让按钮换行，
-   仅 max-width 无法限制高度）。 */
-body.minimal-mode .top-right-buttons {
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--rounded-full);
-  width: 38px;
-  height: 38px;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  transition: width var(--transition-slow) var(--ease-out-expo),
-    height var(--transition-slow) var(--ease-out-expo),
-    border-radius var(--transition-slow) var(--ease-out-expo),
-    padding var(--transition-slow) var(--ease-out-expo),
-    background var(--transition-slow) ease,
-    box-shadow var(--transition-slow) ease;
-}
-/* 极简默认：隐藏功能按钮组 + 分隔线 + 昼夜切换，只露设置按钮 */
-body.minimal-mode .top-right-buttons .function-buttons,
-body.minimal-mode .top-right-buttons .button-divider {
-  display: none !important; /* 覆盖 JS 设置的 inline display:flex */
-}
-body.minimal-mode .top-right-buttons #toggle-mode {
-  display: none !important;
-}
-body.minimal-mode .top-right-buttons .settings-buttons {
-  padding: 0;
-  gap: 0;
-}
-/* 悬停展开：恢复胶囊容器样式 + 全部按钮（与左上角搜索按钮展开态同款玻璃胶囊） */
-body.minimal-mode .top-right-buttons:hover {
-  width: auto;
-  height: auto;
-  max-width: min(560px, calc(100vw - 40px));
-  padding: 7px;
-  gap: 7px;
-  border-radius: var(--rounded-full);
-  background: rgba(255, 255, 255, 0.72) !important;
-  border: 1px solid rgba(148, 163, 184, 0.18) !important;
-  box-shadow: var(--shadow-lg) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.dark-mode.minimal-mode .top-right-buttons:hover {
-  background: rgba(15, 23, 42, 0.72) !important;
-}
-body.minimal-mode .top-right-buttons:hover .function-buttons,
-body.minimal-mode .top-right-buttons:hover .button-divider {
-  display: flex !important;
-}
-body.minimal-mode .top-right-buttons:hover #toggle-mode {
-  display: flex !important;
 }
 
 /* 极简模式：左上角搜索按钮，默认与右上角设置按钮同样大小/格式（38×38 透明圆形），

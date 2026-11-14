@@ -1,6 +1,6 @@
 # 数据格式说明(SCHEMA)
 
-本项目全部用户数据存于浏览器 `localStorage` 的单一容器 **`lnp:settings`**(JSON 对象,`schemaVersion: 2`),随「设置 → 数据 → 导出完整配置」导出为带元数据的备份文件。本文档描述各字段的含义与格式,供手工编辑备份或程序化迁移参考。
+浏览器偏好与本机草稿存于浏览器 `localStorage` 的单一容器 **`lnp:settings`**(JSON 对象,`schemaVersion: 2`),随「设置 → 数据 → 导出完整配置」导出为带元数据的备份文件。本文档描述各字段的含义与格式,供手工编辑备份或程序化迁移参考。
 
 ## links(链接数组)
 
@@ -12,8 +12,8 @@
 | `name` | string | ✓ | 显示名称(缺省「未命名」) |
 | `category` | string | ✓ | 所属分组(缺省「未分类」) |
 | `tag` | string | – | 标签小签(磁贴名称下方) |
-| `url` | string | 二选一 | 单地址(与 `urls` 互斥,单地址时自动使用此字段) |
-| `urls` | array | 二选一 | 多地址,按 `priority` 升序选择首选 |
+| `url` | string | 二选一 | 单地址(兼容旧格式；显式 `urls` 数组保留标签与优先级) |
+| `urls` | array | 二选一 | 地址数组，支持单地址与多地址，按 `priority` 升序选择首选 |
 | `urls[].address` | string | ✓ | 地址,强制 http/https/mailto/tel/ftp/file 白名单 |
 | `urls[].label` | string | – | 地址标签(如「内网」「公网」;含关键词会参与网络类型判定) |
 | `urls[].priority` | number | – | 优先级,小的为首选 |
@@ -43,16 +43,18 @@
 | `groupSortMode` | string | `name` / `count` / `custom` |
 | `customCategoryOrder` | array | 手动排序时的分组名顺序 |
 | `probeIntervalMs` | number | 状态探测间隔毫秒(0 = 关闭,默认 60000) |
-| `smartRouting` | boolean | 智能选路开关 |
+| `smartRouting` | boolean | 旧配置兼容字段，自动模式已统一按实测延迟选路 |
 | `defaultSearchEngine` | string | 默认搜索引擎名 |
 | `weatherCity` / 单位键 | string | 天气城市与 °C/°F |
+| `displaySettings.weatherEffects` | boolean | 全屏天气特效，默认 true，跟随 `displaySettings.weatherCity` 的首个城市，按浏览器保存 |
+| `weatherAtmosphereHistory` | object | 当前城市最近一次有效观测的 `city`、`temperatureC`、`at`、`coldUntil`，用于检测六小时内至少 5°C 的降温 |
 | `collapsedSections` | array | 设置面板已折叠的 section id |
 | `collapsedCategories` 相关 | mixed | 首页分组折叠状态 |
 | `recentLinks` / `linkVisitCounts` | object | 最近使用时间戳 / 访问计数 |
 | `customPrimary` | string | 主题色预设 id(indigo/violet/teal/green/orange/pink/red/blue) |
 | `customCss` / `customJs` | string | 自定义 CSS / JS(页面加载时注入/执行) |
 | `probeIntervalMs` | number | 状态探测间隔毫秒(0 = 关闭,默认 60000) |
-| `smartRouting` | boolean | 智能选路开关(首选离线时自动切换) |
+| `smartRouting` | boolean | 旧配置兼容字段，自动模式已统一按实测延迟选路 |
 | `groupSortMode` | string | `name` / `count` / `custom` |
 | `customCategoryOrder` | array | 手动分组排序的分组名顺序 |
 | `customTileOrder` | object | 首页磁贴手动排序(按分组名 → ID 数组) |
@@ -86,3 +88,15 @@
 
 - 公开仓库中的 `HTML/data/links.json` 只含虚构示例;真实内网地址仅存浏览器或部署卷
 - 协议白名单在数据规范化与渲染两层强制执行,详见 [SECURITY.md](../SECURITY.md)
+
+
+## 服务器配置
+
+`links.json` 保存 `{links, settings}`，共享分类与排序位于 `settings`。`GET /api/config` 额外返回 `revision`，发布时通过 `If-Match` 传回。浏览器的 `networkMode` 为 `auto` / `local` / `tunnel` / `remote`，分别表示自动、本地网络优先、内网穿透优先和公网优先。该偏好按浏览器保存。
+
+
+## 可编辑目录入口（1.19.0）
+
+`links[].kind` 区分 `site` / `ai` / `mcp` / `skill`。MCP 与 Skill 的 `copyValue` 保存点击复制的命令或路径，并可与网页地址同时保存。仅复制型入口使用空 `urls` 数组。`catalogKey` 将用户编辑的条目与扫描目录关联，浏览器优先展示编辑版本。`settings.hiddenCatalogKeys` 保存已删除扫描入口的标识。
+
+浏览器通过 `navigationServerBase` 保存最近确认的服务器版本，通过 `navigationDirty` 标记未同步草稿。主题、访问线路和访问记录继续按设备保存。

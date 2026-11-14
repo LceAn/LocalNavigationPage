@@ -1,0 +1,62 @@
+/* 天气层始终位于内容下方，中央留白保护时钟与搜索框。 */
+#weather-atmosphere {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    transition: opacity 1.8s ease;
+}
+#weather-atmosphere > * {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1.8s ease;
+}
+#weather-atmosphere canvas {
+    mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .25) 25%, #000 75%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .25) 25%, #000 75%);
+}
+#weather-atmosphere[data-weather="rain"] .weather-rain { opacity: .65; }
+#weather-atmosphere[data-weather="snow"] .weather-snow { opacity: .8; }
+#weather-atmosphere .weather-mist {
+    inset: -15%;
+    width: 130%;
+    height: 130%;
+    filter: blur(28px);
+    background: radial-gradient(ellipse at 5% 65%, rgb(255 255 255 / .75), transparent 48%), radial-gradient(ellipse at 95% 15%, rgb(224 238 246 / .85), transparent 48%);
+    animation: weather-mist-drift 32s ease-in-out infinite alternate;
+    animation-play-state: paused;
+}
+#weather-atmosphere .weather-mist-front {
+    background: radial-gradient(ellipse at 90% 95%, rgb(255 255 255 / .85), transparent 50%), radial-gradient(ellipse at 10% 15%, rgb(226 239 249 / .7), transparent 40%);
+    animation-duration: 41s;
+    animation-direction: alternate-reverse;
+}
+#weather-atmosphere[data-weather="fog"] .weather-mist-back { opacity: .42; }
+#weather-atmosphere[data-weather="fog"] .weather-mist-front { opacity: .28; }
+#weather-atmosphere[data-weather="fog"][data-motion="on"] .weather-mist { animation-play-state: running; }
+#weather-atmosphere .weather-frost {
+    background: radial-gradient(ellipse at 50% 45%, transparent 45%, rgb(171 211 248 / .3) 80%, rgb(230 246 255 / .7) 100%);
+    box-shadow: inset 0 0 65px rgb(199 229 255 / .3);
+}
+#weather-atmosphere[data-cold="true"] .weather-frost { opacity: .65; }
+.dark-mode #weather-atmosphere[data-weather="fog"] .weather-mist-back { opacity: .12; }
+.dark-mode #weather-atmosphere[data-weather="fog"] .weather-mist-front { opacity: .08; }
+.dark-mode #weather-atmosphere[data-cold="true"] .weather-frost { opacity: .25; }
+body.navigation-open #weather-atmosphere,
+body:has(#settings-container.show, #resource-detail-dialog[open], .modal-overlay.show) #weather-atmosphere { opacity: .45; }
+.weather-effects-copy { display: grid; gap: 6px; min-width: 0; text-align: left; }
+body.liquid-home .settings-content .weather-effects-hint { margin: 0; color: var(--text-tertiary); }
+.weather-effects-option .toggle-switch { flex-shrink: 0; }
+@keyframes weather-mist-drift {
+    from { transform: translate3d(-2%, 1%, 0) scale(1); }
+    to { transform: translate3d(3%, -2%, 0) scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+    #weather-atmosphere, #weather-atmosphere > * { transition: none; }
+    #weather-atmosphere .weather-mist { animation: none; }
+}

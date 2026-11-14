@@ -1,30 +1,12 @@
-# LocalNavigationPage Docker Image
-# 轻量级静态网页导航服务
-
-FROM nginx:alpine
-
-# 维护者信息
+FROM node:22-alpine
 LABEL maintainer="LceAn <lcean@users.noreply.github.com>"
-LABEL version="1.17.1"
-LABEL description="Local Navigation Page - 个人本地网络导航页"
-
-# 复制静态文件到 nginx 目录；.dockerignore 会避免把本地 links.json / links-local.json 烘焙进镜像
-COPY HTML/ /usr/share/nginx/html/
-
-# 提供独立默认配置，避免挂载空 data 目录时默认配置被 volume 遮住
-COPY HTML/data/links.json.default /opt/local-navigation-page/links.json.default
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-COPY docker/10-init-links-json.sh /docker-entrypoint.d/10-init-links-json.sh
-
-RUN mkdir -p /usr/share/nginx/html/data /opt/local-navigation-page \
-    && chmod +x /docker-entrypoint.d/10-init-links-json.sh
-
-# 暴露端口
-EXPOSE 80
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
-
-# 启动 nginx
-CMD ["nginx", "-g", "daemon off;"]
+LABEL version="1.27.0"
+WORKDIR /app
+COPY HTML/ ./HTML/
+COPY scripts/serve.mjs scripts/config-store.mjs scripts/catalog-service.mjs scripts/mcp-client.mjs scripts/scan-catalog.mjs ./scripts/
+ENV SERVE_HOST=0.0.0.0 LNP_DATA_DIR=/data
+RUN mkdir -p /data && chown node:node /data
+USER node
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD node -e "fetch('http://127.0.0.1:8080/api/config').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "scripts/serve.mjs", "8080"]

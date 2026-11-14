@@ -9,16 +9,23 @@
  *
  * 发版时同步修改 CACHE_VERSION，激活时会自动清理旧缓存。
  */
-const CACHE_VERSION = 'lnp-v1.17.1';
+const CACHE_VERSION = 'lnp-v1.27.0';
 const APP_SHELL = [
     './',
     './index.html',
-    './CSS/fonts.css?v=1.17.1',
-    './CSS/remixicon.css?v=1.17.1',
-    './CSS/tokens.css?v=1.17.1',
-    './CSS/styles.css?v=1.17.1',
-    './CSS/search_input.css?v=1.17.1',
-    './CSS/settings_box.css?v=1.17.1',
+    './CSS/navigation.css?v=1.27.0',
+    './CSS/toolbar.css?v=1.27.0',
+    './js/toolbar.js?v=1.27.0',
+    './CSS/weather-effects.css?v=1.27.0',
+    './js/weather-effects.js?v=1.27.0',
+    './CSS/resource-details.css?v=1.27.0',
+    './js/resource-details.js?v=1.27.0',
+    './CSS/fonts.css?v=1.27.0',
+    './CSS/remixicon.css?v=1.27.0',
+    './CSS/tokens.css?v=1.27.0',
+    './CSS/styles.css?v=1.27.0',
+    './CSS/search_input.css?v=1.27.0',
+    './CSS/settings_box.css?v=1.27.0',
     './assets/fonts/remixicon.woff2',
     './assets/fonts/inter-var-latin.woff2'
 ];
@@ -46,6 +53,7 @@ self.addEventListener('fetch', event => {
     if (request.method !== 'GET') return;
 
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/')) return;
     if (url.origin !== self.location.origin) return; // 跨域（缩略图/favicon/探测）不拦截
 
     // HTML 导航与数据文件：网络优先

@@ -116,7 +116,9 @@ function setSetting(key, value) {
     } catch { /* 解析失败则退回缓存 */ }
     const all = (latest && latest.schemaVersion) ? latest : getAllSettings();
     all[key] = value;
-    return setAllSettings(all);
+    const saved = setAllSettings(all);
+    if (saved) window.navigationSettingChanged?.(key);
+    return saved;
 }
 
 // 其他标签页修改设置时，同步刷新本页缓存，避免下次写入带回旧快照

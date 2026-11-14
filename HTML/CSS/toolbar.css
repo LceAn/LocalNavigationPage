@@ -1,0 +1,124 @@
+/* 常驻按钮位置固定，展开工具向外延伸。 */
+body.liquid-home .top-right-buttons {
+    flex-wrap: nowrap;
+    overflow: visible;
+    width: auto;
+    height: auto;
+}
+body.liquid-home .toolbar-extras {
+    position: absolute;
+    right: calc(100% + 7px);
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: max-content;
+    max-width: min(440px, calc(100vw - 32px));
+    box-sizing: border-box;
+    padding: 7px;
+    border: 1px solid var(--glass-edge);
+    border-radius: 25px;
+    background: color-mix(in srgb, var(--bg-secondary) 65%, transparent);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateX(8px) scale(.96);
+    transform-origin: right center;
+    transition: opacity .18s ease, transform .22s cubic-bezier(.22, 1, .36, 1), visibility .18s;
+}
+body.liquid-home .toolbar-extras::after {
+    content: '';
+    position: absolute;
+    left: 100%;
+    top: -1px;
+    width: 9px;
+    height: calc(100% + 2px);
+}
+body.liquid-home .toolbar-extras[hidden] { display: none; }
+body.liquid-home .top-right-buttons:hover .toolbar-extras,
+body.liquid-home .top-right-buttons:has(:focus-visible) .toolbar-extras,
+body.liquid-home .top-right-buttons.tools-expanded .toolbar-extras,
+body.liquid-home .top-right-buttons[data-open-menu="layout"] .toolbar-extras {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+}
+body.liquid-home .top-right-buttons[data-open-menu="network"] .toolbar-extras {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+body.liquid-home .toolbar-extras .function-buttons {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 3px;
+    max-width: 310px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+body.liquid-home .toolbar-extras .icon-button { flex: 0 0 auto; }
+body.liquid-home .settings-buttons { flex-wrap: nowrap; gap: 0; }
+body.liquid-home.navigation-open .home-header > .top-right-buttons { position: relative; max-width: none; }
+body.liquid-home.navigation-open .toolbar-extras .function-buttons { max-width: 310px; }
+.toolbar-tooltip {
+    position: fixed;
+    z-index: 10020;
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 1px solid var(--glass-edge);
+    border-radius: 9px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 11px;
+    line-height: 1.6;
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+}
+.toolbar-tooltip[hidden], #position-dropdown[hidden] { display: none; }
+#position-dropdown {
+    width: 196px;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100svh - 16px);
+    overflow-y: auto;
+    padding: 7px;
+    box-sizing: border-box;
+    border: 1px solid var(--glass-edge);
+    border-radius: 17px;
+    background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+}
+#position-dropdown .dropdown-item {
+    width: 100%;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    padding: 10px;
+}
+#position-dropdown .dropdown-item:hover, #position-dropdown .dropdown-item.active { background: var(--primary-light); }
+#position-dropdown .dropdown-section-title { padding: 10px 10px 6px; font-weight: 500; }
+body.liquid-home:not(.navigation-open) > .container.content-position-top { padding-top: clamp(100px, 15svh, 150px); }
+body.liquid-home:not(.navigation-open) > .container.content-position-bottom { padding-top: 110px; padding-bottom: max(100px, 15svh); justify-content: flex-end; }
+body.liquid-home.minimal-mode.navigation-open > .container { display: flex !important; }
+body.liquid-home.minimal-mode.navigation-open #minimal-search,
+body.liquid-home.minimal-mode.navigation-open #minimal-clock-bg,
+body.liquid-home.minimal-mode.navigation-open #minimal-wave { display: none; }
+@media (max-width: 850px) {
+    body.liquid-home .toolbar-extras { top: calc(100% + 9px); right: 0; transform: translateY(-7px) scale(.96); transform-origin: right top; }
+    body.liquid-home .toolbar-extras::after { left: 0; top: -11px; width: 100%; height: 12px; }
+}
+@media (max-width: 600px) {
+    body.liquid-home .toolbar-extras .function-buttons { max-width: calc(100vw - 100px); }
+    body.liquid-home .toolbar-extras { max-width: calc(100vw - 32px); }
+}
+@media (prefers-reduced-motion: reduce) { body.liquid-home .toolbar-extras { transition: none; } }

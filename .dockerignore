@@ -26,3 +26,7 @@ Thumbs.db
 HTML/data/links.json
 HTML/data/links-local.json
 HTML/data/catalog.json
+
+temp/
+output/
+node_modules/

@@ -128,9 +128,9 @@ function getRecentLinks() {
 }
 
 // ============ 链接状态监控（P0-2）============
-// 纯前端可达性探测：用 no-cors fetch + 超时判断内网服务是否在线。
-// 仅探测 local/tunnel 类型（公网不探，避免 CORS 误判）。状态缓存供卡片读取。
+// 从当前浏览器探测每个 HTTP(S) 地址的可达性，结果按 URL 独立缓存。
 const LINK_STATUS_CACHE_KEY = 'linkStatusCache';
+const LINK_STATUS_PROBE_VERSION = 2;
 const PROBE_TIMEOUT_MS = 3000;
 const PROBE_INTERVAL_MS = 60000;
 
@@ -139,57 +139,101 @@ function getLinkStatusCache() {
 }
 function setLinkStatus(url, status) {
     const cache = getLinkStatusCache();
-    cache[url] = { ...status, ts: Date.now() };
+    cache[url] = { ...status, probeVersion: LINK_STATUS_PROBE_VERSION, ts: Date.now() };
     setSetting(LINK_STATUS_CACHE_KEY, cache);
 }
 
 // 探测单个 URL：online=可达, ms=响应毫秒, 仅对 http(s) 有效
 async function probeUrl(url) {
-    if (!isSafeUrl(url)) return { online: false, ms: null };
-    const start = performance.now();
+    if (!isSafeUrl(url, ['http:', 'https:'])) return { online: false, ms: null };
+    const clock = window.performance || performance;
+    let start = clock.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
     try {
-        // no-cors：拿不到响应体，但能 resolve 即认为可达（opaque response）
-        await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: controller.signal, redirect: 'follow' });
+        const options = { cache: 'no-store', credentials: 'omit', signal: controller.signal, redirect: 'follow' };
+        let response;
+        try {
+            response = await window.fetch(url, { ...options, mode: 'cors' });
+        } catch (error) {
+            if (controller.signal.aborted) throw error;
+            start = clock.now();
+            response = await window.fetch(url, { ...options, mode: 'no-cors' });
+        }
+        const ms = Math.max(1, Math.round(clock.now() - start));
+        void response.body?.cancel().catch(() => {});
+        // 跨域不透明响应无法读取 HTTP 状态，独立展示为未确认。
+        if (response.type === 'opaque' || response.type === 'opaqueredirect') return { online: null, ms };
+        const httpStatus = response.status;
+        const online = (httpStatus >= 200 && httpStatus < 400) || httpStatus === 401 || httpStatus === 403;
+        return { online, ms, httpStatus };
+    } catch (error) {
+        return { online: false, ms: null };
+    } finally {
         clearTimeout(timer);
-        return { online: true, ms: Math.round(performance.now() - start) };
-    } catch (err) {
-        clearTimeout(timer);
-        // abort=超时；TypeError=网络不可达/CORS拒绝。两者都视为离线
-        const ms = Math.round(performance.now() - start);
-        return { online: false, ms: ms > PROBE_TIMEOUT_MS ? null : ms };
     }
 }
 
-// 判断一个 URL 是否值得探测（仅内网/隧道地址）
 function isProbingUrl(urlObj) {
-    const meta = getUrlChoiceMeta(urlObj);
-    return meta.type === 'local' || meta.type === 'tunnel';
+    return isSafeUrl(urlObj?.address, ['http:', 'https:']);
 }
 
-// 批量探测所有链接的首选可探测 URL，更新缓存 + 刷新卡片状态点
 let probeTimer = null;
+let initialProbeTimer = null;
+const pendingUrlProbes = new Map();
+const urlProbeQueue = [];
+let activeUrlProbes = 0;
+
+function getUrlProbeState(address) {
+    if (!isProbingUrl({ address })) return { state: 'unsupported', text: '不支持探测' };
+    if (getProbeIntervalMs() === 0) return { state: 'off', text: '探测已关闭' };
+    if (pendingUrlProbes.has(address)) return { state: 'checking', text: '检测中' };
+    const cached = getCachedStatusForUrl(address);
+    if (!cached) return { state: 'unknown', text: '未检测' };
+    if (cached.online === null) return { state: 'unconfirmed', text: '有响应 · 未确认' + (cached.ms == null ? '' : ' · ' + cached.ms + 'ms'), ms: cached.ms };
+    if (cached.online) {
+        const text = cached.httpStatus === 401 || cached.httpStatus === 403 ? `需认证 · HTTP ${cached.httpStatus}` : '可达';
+        return { state: 'online', text: text + (cached.ms == null ? '' : ' · ' + cached.ms + 'ms'), ms: cached.ms };
+    }
+    return { state: 'unreachable', text: cached.httpStatus ? `HTTP ${cached.httpStatus}` : '未响应' };
+}
+
+// 所有刷新入口共用最多六个探测任务，重复 URL 共用同一个结果。
+function startQueuedUrlProbes() {
+    while (activeUrlProbes < 6 && urlProbeQueue.length) {
+        const { address, resolve, reject } = urlProbeQueue.shift();
+        if (getProbeIntervalMs() === 0) {
+            pendingUrlProbes.delete(address);
+            resolve();
+            continue;
+        }
+        activeUrlProbes += 1;
+        probeUrl(address).then(result => {
+            setLinkStatus(address, result);
+        }).finally(() => {
+            pendingUrlProbes.delete(address);
+            activeUrlProbes -= 1;
+            window.refreshLinkStatusDots?.();
+            startQueuedUrlProbes();
+        }).then(resolve, reject);
+    }
+}
+
+function queueUrlProbe(address) {
+    if (pendingUrlProbes.has(address)) return pendingUrlProbes.get(address);
+    const task = new Promise((resolve, reject) => urlProbeQueue.push({ address, resolve, reject }));
+    pendingUrlProbes.set(address, task);
+    window.refreshLinkStatusDots?.();
+    startQueuedUrlProbes();
+    return task;
+}
+
 async function probeLinkStatuses(allLinks) {
-    const targets = [];
-    for (const link of allLinks) {
-        const safeUrls = getSafeLinkUrls(link);
-        const probeable = safeUrls.filter(isProbingUrl);
-        if (!probeable.length) continue;
-        const preferred = getPreferredUrlInfo(link, probeable);
-        targets.push({ linkId: link.ID, url: preferred.address });
-    }
-    // 并行探测（限制并发，避免一次打太多）
-    const CONCURRENCY = 6;
-    for (let i = 0; i < targets.length; i += CONCURRENCY) {
-        const batch = targets.slice(i, i + CONCURRENCY);
-        await Promise.all(batch.map(async t => {
-            const result = await probeUrl(t.url);
-            setLinkStatus(t.url, result);
-        }));
-    }
-    // 探测完成后刷新首页卡片状态点
-    if (typeof refreshLinkStatusDots === 'function') refreshLinkStatusDots();
+    if (getProbeIntervalMs() === 0) return;
+    const targets = [...new Set(allLinks.flatMap(link => getSafeLinkUrls(link).filter(isProbingUrl).map(url => url.address)))];
+    await Promise.all(targets.map(queueUrlProbe));
+    window.refreshAutomaticRoutes?.();
+    window.refreshNetworkEnvironmentIndicator?.();
 }
 
 // 探测频率（毫秒）：从设置读取，0 = 关闭探测，默认 60s
@@ -209,13 +253,19 @@ function getStatusCacheTtlMs() {
 // 启动定期轮询
 function startStatusMonitor(allLinks) {
     if (probeTimer) clearInterval(probeTimer);
+    if (initialProbeTimer) clearTimeout(initialProbeTimer);
+    window.refreshLinkStatusDots?.();
+    window.refreshNetworkEnvironmentIndicator?.();
+    window.refreshAutomaticRoutes?.();
     const interval = getProbeIntervalMs();
-    if (interval === 0) return; // 用户关闭了探测
-    // 首次延迟 2s 探测（等首屏渲染完）
-    setTimeout(() => probeLinkStatuses(allLinks), 2000);
+    if (interval === 0) return;
+    const run = () => {
+        void probeLinkStatuses(typeof getNavigationItems === 'function' ? getNavigationItems() : allLinks);
+        void window.checkNetworkEnvironments?.();
+    };
+    initialProbeTimer = setTimeout(run, 0);
     probeTimer = setInterval(() => {
-        if (document.hidden) return;
-        probeLinkStatuses(allLinks);
+        if (!document.hidden) run();
     }, interval);
 }
 
@@ -227,12 +277,19 @@ function restartStatusMonitor() {
 
 // 读取某个 URL 的缓存状态（供卡片显示）
 function getCachedStatusForUrl(url) {
+    if (getProbeIntervalMs() === 0) return null;
     const cache = getLinkStatusCache();
     const entry = cache[url];
-    if (!entry) return null;
+    if (!entry || entry.probeVersion !== LINK_STATUS_PROBE_VERSION) return null;
     // 过期阈值跟随探测间隔，避免 5 分钟档位下一半时间显示「检测中…」
     if (Date.now() - (entry.ts || 0) > getStatusCacheTtlMs()) return null;
     return entry;
+}
+
+function getFastestMeasuredUrl(urls) {
+    return urls.map(url => ({ url, status: getCachedStatusForUrl(url.address) }))
+        .filter(({ url, status }) => isProbingUrl(url) && status && (status.online === true || status.online === null) && typeof status.ms === 'number' && Number.isFinite(status.ms) && status.ms >= 0)
+        .sort((a, b) => a.status.ms - b.status.ms)[0]?.url || null;
 }
 
 function getLinkUrls(link) {
@@ -256,51 +313,56 @@ function getSafeLinkUrls(link) {
         .filter(url => url.address !== '#');
 }
 
+const LINK_DEFAULT_URLS_KEY = 'linkDefaultUrls';
+
+function getDefaultLinkUrls() {
+    const saved = getSetting(LINK_DEFAULT_URLS_KEY, {});
+    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+}
+
+function getLinkRoutePreferenceKey(link) {
+    return String(link.catalogKey || link.ID);
+}
+
+function getPinnedLinkUrl(link, safeUrls = getSafeLinkUrls(link)) {
+    const saved = getDefaultLinkUrls();
+    return safeUrls.find(url => url.address === saved[getLinkRoutePreferenceKey(link)])?.address || '';
+}
+
+function setDefaultLinkUrl(link, address) {
+    if (address && !getSafeLinkUrls(link).some(url => url.address === address)) return false;
+    const saved = { ...getDefaultLinkUrls() };
+    saved[getLinkRoutePreferenceKey(link)] = address;
+    setSetting(LINK_DEFAULT_URLS_KEY, saved);
+    return true;
+}
+
 function getPreferredUrlInfo(link, safeUrls = getSafeLinkUrls(link)) {
     if (!safeUrls.length) return { address: '#', label: '默认' };
 
+    const pinned = getPinnedLinkUrl(link, safeUrls);
+    if (pinned) return safeUrls.find(url => url.address === pinned);
+
+    const mode = getSetting('networkMode', 'auto');
+    if (['local', 'tunnel', 'remote'].includes(mode)) {
+        const candidates = safeUrls.filter(url => getUrlChoiceMeta(url).type === mode && getCachedStatusForUrl(url.address)?.online !== false);
+        const match = getFastestMeasuredUrl(candidates) || candidates[0];
+        if (match) return match;
+    }
+
+    const fastest = getFastestMeasuredUrl(safeUrls);
+    if (fastest) return fastest;
+
+    const remaining = safeUrls.filter(url => getCachedStatusForUrl(url.address)?.online !== false);
+    const candidates = remaining.length ? remaining : safeUrls;
+
     // 用户手动选过的地址优先（记住上次选择）
     const savedUrl = getLastUsedLinkUrls()[String(link?.ID)];
-    const savedMatch = safeUrls.find(url => url.address === savedUrl);
-    if (savedMatch) return savedMatch;
+    const savedMatch = candidates.find(url => url.address === savedUrl);
+    const defaults = getDefaultLinkUrls();
+    if (savedMatch && !Object.hasOwn(defaults, getLinkRoutePreferenceKey(link))) return savedMatch;
 
-    // 否则按当前网络环境智能选择路线：
-    // 内网访问→内网优先；Tailscale 域名访问→隧道优先；公网访问→公网优先
-    const typed = safeUrls.map(url => ({ url, type: getUrlChoiceMeta(url).type }));
-    const preferred = getRoutePreferenceOrder()
-        .map(type => typed.find(item => item.type === type))
-        .find(Boolean);
-    return preferred ? preferred.url : safeUrls[0];
-}
-
-function getRoutePreferenceOrder() {
-    if (isLocalNetworkContext()) return ['local', 'tunnel', 'remote'];
-    if (isTunnelNetworkContext()) return ['tunnel', 'local', 'remote'];
-    return ['remote', 'tunnel', 'local'];
-}
-
-// 当前页面是通过内网还是公网访问（用于智能选择链接首选 URL）
-let _cachedNetworkContext = null;
-function isLocalNetworkContext() {
-    if (_cachedNetworkContext !== null) return _cachedNetworkContext;
-    try {
-        _cachedNetworkContext = isPrivateHost(window.location.hostname) && !isTunnelHost(window.location.hostname);
-    } catch {
-        _cachedNetworkContext = false;
-    }
-    return _cachedNetworkContext;
-}
-
-// 页面本身挂在 Tailscale 域名下时，隧道地址才是最短路径
-let _cachedTunnelContext = null;
-function isTunnelNetworkContext() {
-    if (_cachedTunnelContext !== null) return _cachedTunnelContext;
-    try {
-        _cachedTunnelContext = isTunnelHost(window.location.hostname);
-    } catch {
-        _cachedTunnelContext = false;
-    }
-    return _cachedTunnelContext;
+    return candidates[0];
 }
 
 function getUrlDisplayLabel(urlObj, index) {
@@ -380,37 +442,17 @@ function defaultThumbnailFor(address) {
         : '';
 }
 
-function openLinkUrl(link, url) {
+function openLinkUrl(link, url, { direct = false } = {}) {
     let chosen = url;
-    // 智能选路：多地址链接且首选探测为离线时，自动切换到探测在线且延迟最低的地址。
-    // 手动记住过的地址仍最优先（用户意图高于自动化）；探测缓存过期则不干预。
-    if (getSetting('smartRouting', false) === true) {
-        const safeUrls = getSafeLinkUrls(link);
-        if (safeUrls.length > 1) {
-            const saved = getLastUsedLinkUrls()[String(link?.ID)];
-            if (saved !== chosen) {
-                const current = getCachedStatusForUrl(chosen);
-                if (current && current.online === false) {
-                    const best = safeUrls
-                        .map(u => ({ u, st: getCachedStatusForUrl(u.address) }))
-                        .filter(x => x.st && x.st.online)
-                        .sort((a, b) => (a.st.ms ?? 1e9) - (b.st.ms ?? 1e9))[0];
-                    if (best && best.u.address !== chosen) {
-                        chosen = best.u.address;
-                        if (typeof window.showMessage === 'function') {
-                            window.showMessage(`首选地址离线，已自动切换（${best.st.ms ?? '?'}ms）`, 'warning');
-                        }
-                    }
-                }
-            }
-        }
+    if (!direct && !getPinnedLinkUrl(link) && getSetting('networkMode', 'auto') === 'auto') {
+        chosen = getPreferredUrlInfo(link).address;
     }
     const safeUrl = sanitizeUrl(chosen);
     if (safeUrl === '#') {
         openSafeUrl(safeUrl);
         return;
     }
-    rememberLastUsedLinkUrl(link, safeUrl);
+    if (!direct) rememberLastUsedLinkUrl(link, safeUrl);
     recordRecentLink(link);
     recordVisitCount(link.ID);
     openSafeUrl(safeUrl);
@@ -446,15 +488,13 @@ function normalizeLinks(rawLinks) {
                     label: String(url.label || `地址 ${index + 1}`),
                     priority: Number.parseInt(url.priority, 10) || index + 1
                 }));
-            if (normalized.urls.length > 1) {
-                delete normalized.url;
-            } else if (normalized.urls.length === 1) {
-                normalized.url = normalized.urls[0].address;
-                delete normalized.urls;
-            }
+            if (normalized.urls.length) delete normalized.url;
         } else if (link?.url) {
             normalized.url = String(link.url).trim();
         }
+
+        // 扫描目录的资源会携带空 url，命令与路径仍属于有效入口。
+        if (normalized.url !== undefined && !String(normalized.url).trim()) delete normalized.url;
 
         // 单地址旧格式同样过协议白名单；地址全部非法的链接直接丢弃
         if (normalized.url !== undefined) {
@@ -462,7 +502,7 @@ function normalizeLinks(rawLinks) {
                 return null;
             }
         } else if (!Array.isArray(normalized.urls) || normalized.urls.length === 0) {
-            return null;
+            if (!['mcp', 'skill'].includes(normalized.kind) || !String(normalized.copyValue || '').trim()) return null;
         }
 
         if (link?.thumbnail) {
@@ -482,6 +522,7 @@ function loadStoredLinks(defaultLinks) {
 function persistLinks() {
     setSetting(LINKS_STORAGE_KEY, { links });
     setSetting('lastUpdate', new Date().toISOString());
+    window.markNavigationDirty?.();
 }
 
 function getCustomCategoryIcons() {
@@ -528,6 +569,16 @@ const defaultHomeLayoutSettings = {
     density: 'balanced'
 };
 
+function applyContentPosition(position = getSetting('contentPosition', 'default')) {
+    const value = ['top', 'default', 'bottom'].includes(position) ? position : 'default';
+    const container = document.querySelector('main.container');
+    container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
+    container.classList.add('content-position-' + value);
+    const select = document.getElementById('page-position-select');
+    if (select) select.value = value;
+    return value;
+}
+
 function loadHomeLayoutSettings() {
     const saved = getSetting(HOME_LAYOUT_SETTINGS_KEY, {}) || {};
     const density = ['balanced', 'compact', 'spacious'].includes(saved?.density)
@@ -551,13 +602,13 @@ function applyHomeCategoryDisplayMode(settings = loadHomeLayoutSettings()) {
     const density = settings.density || defaultHomeLayoutSettings.density;
     body.classList.remove('home-density-balanced', 'home-density-compact', 'home-density-spacious');
     body.classList.add(`home-density-${density}`);
-    body.classList.add('home-categories-open');
+    body.classList.remove('home-categories-open');
 
     window.updateCategoryActionButtonState?.();
 }
 
 const defaultHomeFeatureSettings = {
-    showTitle: true,
+    showTitle: false,
     showInfoBar: true,
     showSearch: true
 };
@@ -565,8 +616,8 @@ const defaultHomeFeatureSettings = {
 function loadHomeFeatureSettings() {
     const saved = getSetting(HOME_FEATURE_SETTINGS_KEY, {}) || {};
     return {
-        showTitle: saved?.showTitle !== false,
-        showInfoBar: saved?.showInfoBar !== false,
+        showTitle: saved?.showTitle ?? false,
+        showInfoBar: saved?.showInfoBar ?? true,
         showSearch: saved?.showSearch !== false
     };
 }

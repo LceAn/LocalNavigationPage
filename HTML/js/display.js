@@ -18,6 +18,7 @@ const dateFormatSelect = document.getElementById('date-format-select');
 const showWeatherToggle = document.getElementById('show-weather-toggle');
 const weatherCityInput = document.getElementById('weather-city-input');
 const weatherUnitSelect = document.getElementById('weather-unit-select');
+const weatherEffectsToggle = document.getElementById('weather-effects-toggle');
 
 // 时间日期显示设置默认值
 const defaultDisplaySettings = {
@@ -28,7 +29,8 @@ const defaultDisplaySettings = {
     dateFormat: 'cn',
     showWeather: true,
     weatherCity: 'shanghai',
-    weatherUnit: 'C'
+    weatherUnit: 'C',
+    weatherEffects: true
 };
 
 // 加载显示设置
@@ -52,6 +54,7 @@ function getCachedDisplaySettings() {
 function saveDisplaySettings(settings) {
     setSetting('displaySettings', settings);
     cachedDisplaySettings = settings; // 失效缓存，下次取最新
+    window.refreshWeatherAtmosphere?.();
 }
 
 // 格式化日期
@@ -156,6 +159,7 @@ function initDisplaySettings() {
     if (showWeatherToggle) showWeatherToggle.checked = settings.showWeather;
     if (weatherCityInput) weatherCityInput.value = settings.weatherCity;
     if (weatherUnitSelect) weatherUnitSelect.value = settings.weatherUnit;
+    if (weatherEffectsToggle) weatherEffectsToggle.checked = settings.weatherEffects !== false;
     
     // 绑定事件
     if (showTimeToggle) {
@@ -214,6 +218,7 @@ function initDisplaySettings() {
             settings.showWeather = this.checked;
             saveDisplaySettings(settings);
             updateTimeDisplay();
+            updateWeather();
             showMessage(this.checked ? '已显示天气' : '已隐藏天气');
         });
     }
@@ -237,6 +242,14 @@ function initDisplaySettings() {
             showMessage(`已更新温度单位为${this.value === 'C' ? '摄氏度' : '华氏度'}`);
         });
     }
+
+    if (weatherEffectsToggle) {
+        weatherEffectsToggle.addEventListener('change', function() {
+            saveDisplaySettings({ ...loadDisplaySettings(), weatherEffects: this.checked });
+            updateWeather();
+            showMessage(this.checked ? '已开启天气特效' : '已关闭天气特效');
+        });
+    }
 }
 
 // 更新天气功能（支持多地区）
@@ -247,7 +260,7 @@ function getCachedWeather(cities, unit) {
         const c = JSON.parse(localStorage.getItem('weatherCache') || 'null');
         if (!c) return null;
         if (c.cities !== cities.join(',') || c.unit !== unit) return null;
-        if (Date.now() - c.ts > WEATHER_CACHE_MS) return null;
+        if (!Number.isFinite(c.ts) || c.ts > Date.now() || Date.now() - c.ts > WEATHER_CACHE_MS) return null;
         return c;
     } catch { return null; }
 }
@@ -260,41 +273,86 @@ function setCachedWeather(cities, unit, payload) {
     } catch { /* 配额满则忽略 */ }
 }
 
-function updateWeather() {
+let weatherRequestId = 0;
+
+function updateWeather(force = false) {
+    weatherRequestId += 1;
     const settings = loadDisplaySettings();
-    const cities = settings.weatherCity.split(',').map(c => c.trim()).filter(c => c);
+    if (!settings.showWeather && settings.weatherEffects === false) {
+        window.applyWeatherAtmosphere?.(null);
+        return;
+    }
+    const cities = String(settings.weatherCity || '').split(',').map(c => c.trim()).filter(c => c);
     const unit = settings.weatherUnit === 'F' ? 'F' : 'C';
     const weatherLocationsEl = document.getElementById('weather-locations');
     const weatherLocationText = document.getElementById('weather-location-text');
     
     if (cities.length === 0) {
         if (weatherLocationsEl) weatherLocationsEl.style.display = 'none';
+        window.applyWeatherAtmosphere?.(null);
         return;
     }
     
     // 如果只有一个城市，不显示地区名称
     if (cities.length === 1) {
         if (weatherLocationsEl) weatherLocationsEl.style.display = 'none';
-        // 15 分钟缓存：命中则直接渲染,避免频繁请求 wttr.in 触发限流
-        const cached = getCachedWeather(cities, unit);
-        if (cached && cached.text) {
-            renderWeatherTextFromCache(cached);
-            return;
-        }
-
-        fetchWeatherForCity(cities[0], unit, 'weather-text');
     } else {
         // 多城市：显示第一个城市的天气，并在后面显示所有城市名称
         if (weatherLocationsEl) {
             weatherLocationsEl.style.display = 'inline-flex';
             weatherLocationText.textContent = cities.join(' / ');
         }
-        fetchWeatherForCity(cities[0], unit, 'weather-text');
     }
+    const cached = !force && getCachedWeather([cities[0]], unit);
+    if (cached?.text) renderWeatherTextFromCache(cached);
+    else fetchWeatherForCity(cities[0], unit, 'weather-text');
 }
+
+function weatherObservationFromText(text, city, at) {
+    const match = String(text).match(/([+-]?\d+(?:\.\d+)?)\s*°\s*([CF])/i);
+    const temperature = match ? Number(match[1]) : null;
+    return {
+        description: String(text), city: String(city).trim().toLowerCase(), at,
+        temperatureC: temperature === null ? null : match[2].toUpperCase() === 'F' ? (temperature - 32) * 5 / 9 : temperature
+    };
+}
+
+// hover 天气胶囊时显示详细数据（湿度/风/体感/能见度等）
+function attachWeatherDetail(detail, unit) {
+    const weatherInfo = document.getElementById('weather-info');
+    if (!weatherInfo || !detail) return;
+    // 翻译风向
+    const dirMap = { N:'北', NNE:'北偏东', NE:'东北', ENE:'东偏北', E:'东', ESE:'东偏南', SE:'东南', SSE:'南偏东', S:'南', SSW:'南偏西', SW:'西南', WSW:'西偏南', W:'西', WNW:'西偏北', NW:'西北', NNW:'北偏西' };
+    const uvDesc = (uv) => uv < 3 ? '低' : uv < 6 ? '中等' : uv < 8 ? '高' : uv < 11 ? '很高' : '极强';
+    const rows = [];
+    if (detail.city) rows.push(['城市', detail.city]);
+    if (detail.feelsLike !== undefined) rows.push(['体感', `${detail.feelsLike}°${unit}`]);
+    if (detail.humidity) rows.push(['湿度', `${detail.humidity}%`]);
+    if (detail.windSpeed) rows.push(['风力', `${detail.windSpeed} ${unit==='F'?'mph':'km/h'}${detail.windDir ? ' ' + (dirMap[detail.windDir] || detail.windDir) : ''}`]);
+    if (detail.visibility) rows.push(['能见度', `${detail.visibility} km`]);
+    if (detail.pressure) rows.push(['气压', `${detail.pressure} hPa`]);
+    if (detail.uvIndex !== undefined) rows.push(['紫外线', `${detail.uvIndex}（${uvDesc(Number(detail.uvIndex))}）`]);
+
+    if (!rows.length) return;
+    // 构建详情浮层（移除旧的）
+    let popover = weatherInfo.querySelector('.weather-detail');
+    if (popover) popover.remove();
+    popover = document.createElement('div');
+    popover.className = 'weather-detail';
+    popover.innerHTML = rows.map(([k, v]) =>
+        `<div class="weather-detail-row"><span class="weather-detail-label">${k}</span><span class="weather-detail-value">${escapeHTML(String(v))}</span></div>`
+    ).join('');
+    weatherInfo.appendChild(popover);
+    weatherInfo.classList.add('has-detail');
+}
+
 
 // 获取指定城市的天气
 function fetchWeatherForCity(city, unit, elementId) {
+    const requestId = ++weatherRequestId;
+    const weatherInfo = document.getElementById('weather-info');
+    weatherInfo?.querySelector('.weather-detail')?.remove();
+    weatherInfo?.classList.remove('has-detail');
     const weatherText = document.getElementById(elementId);
     if (weatherText) {
         weatherText.textContent = '加载中...';
@@ -315,48 +373,20 @@ function fetchWeatherForCity(city, unit, elementId) {
     const shortTextUrl = `https://wttr.in/${encodeURIComponent(city)}?${shortTextParams.toString()}`;
 
     function renderWeatherText(text) {
+        if (requestId !== weatherRequestId) return null;
         let cleanedText = text.trim().replace(/\s+/g, ' ');
         cleanedText = translateWeatherText(cleanedText);
         const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(cleanedText) || cleanedText.includes('<!DOCTYPE');
         // 正常短文本由 %C %t 组成，必然包含温度符号 °；
         // wttr.in 偶尔把气象警报文本塞进 %C 字段，识别后按不可用处理
         const looksLikeAlert = !cleanedText.includes('°');
+        const valid = !looksLikeHtml && !looksLikeAlert && cleanedText.length <= 48;
         if (weatherText) {
-            weatherText.textContent = looksLikeHtml || looksLikeAlert || cleanedText.length > 48
-                ? '天气暂不可用'
-                : cleanedText;
+            weatherText.textContent = valid ? cleanedText : '天气暂不可用';
             weatherText.classList.remove('loading');
             weatherText.classList.add('loaded');
         }
-    }
-
-    // hover 天气胶囊时显示详细数据（湿度/风/体感/能见度等）
-    function attachWeatherDetail(detail, unit) {
-        const weatherInfo = document.getElementById('weather-info');
-        if (!weatherInfo || !detail) return;
-        // 翻译风向
-        const dirMap = { N:'北', NNE:'北偏东', NE:'东北', ENE:'东偏北', E:'东', ESE:'东偏南', SE:'东南', SSE:'南偏东', S:'南', SSW:'南偏西', SW:'西南', WSW:'西偏南', W:'西', WNW:'西偏北', NW:'西北', NNW:'北偏西' };
-        const uvDesc = (uv) => uv < 3 ? '低' : uv < 6 ? '中等' : uv < 8 ? '高' : uv < 11 ? '很高' : '极强';
-        const rows = [];
-        if (detail.city) rows.push(['城市', detail.city]);
-        if (detail.feelsLike !== undefined) rows.push(['体感', `${detail.feelsLike}°${unit}`]);
-        if (detail.humidity) rows.push(['湿度', `${detail.humidity}%`]);
-        if (detail.windSpeed) rows.push(['风力', `${detail.windSpeed} ${unit==='F'?'mph':'km/h'}${detail.windDir ? ' ' + (dirMap[detail.windDir] || detail.windDir) : ''}`]);
-        if (detail.visibility) rows.push(['能见度', `${detail.visibility} km`]);
-        if (detail.pressure) rows.push(['气压', `${detail.pressure} hPa`]);
-        if (detail.uvIndex !== undefined) rows.push(['紫外线', `${detail.uvIndex}（${uvDesc(Number(detail.uvIndex))}）`]);
-
-        if (!rows.length) return;
-        // 构建详情浮层（移除旧的）
-        let popover = weatherInfo.querySelector('.weather-detail');
-        if (popover) popover.remove();
-        popover = document.createElement('div');
-        popover.className = 'weather-detail';
-        popover.innerHTML = rows.map(([k, v]) =>
-            `<div class="weather-detail-row"><span class="weather-detail-label">${k}</span><span class="weather-detail-value">${escapeHTML(String(v))}</span></div>`
-        ).join('');
-        weatherInfo.appendChild(popover);
-        weatherInfo.classList.add('has-detail');
+        return valid ? cleanedText : null;
     }
 
     // wttr.in 返回的天气描述是英文，这里翻译成中文（覆盖常见词组 + 整句兜底）
@@ -404,7 +434,9 @@ function fetchWeatherForCity(city, unit, elementId) {
     }
 
     function fetchShortTextWeather() {
+        if (requestId !== weatherRequestId) return;
         return fetch(shortTextUrl, {
+            signal: AbortSignal.timeout(6000),
             headers: {
                 Accept: 'text/plain'
             }
@@ -415,10 +447,18 @@ function fetchWeatherForCity(city, unit, elementId) {
                 }
                 return res.text();
             })
-            .then(renderWeatherText);
+            .then(text => {
+                const rendered = renderWeatherText(text);
+                if (requestId !== weatherRequestId) return;
+                if (!rendered) { window.applyWeatherAtmosphere?.(null); return; }
+                const atmosphere = weatherObservationFromText(rendered, city, Date.now());
+                setCachedWeather([city], unit, { text: rendered, unit, atmosphere });
+                window.applyWeatherAtmosphere?.(atmosphere);
+            });
     }
 
-    fetch(jsonUrl, {
+    return fetch(jsonUrl, {
+        signal: AbortSignal.timeout(6000),
         headers: {
             Accept: 'application/json'
         }
@@ -430,22 +470,17 @@ function fetchWeatherForCity(city, unit, elementId) {
             return res.json();
         })
         .then(data => {
+            if (requestId !== weatherRequestId) return;
             const current = data?.current_condition?.[0];
             const description = current?.lang_zh?.[0]?.value || current?.weatherDesc?.[0]?.value || '';
             const temp = unit === 'F' ? current?.temp_F : current?.temp_C;
-            if (!description || temp === undefined) {
+            if (!description || temp == null || String(temp).trim() === '' || !Number.isFinite(Number(temp))) {
                 throw new Error('天气数据不完整');
             }
-            renderWeatherText(`${description} ${temp}°${unit}`);
-
-            // 写入 15 分钟缓存（存翻译后的文本，命中时免再翻译）
-            try {
-                setCachedWeather(cities, unit, {
-                    text: translateWeatherText(description) + ' ' + temp + '°' + unit,
-                    unit,
-                    detail
-                });
-            } catch (e) { /* 配额满则忽略 */ }
+            if (!renderWeatherText(`${description} ${temp}°${unit}`)) throw new Error('天气数据无效');
+            const atmosphere = weatherObservationFromText(`${description} ${temp}°${unit}`, city, Date.now());
+            atmosphere.code = current.weatherCode;
+            if (current.temp_C != null && String(current.temp_C).trim() !== '' && Number.isFinite(Number(current.temp_C))) atmosphere.temperatureC = Number(current.temp_C);
 
             // 保存详细数据，供 hover 详情显示
             const detail = {
@@ -458,12 +493,25 @@ function fetchWeatherForCity(city, unit, elementId) {
                 uvIndex: current?.uvIndex,              // 紫外线指数
                 city: data?.nearest_area?.[0]?.areaName?.[0]?.value || city // 城市名
             };
+            // 写入 15 分钟缓存（存翻译后的文本，命中时免再翻译）
+            try {
+                setCachedWeather([city], unit, {
+                    text: translateWeatherText(description) + ' ' + temp + '°' + unit,
+                    unit,
+                    detail,
+                    atmosphere
+                });
+            } catch (e) { /* 配额满则忽略 */ }
+
             attachWeatherDetail(detail, unit);
+            window.applyWeatherAtmosphere?.(atmosphere);
         })
         .catch(() => fetchShortTextWeather())
         .catch(() => {
+            if (requestId !== weatherRequestId) return;
+            window.applyWeatherAtmosphere?.(null);
             if (weatherText) {
-                weatherText.textContent = '获取失败';
+                weatherText.textContent = '天气暂不可用';
                 weatherText.classList.remove('loading');
                 weatherText.classList.add('loaded');
             }
@@ -474,6 +522,16 @@ function fetchWeatherForCity(city, unit, elementId) {
 initDisplaySettings();
 updateTimeDisplay();
 updateWeather();
+window.setInterval(() => { if (!document.hidden) updateWeather(true); }, WEATHER_CACHE_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateWeather(); });
+window.addEventListener('online', () => updateWeather());
+window.addEventListener('storage', event => {
+    if (event.key !== 'lnp:settings') return;
+    cachedDisplaySettings = null;
+    if (weatherEffectsToggle) weatherEffectsToggle.checked = loadDisplaySettings().weatherEffects !== false;
+    updateTimeDisplay(true);
+    updateWeather();
+});
 
 // 离线指示条：navigator.onLine 变化时提示(离线缓存仍可正常使用)
 (() => {
@@ -505,4 +563,6 @@ function renderWeatherTextFromCache(cached) {
     if (cached.detail && typeof attachWeatherDetail !== 'undefined') {
         attachWeatherDetail(cached.detail, cached.unit || 'C');
     }
+    const city = String(cached.cities || loadDisplaySettings().weatherCity).split(',')[0];
+    window.applyWeatherAtmosphere?.(cached.atmosphere || weatherObservationFromText(cached.text, city, cached.ts));
 }

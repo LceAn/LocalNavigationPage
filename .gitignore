@@ -8,3 +8,6 @@ links-local.json
 # 本地工具数据（记忆/缓存）
 .workbuddy/
 catalog.json
+
+.playwright-cli/
+output/playwright/

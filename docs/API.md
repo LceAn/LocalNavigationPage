@@ -121,6 +121,40 @@ node scripts/mcp-server.mjs
 
 ## Docker 部署注意事项
 
-Docker 版本（Nginx）**不含** API——Nginx 仅服务静态文件。需要 API 时：
-1. 在宿主机运行 `npm run serve` 替代 Docker
-2. 或在宿主机运行 `node scripts/mcp-server.mjs`（挂载同一数据卷）
+Docker 镜像从 1.18.0 起运行 Node.js 服务，包含 REST API 与共享配置接口。持久化目录为 `/data`，已有 `HTML/data` 挂载方式继续沿用。具体启动与 Tailscale 访问方式见 [部署指南](DEPLOY.md)。
+
+## 共享配置（1.18.0）
+
+`GET /api/config` 返回 `{links, settings, revision}`。`settings` 包含分类、分类图标和排序，`revision` 是当前文件内容的 SHA-256 版本标识。
+
+`PUT /api/config` 请求体为 `{links, settings}`，请求头 `If-Match` 使用最近读取的 `revision`。成功返回 `{revision, total}`。版本冲突返回 409，无效输入返回 400，跨源写入返回 403。写入通过单进程队列和同目录临时文件重命名完成。运行环境通过 `LNP_DATA_DIR` 指定持久化目录。
+
+现有 `/api/links` 接口保留，同时支持多地址 `urls` 数组，更新时保留其他配置字段。
+
+
+## 在线编辑与目录（1.19.0）
+
+浏览器编辑自动调用 `PUT /api/config`，沿用 `If-Match` 版本检查。客户端在 409 时尝试三方合并，同一字段冲突保留本机草稿。共享设置新增 `hiddenCatalogKeys` 字符串数组，用于隐藏已删除的扫描目录入口。
+
+`GET /api/catalog` 读取持久化目录中的 `catalog.json`，文件缺失时返回公开示例，响应格式包含 `mcpServers` 和 `skills`。编辑扫描入口后，覆盖项作为普通 `links` 记录保存，`catalogKey` 关联原扫描条目。
+
+普通链接支持 `kind` 为 `site` / `ai` / `mcp` / `skill`。MCP 和 Skill 可使用 `copyValue` 保存命令或路径，此时 `urls` 可为空数组。`POST /api/links`、`PUT /api/links/:id` 和共享配置接口均支持该格式。
+
+
+## 网络环境配置（1.20.0）
+
+共享配置 `settings.networkEnvironments` 为对象数组，各项包含唯一 `id`、显示名称 `name`、访问线路 `route` 和可选检测地址 `probeUrl`。`route` 支持 `auto` / `local` / `tunnel` / `remote`。检测地址支持 HTTP 与 HTTPS，检测由浏览器执行。服务器验证标识唯一性、线路枚举和地址协议，并通过现有配置版本机制保存。
+
+浏览器的 `activeNetworkEnvironment` 保存当前所选环境，随该环境设置当前设备的 `networkMode`，两个字段均按设备维护。
+
+## 资源详情（1.24.0）
+
+`POST /api/catalog/inspect` 接收 `{catalogKey, linkId, address?, refresh?}`。扫描条目传 `catalogKey`，自建或覆盖项传 `linkId`。`address` 从已保存地址中选择。`refresh: true` 强制重新检测。接口沿用同源写入检查，检测独立于配置写入队列。
+
+MCP 返回 `kind`、`connection`（协议、端点或命令、凭据键配置状态、脱敏 `clientConfig`）、`status`、`serverInfo`、`protocolVersion`、`tools`、`checkedAt`、`detectionLocation`。工具包含服务发布的描述、输入及输出 Schema。支持 2026-07-28 按请求发现协议与 2025/2024 握手协议。检测依次进行发现/握手及 `tools/list`，处理分页并清理会话或子进程。
+
+每个连接结果缓存 15 秒，同配置的并发请求合并，全局最多三个活动检测，默认超时 20 秒。认证失败、超时、普通网页响应与异常工具分页返回相应状态。状态 `available` 表示本次成功读取服务发布的工具清单。
+
+Skill 返回 `status`、`markdown`、`sections`、`allowedTools`、`compatibility`、`version`、`license`、`files`、`checkedAt`。最多读取 256 KiB 的 `SKILL.md`，文件清单展示根目录与下一层，共最多 120 项。`available` 表示技能已启用且文件可读取，另有 `disabled`、`missing`、`unconfigured` 状态。
+
+请求以已保存目录为资源来源。STDIO 的实际命令从服务器 MCP 配置读取，HTTP 的凭据也从该配置读取。环境变量 `LNP_MCP_CONFIG` 指定配置文件，`LNP_SKILLS_DIR` 可将目录项映射到服务器技能根目录，`LNP_MCP_TIMEOUT_MS` 调整检测超时。

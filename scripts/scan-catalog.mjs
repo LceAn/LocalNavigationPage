@@ -27,14 +27,28 @@ export function maskArg(value) {
     const flagValue = arg.match(/^(--?[^=]+)=(.+)$/);
     if (flagValue && SENSITIVE_FLAG.test(flagValue[1])) return `${flagValue[1]}=***`;
     // URL 里的 user:pass@
-    if (/^[a-z]+:\/\/[^/@]+@/i.test(arg)) {
-        return arg.replace(/^([a-z]+:\/\/)[^/@]+@/i, '$1***@');
-    }
+    const masked = arg.replace(/^([a-z]+:\/\/)[^/@]+@/i, '$1***@')
+        .replace(/([?&])([^=&#]+)=([^&#]*)/g, (match, separator, key) => {
+            let decoded = key;
+            try { decoded = decodeURIComponent(key); } catch { /* 保留原键名 */ }
+            return SENSITIVE_FLAG.test(decoded) ? `${separator}${key}=***` : match;
+        });
+    if (masked !== arg) return masked;
     // 独立的长 token（不含路径分隔符，避免误伤文件路径）
     if (!/[\\/]/.test(arg) && (TOKEN_PREFIX.test(arg) || /^[A-Za-z0-9_-]{32,}$/.test(arg))) {
         return '***';
     }
     return arg;
+}
+
+export function maskArgs(values = []) {
+    let hideNext = false;
+    return values.map(value => {
+        const arg = String(value);
+        if (hideNext) { hideNext = false; return '***'; }
+        hideNext = /^--?[^=]+$/.test(arg) && SENSITIVE_FLAG.test(arg);
+        return maskArg(arg);
+    });
 }
 
 export function parseMcpConfig(document) {
@@ -55,9 +69,10 @@ export function parseMcpConfig(document) {
                 name,
                 description: String(config.description || ''),
                 transport,
-                ...(url ? { url } : {}),
+                enabled: config.disabled !== true,
+                ...(url ? { url: maskArg(url) } : {}),
                 ...(config.command ? { command: String(config.command) } : {}),
-                ...(Array.isArray(config.args) ? { args: config.args.map(maskArg) } : {}),
+                ...(Array.isArray(config.args) ? { args: maskArgs(config.args) } : {}),
                 ...(envKeys.length ? { envKeys } : {}),
                 ...(headerKeys.length ? { headerKeys } : {}),
                 ...(Number.isFinite(tools) && tools > 0 ? { tools } : {}),
@@ -69,15 +84,23 @@ export function parseMcpConfig(document) {
 }
 
 export function parseSkillMarkdown(text, dirName = '', displayPath = '') {
-    const source = String(text || '');
+    const source = String(text || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
     const frontmatter = source.match(/^---\s*\n([\s\S]*?)\n---\s*\n?/);
     const meta = {};
 
     if (frontmatter) {
-        for (const line of frontmatter[1].split('\n')) {
+        const lines = frontmatter[1].split('\n');
+        for (let index = 0; index < lines.length; index += 1) {
+            const line = lines[index];
             const match = line.match(/^([A-Za-z][\w-]*):\s*(.*)$/);
             if (!match) continue;
-            meta[match[1].toLowerCase()] = match[2].trim().replace(/^["']|["']$/g, '');
+            let value = match[2].trim();
+            if (value === '|' || value === '>' || !value) {
+                const block = [];
+                while (index + 1 < lines.length && (/^\s+\S/.test(lines[index + 1]) || !lines[index + 1].trim())) block.push(lines[++index].trim().replace(/^-\s+/, ''));
+                value = block.join(value === '|' ? '\n' : value === '>' ? ' ' : ', ');
+            }
+            meta[match[1].toLowerCase()] = value.replace(/^["']|["']$/g, '');
         }
     }
 
@@ -90,7 +113,13 @@ export function parseSkillMarkdown(text, dirName = '', displayPath = '') {
             ? rawTags.split(',').map(tag => tag.trim().replace(/^["']|["']$/g, '')).filter(Boolean)
             : [],
         path: displayPath || dirName,
-        enabled: true
+        enabled: true,
+        version: meta.version || '',
+        license: meta.license || '',
+        compatibility: meta.compatibility || meta.requires || '',
+        allowedTools: String(meta['allowed-tools'] || '').replace(/^\[|\]$/g, '').split(/,\s*|\s+(?=[A-Z][\w-]*(?:\(|$))/).map(value => value.trim().replace(/^["']|["']$/g, '')).filter(Boolean),
+        sections: source.replace(frontmatter?.[0] || '', '').replace(/```[\s\S]*?```/g, '').split('\n')
+            .filter(line => /^#{1,4}\s+/.test(line)).map(line => line.replace(/^#+\s+/, '').trim()).slice(0, 80)
     };
 }
 

@@ -3,12 +3,8 @@ services:
     build: .
     image: lcean/local-navigation-page:latest
     container_name: local-navigation-page
-
     ports:
-      - "8080:80"  # 主机端口:容器端口，可自定义
-
+      - "${LNP_BIND_IP:-0.0.0.0}:${LNP_PORT:-8080}:8080"
     volumes:
-      # 持久化链接配置；首次启动若目录中没有 links.json，容器会自动生成默认文件
-      - ./HTML/data:/usr/share/nginx/html/data
-
+      - ./HTML/data:/data
     restart: unless-stopped

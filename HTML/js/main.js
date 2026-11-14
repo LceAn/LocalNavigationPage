@@ -8,6 +8,10 @@ document.addEventListener("DOMContentLoaded", function () {
     // 触发 v1 → v2 一次性迁移（首次访问把分散的 localStorage key 合并到 lnp:settings 容器）
     try { getAllSettings(); } catch (e) { console.warn('初始化设置失败', e); }
 
+    if (!getSetting('homeInfoRestored120', false)) {
+        saveHomeFeatureSettings({ ...loadHomeFeatureSettings(), showInfoBar: true });
+        setSetting('homeInfoRestored120', true);
+    }
     applyHomeFeatureSettings();
 
     // 装饰性图标（图标字体）对辅助技术隐藏，避免朗读无意义字形
@@ -52,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
     })();
 
     // 获取链接数据并渲染到页面
-    fetch('data/links.json')
+    window.loadNavigationSource()
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
@@ -61,7 +65,7 @@ document.addEventListener("DOMContentLoaded", function () {
         })
         .then(data => {
             bundledLinks = normalizeLinks(data.links);
-            links = loadStoredLinks(bundledLinks);
+            links = window.serverConfigLoaded ? bundledLinks : loadStoredLinks(bundledLinks);
             renderLinksByCategory(links);
             renderRecentLinks(links);
             renderLinksInSettingsIfVisible(links);
@@ -72,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch(error => {
             console.error('加载链接数据失败：', error);
             bundledLinks = normalizeLinks(fallbackLinks);
-            links = loadStoredLinks(bundledLinks);
+            links = window.serverConfigLoaded ? bundledLinks : loadStoredLinks(bundledLinks);
             renderLinksByCategory(links);
             renderRecentLinks(links);
             renderLinksInSettingsIfVisible(links);
@@ -85,7 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const messageContainer = document.getElementById('message-container');
 
     let messageHideTimer = null;
-    function showMessage(message, type = 'success') {
+    function showMessage(message, type = 'success', duration = 2000) {
         message = (typeof t === 'function') ? t(message) : message;
         messageContainer.textContent = message;
         // 类型样式：success 保持默认渐变，warning/error 换色区分
@@ -99,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
         clearTimeout(messageHideTimer);
         messageHideTimer = setTimeout(() => {
             hideMessage();
-        }, 2000);
+        }, duration);
     }
     window.showMessage = showMessage;
     window.persistLinks = persistLinks;
@@ -122,6 +126,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function handleScroll() {
+        if (document.body.classList.contains('navigation-open')) {
+            searchContainer.classList.remove('fixed');
+            ticking = false;
+            return;
+        }
         const scrollY = window.scrollY || window.pageYOffset;
         const documentHeight = document.documentElement.scrollHeight;
         const windowHeight = window.innerHeight;
@@ -207,11 +216,20 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!settingsSearchInput || !settingsContent) return;
 
         const activeTabName = getActiveSettingsTabName();
-        const shouldShowSearch = activeTabName !== 'links';
+        const linksQuery = document.getElementById('links-search');
+        if (linksQuery) {
+            const changed = linksQuery.value !== settingsSearchInput.value;
+            linksQuery.value = settingsSearchInput.value;
+            if (changed && settingsSearchInput.value.trim()) {
+                settingsLinkCategory = '';
+                document.getElementById('links-kind-filter').value = '';
+            }
+        }
+        if (activeTabName === 'links') renderLinksInSettingsIfVisible(links);
         const query = settingsSearchInput.value.trim().toLowerCase();
 
         if (settingsSearchbar) {
-            settingsSearchbar.style.display = shouldShowSearch ? 'grid' : 'none';
+            settingsSearchbar.style.display = 'grid';
         }
 
         // 先清掉所有隐藏标记与高亮标记
@@ -221,13 +239,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        if (!shouldShowSearch) {
-            settingsContent.classList.remove('has-empty-search');
-            if (settingsSearchCount) settingsSearchCount.textContent = '';
-            if (clearSettingsSearchButton) clearSettingsSearchButton.style.display = 'none';
-            return;
-        }
-
         const query2 = query;
         if (!query2) {
             initSectionCollapseState();
@@ -235,8 +246,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // §3.1 全局匹配：在所有标签页（非 links）里搜，找出首个命中分区所在标签页
         const searchableTabs = [...tabContents].filter(t => t.id !== 'links-tab');
-        let firstHitTab = null;
-        let totalHits = 0;
+        const matchingLinks = query2 ? getNavigationItems().filter(link => getLinkSearchText(link).includes(query2)).length : 0;
+        let firstHitTab = matchingLinks ? document.getElementById('links-tab') : null;
+        let totalHits = matchingLinks;
+        let activeTabHasHits = activeTabName === 'links' && matchingLinks > 0;
         searchableTabs.forEach(tabContent => {
             const targets = getSettingsSearchTargets(tabContent);
             let tabHit = false;
@@ -250,12 +263,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
             if (tabHit) {
+                if (tabContent.classList.contains('active')) activeTabHasHits = true;
                 if (!firstHitTab) firstHitTab = tabContent;
             }
         });
 
         // 命中的分区若不在当前标签 → 自动切换到首个命中标签（避免用户以为"搜不到"）
-        if (query2 && firstHitTab && !firstHitTab.classList.contains('active')) {
+        if (query2 && firstHitTab && !activeTabHasHits) {
             const tabName = (firstHitTab.id || '').replace('-tab', '');
             if (tabName) {
                 // 静默切换：不触发 applySettingsSearch 二次递归
@@ -275,6 +289,7 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        if (getActiveSettingsTabName() === 'links') renderLinksInSettingsIfVisible(links);
         const activeTab = document.querySelector('.tab-content.active');
         ensureSettingsSearchEmptyState(activeTab);
         settingsContent.classList.toggle('has-empty-search', Boolean(query2) && totalHits === 0);
@@ -295,6 +310,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 激活某个设置标签页（供 tab 按钮与「关于」标题栏图标共用）
     function activateSettingsTab(targetTab) {
+        settingsSearchInput.value = '';
         // 移除所有激活状态
         tabButtons.forEach(btn => { btn.classList.remove('active'); btn.setAttribute('aria-selected', 'false'); });
         tabContents.forEach(content => content.classList.remove('active'));
@@ -312,6 +328,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         applySettingsSearch();
     }
+
+    window.activateSettingsTab = activateSettingsTab;
 
     // 「关于」标题栏图标：打开关于面板（关于已从一级标签降级，由标题栏入口唤起）
     const openAboutBtn = document.getElementById('open-about');
@@ -332,8 +350,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function openSettingsPanel() {
+        window.closeLayoutMenu?.(false);
+        window.closeNetworkEnvironmentPopover?.();
+        window.collapseToolbarTools?.();
         const settingsContainer = document.getElementById('settings-container');
         if (!settingsContainer) return;
+        clearTimeout(settingsContainer._closeTimer);
 
         // 记录触发元素，关闭后恢复焦点
         settingsContainer._lastFocused = document.activeElement;
@@ -358,7 +380,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (e.key !== 'Tab') return;
         const settingsContainer = document.getElementById('settings-container');
         if (!settingsContainer || !settingsContainer.classList.contains('show')) return;
-        const focusables = settingsContainer.querySelectorAll(
+        const focusRoot = document.querySelector('.modal-overlay.show') || settingsContainer;
+        const focusables = focusRoot.querySelectorAll(
             'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
         );
         if (!focusables.length) return;
@@ -381,12 +404,15 @@ document.addEventListener("DOMContentLoaded", function () {
     function closeSettingsPanel() {
         const settingsContainer = document.getElementById('settings-container');
         if (!settingsContainer) return;
+        clearTimeout(settingsContainer._closeTimer);
         settingsContainer.classList.remove('show');
         document.removeEventListener('keydown', trapSettingsFocus);
-        setTimeout(() => {
+        settingsContainer._closeTimer = setTimeout(() => {
+            if (settingsContainer.classList.contains('show')) return;
+            const restoreFocus = settingsContainer.contains(document.activeElement) || document.activeElement === document.body;
             settingsContainer.style.display = 'none';
             // 恢复触发元素焦点
-            if (settingsContainer._lastFocused && typeof settingsContainer._lastFocused.focus === 'function') {
+            if (restoreFocus && settingsContainer._lastFocused && typeof settingsContainer._lastFocused.focus === 'function') {
                 settingsContainer._lastFocused.focus();
             }
         }, 250);
@@ -458,12 +484,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Esc 关闭设置面板及各弹窗（之前只有 category-panel 有 Esc 处理）
     document.addEventListener('keydown', function(e) {
         if (e.key !== 'Escape') return;
-        // 优先关设置面板
-        if (settingsContainer.classList.contains('show')) {
-            e.preventDefault();
-            closeSettingsPanel();
-            return;
-        }
         // 各编辑弹窗：按可见性依次关闭（display:flex 表示打开）
         const modals = [
             { el: linkModal, close: () => closeModal() },
@@ -477,6 +497,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 m.close();
                 return;
             }
+        }
+        if (settingsContainer.classList.contains('show')) {
+            e.preventDefault();
+            closeSettingsPanel();
         }
     });
 
@@ -504,9 +528,9 @@ document.addEventListener("DOMContentLoaded", function () {
         urlsList.innerHTML = currentUrls.map((urlObj, index) => `
             <div class="url-item" data-index="${index}">
                 <div class="url-input-wrapper">
-                    <input type="text" class="url-label" placeholder="标签" value="${escapeHTML(urlObj.label || '')}" data-field="label" data-index="${index}">
-                    <input type="text" class="url-address" placeholder="https://example.com" value="${escapeHTML(urlObj.address || '')}" data-field="address" data-index="${index}">
-                    <input type="number" class="url-priority" placeholder="优先级" value="${escapeHTML(urlObj.priority || index + 1)}" min="1" data-field="priority" data-index="${index}" title="优先级">
+                    <label class="url-field"><span>线路名称</span><input type="text" class="url-label" aria-label="地址 ${index + 1} 的线路名称" placeholder="公司 / Tailscale" value="${escapeHTML(urlObj.label || '')}" data-field="label" data-index="${index}"></label>
+                    <label class="url-field url-address-field"><span>访问地址</span><input type="text" class="url-address" aria-label="访问地址 ${index + 1}" placeholder="https://example.com" value="${escapeHTML(urlObj.address || '')}" data-field="address" data-index="${index}"></label>
+                    <label class="url-field url-priority-field"><span>优先级</span><input type="number" class="url-priority" aria-label="地址 ${index + 1} 的优先级" value="${escapeHTML(urlObj.priority || index + 1)}" min="1" data-field="priority" data-index="${index}" title="数值越小越优先"></label>
                 </div>
                 <div class="url-actions">
                     <button type="button" class="url-action-btn move" data-action="move-up" data-index="${index}" title="上移" ${index === 0 ? 'disabled' : ''}>
@@ -566,9 +590,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // 打开添加链接弹窗
     function openAddModal() {
         window.editingLinkId = null;
+        window.editingCatalogKey = null;
+        document.getElementById('edit-kind').value = 'site';
+        document.getElementById('edit-copy-value').value = '';
+        document.getElementById('copy-value-field').hidden = true;
         // 清空表单
         document.getElementById('edit-name').value = '';
-        document.getElementById('edit-category').value = '';
+        document.getElementById('edit-category').value = settingsLinkCategory;
         document.getElementById('edit-tag').value = '';
         const rm0 = document.getElementById('edit-remarks'); if (rm0) rm0.value = '';
         document.getElementById('edit-thumbnail').value = '';
@@ -578,16 +606,25 @@ document.addEventListener("DOMContentLoaded", function () {
         // 清空预览
         renderThumbnailPreview('');
         // 更新标题
-        modalTitle.innerHTML = '<i class="ri-add-circle-line"></i><span>添加链接</span>';
+        modalTitle.innerHTML = '<i class="ri-add-circle-line"></i><span>添加入口</span>';
         // 显示弹窗
+        linkModal._lastFocused = document.activeElement;
         linkModal.style.display = 'flex';
         requestAnimationFrame(() => {
             linkModal.classList.add('show');
+            document.getElementById('edit-name').focus();
         });
     }
     
+    window.openAddModal = openAddModal;
+
     // 打开编辑链接弹窗
     window.openEditModal = function(link) {
+        window.editingLinkId = link.ID;
+        window.editingCatalogKey = link.catalogKey || null;
+        document.getElementById('edit-kind').value = link.kind || 'site';
+        document.getElementById('edit-copy-value').value = link.copyValue || '';
+        document.getElementById('copy-value-field').hidden = !['mcp', 'skill'].includes(link.kind);
         // 填充表单
         document.getElementById('edit-name').value = link.name;
         document.getElementById('edit-category').value = link.category;
@@ -613,11 +650,13 @@ document.addEventListener("DOMContentLoaded", function () {
         renderUrlsList();
         
         // 更新标题
-        modalTitle.innerHTML = '<i class="ri-edit-circle-line"></i><span>编辑链接</span>';
+        modalTitle.innerHTML = '<i class="ri-edit-circle-line"></i><span>编辑入口</span>';
         // 显示弹窗
+        linkModal._lastFocused = document.activeElement;
         linkModal.style.display = 'flex';
         requestAnimationFrame(() => {
             linkModal.classList.add('show');
+            document.getElementById('edit-name').focus();
         });
     }
     
@@ -627,6 +666,9 @@ document.addEventListener("DOMContentLoaded", function () {
         setTimeout(() => {
             linkModal.style.display = 'none';
             window.editingLinkId = null;
+            const previous = linkModal._lastFocused;
+            if (previous?.isConnected) previous.focus();
+            else addLinkToolbarBtn.focus();
         }, 250);
     }
     
@@ -665,6 +707,7 @@ document.addEventListener("DOMContentLoaded", function () {
         categoryModal.style.display = 'flex';
         requestAnimationFrame(() => {
             categoryModal.classList.add('show');
+            newCategoryNameInput.focus();
         });
     }
     
@@ -673,17 +716,18 @@ document.addEventListener("DOMContentLoaded", function () {
         categoryModal.classList.remove('show');
         setTimeout(() => {
             categoryModal.style.display = 'none';
+            manageCategoriesBtn.focus();
         }, 250);
     }
     
     // 渲染分类列表
     function renderCategoriesList() {
         const categories = {};
-        getAllCategoryNames(links).forEach(category => {
+        getAllCategoryNames(getNavigationItems()).forEach(category => {
             categories[category] = 0;
         });
 
-        links.forEach(link => {
+        getNavigationItems().forEach(link => {
             const category = link.category || '未分类';
             if (!categories[category]) {
                 categories[category] = 0;
@@ -709,8 +753,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div class="category-item-icon">
                         <i class="ri-folder-line"></i>
                     </div>
-                    <span class="category-item-name">${escapeHTML(name)}</span>
-                    <span class="category-item-count">${categories[name]} 个链接</span>
+                    <div class="category-name-field"><input class="category-name-input" aria-label="重命名 ${escapeHTML(name)}" value="${escapeHTML(name)}" data-category="${escapeHTML(name)}"><button class="category-action-btn" data-action="rename" data-category="${escapeHTML(name)}" title="保存分组名称" aria-label="保存分组名称"><i class="ri-check-line"></i></button></div>
+                    <span class="category-item-count">${categories[name]} 项</span>
                 </div>
                 <div class="category-item-actions">
                     <button class="category-action-btn move" title="上移" data-action="up" data-category="${escapeHTML(name)}">
@@ -722,9 +766,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     <button class="category-action-btn icon-edit" title="设置图标" data-action="icon" data-category="${escapeHTML(name)}">
                         <i class="${(getCustomCategoryIcons && getCustomCategoryIcons()[name]) || categoryIconFor(name)}"></i>
                     </button>
-                    <button class="category-action-btn edit" title="重命名" data-action="edit" data-category="${escapeHTML(name)}">
-                        <i class="ri-edit-line"></i>
-                    </button>
                     <button class="category-action-btn delete" title="删除" data-action="delete" data-category="${escapeHTML(name)}">
                         <i class="ri-delete-bin-line"></i>
                     </button>
@@ -732,14 +773,19 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `).join('');
         
+        categoriesList.querySelectorAll('.category-name-input').forEach(input => {
+            input.addEventListener('keydown', event => {
+                if (event.key === 'Enter') editCategory(input.dataset.category, input.value);
+            });
+        });
         // 绑定分类项的事件
         categoriesList.querySelectorAll('.category-action-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const action = btn.dataset.action;
                 const category = btn.dataset.category;
-                if (action === 'edit') {
-                    editCategory(category);
+                if (action === 'rename') {
+                    editCategory(category, btn.closest('.category-item').querySelector('.category-name-input').value);
                 } else if (action === 'delete') {
                     deleteCategory(category);
                 } else if (action === 'icon') {
@@ -773,7 +819,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function moveCategory(name, delta) {
         // 基于当前展示顺序建立完整序列(未记录的分组保持名称序附在后面)
-        const current = getAllCategoryNames(links);
+        const current = getAllCategoryNames(getNavigationItems());
         const saved = getCustomCategoryOrder();
         const known = [...new Set([...saved.filter(c => current.includes(c)), ...current])];
         const idx = known.indexOf(name);
@@ -784,6 +830,7 @@ document.addEventListener("DOMContentLoaded", function () {
         setSetting('groupSortMode', 'custom');
         renderCategoriesList();
         renderLinksByCategory(links);
+        renderLinksInSettingsIfVisible(links);
         const sortSel = document.getElementById('group-sort-select');
         if (sortSel) sortSel.value = 'custom';
     }
@@ -796,7 +843,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         name = name.trim();
         
-        const categories = getAllCategoryNames(links);
+        const categories = getAllCategoryNames(getNavigationItems());
         if (categories.includes(name)) {
             showMessage('分组已存在');
             return;
@@ -809,23 +856,28 @@ document.addEventListener("DOMContentLoaded", function () {
         updateCategoryDatalist();
         updateStorageInfo();
         newCategoryNameInput.value = '';
+        renderLinksInSettingsIfVisible(links);
     }
     
     // 编辑分类（重命名）
-    function editCategory(oldName) {
-        const newName = prompt('请输入新的分组名称：', oldName);
+    function editCategory(oldName, newName) {
         if (newName && newName.trim() && newName !== oldName) {
             const trimmedName = newName.trim();
             const customCategories = getCustomCategories()
                 .map(category => category === oldName ? trimmedName : category);
 
-            // 更新所有该分类的链接
-            links.forEach(link => {
-                if (link.category === oldName) {
-                    link.category = trimmedName;
-                }
-            });
-            saveCustomCategories(customCategories);
+            getNavigationItems().filter(link => (link.category || '未分类') === oldName)
+                .forEach(link => assignSettingsLinkCategory(link, trimmedName));
+            if (settingsLinkCategory === oldName) settingsLinkCategory = trimmedName;
+            saveCustomCategories([...new Set([...customCategories, trimmedName])]);
+            const order = getCustomCategoryOrder().map(name => name === oldName ? trimmedName : name);
+            setSetting('customCategoryOrder', [...new Set(order)]);
+            const icons = getCustomCategoryIcons();
+            if (icons[oldName]) {
+                icons[trimmedName] = icons[oldName];
+                delete icons[oldName];
+                setSetting('customCategoryIcons', icons);
+            }
             persistLinks();
             showMessage('已重命名分组');
             renderCategoriesList();
@@ -833,28 +885,28 @@ document.addEventListener("DOMContentLoaded", function () {
             renderLinksByCategory(links);
             updateCategoryDatalist();
             updateStorageInfo();
-        }
+        } else renderCategoriesList();
     }
     
     // 删除分类
     function deleteCategory(name) {
-        const categoryLinks = links.filter(l => l.category === name);
+        const categoryLinks = getNavigationItems().filter(link => (link.category || '未分类') === name);
         if (categoryLinks.length > 0) {
-            if (!confirm(`分组"${name}"中有 ${categoryLinks.length} 个链接，删除后这些链接将被移动到"未分组"。确定要删除吗？`)) {
+            if (!confirm(`分组"${name}"中有 ${categoryLinks.length} 个入口，删除后将移到“未分类”。确定要删除吗？`)) {
                 return;
             }
             // 将该分类的所有链接移动到"未分组"
-            links.forEach(link => {
-                if (link.category === name) {
-                    link.category = '未分类';
-                }
-            });
+            categoryLinks.forEach(link => assignSettingsLinkCategory(link, '未分类'));
         } else {
             if (!confirm(`确定要删除空分组"${name}"吗？`)) {
                 return;
             }
         }
         saveCustomCategories(getCustomCategories().filter(category => category !== name));
+        setSetting('customCategoryOrder', getCustomCategoryOrder().filter(category => category !== name));
+        const icons = getCustomCategoryIcons();
+        delete icons[name];
+        setSetting('customCategoryIcons', icons);
         persistLinks();
         showMessage('已删除分组');
         renderCategoriesList();
@@ -906,7 +958,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // 保存按钮
     const saveButton = document.getElementById('save-button');
 
+    document.getElementById('edit-kind').addEventListener('change', event => {
+        document.getElementById('copy-value-field').hidden = !['mcp', 'skill'].includes(event.target.value);
+    });
     saveButton.addEventListener('click', () => {
+        const kind = document.getElementById('edit-kind').value;
+        const copyValue = document.getElementById('edit-copy-value').value.trim();
+        const resource = ['mcp', 'skill'].includes(kind) && copyValue;
         const name = document.getElementById('edit-name').value.trim();
         const category = document.getElementById('edit-category').value.trim();
         const tag = document.getElementById('edit-tag').value.trim();
@@ -922,8 +980,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }))
             .filter(url => url.address);
         
-        if (!name || validUrls.length === 0) {
-            showMessage('请填写名称和至少一个 URL 地址', 'error');
+        if (!name || (validUrls.length === 0 && !resource)) {
+            showMessage('请填写名称，以及网页地址或命令路径', 'error');
             return;
         }
 
@@ -938,56 +996,48 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const editingLinkId = window.editingLinkId;
+        let savedLinkId = editingLinkId;
         // 获取第一个 URL 用于生成缩略图
         const firstUrl = validUrls[0]?.address || '';
         
-        if (editingLinkId != null) {
+        if (editingLinkId != null && links.some(link => link.ID === editingLinkId)) {
             // 编辑现有链接
             const linkIndex = links.findIndex(l => l.ID === editingLinkId);
             if (linkIndex !== -1) {
                 links[linkIndex].name = name;
-                // 如果只有一个 URL，使用旧格式兼容
-                if (validUrls.length === 1) {
-                    links[linkIndex].url = validUrls[0].address;
-                    delete links[linkIndex].urls;
-                } else {
-                    // 多 URL 格式
-                    links[linkIndex].urls = validUrls;
-                    delete links[linkIndex].url;
-                }
+                links[linkIndex].kind = kind;
+                links[linkIndex].copyValue = copyValue;
+                links[linkIndex].urls = validUrls;
+                delete links[linkIndex].url;
                 links[linkIndex].category = category || '未分类';
                 links[linkIndex].tag = tag;
                 links[linkIndex].remarks = remarks;
-                links[linkIndex].thumbnail = thumbnail || defaultThumbnailFor(firstUrl);
+                links[linkIndex].thumbnail = thumbnail || (firstUrl ? defaultThumbnailFor(firstUrl) : '');
             }
             showMessage('已更新链接');
         } else {
             // 添加新链接
             const newId = links.length > 0 ? Math.max(...links.map(l => l.ID)) + 1 : 1;
+            savedLinkId = newId;
             const newLink = {
                 ID: newId,
                 name: name,
+                kind, copyValue,
+                ...(window.editingCatalogKey ? { catalogKey: window.editingCatalogKey } : {}),
                 category: category || '未分类',
                 tag: tag,
                 remarks: remarks,
-                thumbnail: thumbnail || defaultThumbnailFor(firstUrl)
+                thumbnail: thumbnail || (firstUrl ? defaultThumbnailFor(firstUrl) : '')
             };
-            // 如果只有一个 URL，使用旧格式兼容
-            if (validUrls.length === 1) {
-                newLink.url = validUrls[0].address;
-            } else {
-                // 多 URL 格式
-                newLink.urls = validUrls;
-            }
+            newLink.urls = validUrls;
             links.push(newLink);
             showMessage('已添加链接');
         }
 
         // 重复地址提醒：不阻止保存，仅提示（编辑自身不计入）
-        const editingId = window.editingLinkId;
         const addresses = validUrls.map(u => u.address);
         const duplicate = links.find(l =>
-            l.ID !== editingId && getLinkUrls(l).some(u => addresses.includes(u.address))
+            l.ID !== savedLinkId && getLinkUrls(l).some(u => addresses.includes(u.address))
         );
         if (duplicate) {
             showMessage(`提示：该地址已存在于「${duplicate.name}」`, 'warning');
@@ -1037,7 +1087,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // 更新分类数据列表
     function updateCategoryDatalist() {
         const datalist = document.getElementById('category-list');
-        const categories = getAllCategoryNames(links);
+        const categories = getAllCategoryNames(getNavigationItems());
         datalist.innerHTML = categories.map(c => `<option value="${escapeHTML(c)}">`).join('');
     }
     window.updateCategoryDatalist = updateCategoryDatalist;
@@ -1088,20 +1138,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 更新存储信息
     function updateStorageInfo() {
-        const categories = getAllCategoryNames(links);
         const backupSize = new Blob([JSON.stringify(createFullBackup())]).size;
-        
-        // 更新统计卡片
-        const totalLinksEl = document.getElementById('total-links');
-        const totalCategoriesEl = document.getElementById('total-categories');
-        if (totalLinksEl) totalLinksEl.textContent = links.length;
-        if (totalCategoriesEl) totalCategoriesEl.textContent = categories.length;
-        
-        // 更新迷你统计卡片
-        const storageSizeMini = document.getElementById('storage-size-mini');
-        if (storageSizeMini) {
-            storageSizeMini.textContent = formatBytes(backupSize);
-        }
 
         // 更新存储信息面板的数据
         const storageLinksCount = document.getElementById('storage-links-count');
@@ -1126,36 +1163,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     window.updateStorageInfo = updateStorageInfo;
 
-    // 搜索链接功能
-    const linksSearch = document.getElementById('links-search');
-    const clearLinksSearch = document.getElementById('clear-links-search');
-    let linksSearchDebounce = null;
-    if (linksSearch) {
-        linksSearch.addEventListener('input', () => {
-            // 输入防抖：避免每个按键都全量重建链接列表
-            clearTimeout(linksSearchDebounce);
-            linksSearchDebounce = setTimeout(() => {
-                renderLinksInSettingsIfVisible(links);
-            }, 180);
-        });
-    }
-    if (clearLinksSearch) {
-        clearLinksSearch.addEventListener('click', () => {
-            if (!linksSearch) return;
-            clearTimeout(linksSearchDebounce);
-            linksSearch.value = '';
-            linksSearch.focus();
-            renderLinksInSettingsIfVisible(links);
-        });
-    }
-
-    // 分类筛选功能
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', () => {
-            renderLinksInSettingsIfVisible(links);
-        });
-    }
+    document.getElementById('links-kind-filter').addEventListener('change', () => {
+        renderLinksInSettingsIfVisible(links);
+    });
 
     // 导出/导入数据功能
     const exportDataBtn = document.getElementById('export-data');
@@ -1422,7 +1432,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.17.1';
+    const currentVersion = '1.27.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1784,7 +1794,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const thumbnails = document.querySelectorAll('.link-card-thumbnail');
             thumbnails.forEach(thumb => {
                 if (show) {
-                    thumb.style.display = 'block';
+                    thumb.style.display = '';
                 } else {
                     thumb.style.display = 'none';
                 }
@@ -1853,19 +1863,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const savedPosition = getSetting('contentPosition', 'default');
         pagePositionSelect.value = savedPosition;
 
-        // 刷新时恢复布局位置（此前只设了 select 值，没给 .container 加类）
-        const positionContainer = document.querySelector('.container');
-        if (positionContainer) {
-            positionContainer.classList.add(`content-position-${savedPosition}`);
-        }
+        applyContentPosition(savedPosition);
 
         pagePositionSelect.addEventListener('change', function() {
-            const position = this.value;
+            const position = applyContentPosition(this.value);
             setSetting('contentPosition', position);
-            
-            const container = document.querySelector('.container');
-            container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
-            container.classList.add(`content-position-${position}`);
+            window.refreshLayoutMenu?.();
             
             let message = '';
             switch(position) {
@@ -1890,18 +1893,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 setSetting('probeIntervalMs', Number(probeSelect.value));
                 startStatusMonitor(links);
                 showMessage(Number(probeSelect.value) === 0 ? '已关闭在线状态探测' : '探测频率已更新');
-            });
-        }
-    }
-
-    // 智能选路开关
-    {
-        const smartToggle = document.getElementById('smart-routing-toggle');
-        if (smartToggle) {
-            smartToggle.checked = getSetting('smartRouting', false) === true;
-            smartToggle.addEventListener('change', () => {
-                setSetting('smartRouting', smartToggle.checked);
-                showMessage(smartToggle.checked ? '智能选路已开启' : '智能选路已关闭');
             });
         }
     }
@@ -2169,6 +2160,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.body.dataset.minClockPos = pos;
     }
     function applyMinimalMode(enabled) {
+        if (enabled && document.body.classList.contains('navigation-open')) closeNavigation();
         document.body.classList.toggle('minimal-mode', enabled);
         if (minimalSearchEl) minimalSearchEl.hidden = !enabled;
         if (minimalClockBg) minimalClockBg.hidden = !enabled;
@@ -2384,16 +2376,19 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!topRightButtons || !functionButtons || !settingsButtons || !divider) return;
 
         const hasVisibleFunctionButton = [...functionButtons.children].some(button => {
-            return window.getComputedStyle(button).display !== 'none';
+            return button.style.display !== 'none';
         });
         const hasVisibleSettingsButton = [...settingsButtons.children].some(button => {
-            return window.getComputedStyle(button).display !== 'none';
+            return button.style.display !== 'none';
         });
 
         functionButtons.style.display = hasVisibleFunctionButton ? 'flex' : 'none';
         settingsButtons.style.display = hasVisibleSettingsButton ? 'flex' : 'none';
-        divider.style.display = hasVisibleFunctionButton && hasVisibleSettingsButton ? 'block' : 'none';
-        topRightButtons.style.display = hasVisibleFunctionButton || hasVisibleSettingsButton ? 'flex' : 'none';
+        const hasThemeButton = document.getElementById('toggle-mode').style.display !== 'none';
+        document.getElementById('toolbar-extras').hidden = !hasVisibleFunctionButton && !hasThemeButton;
+        divider.style.display = hasVisibleFunctionButton && hasThemeButton ? 'block' : 'none';
+        topRightButtons.style.display = hasVisibleFunctionButton || hasVisibleSettingsButton || document.getElementById('network-environment-button') ? 'flex' : 'none';
+        window.refreshToolbarButtons?.();
     }
 
     function applyTopButtonSettings(settings = loadTopButtonSettings()) {
@@ -2771,205 +2766,38 @@ document.addEventListener("DOMContentLoaded", function () {
     const toggleAllGroupsBtn = document.createElement('button');
     toggleAllGroupsBtn.id = 'toggle-all-groups';
     toggleAllGroupsBtn.className = 'icon-button';
-    toggleAllGroupsBtn.title = '打开分组入口';
-    toggleAllGroupsBtn.setAttribute('aria-label', '打开分组入口');
-    toggleAllGroupsBtn.innerHTML = '<i class="ri-folder-open-line"></i>';
+    toggleAllGroupsBtn.type = 'button';
+    toggleAllGroupsBtn.title = '打开快捷方式';
+    toggleAllGroupsBtn.setAttribute('aria-label', '打开快捷方式');
+    toggleAllGroupsBtn.setAttribute('aria-expanded', 'false');
+    toggleAllGroupsBtn.setAttribute('aria-controls', 'navigation-view');
+    toggleAllGroupsBtn.innerHTML = '<i class="ri-arrow-down-s-line" aria-hidden="true"></i>';
 
     const functionButtons = document.querySelector('.function-buttons');
     functionButtons.appendChild(toggleAllGroupsBtn);
 
-    function getFirstCategoryContainer() {
-        return document.querySelector('.category-container');
-    }
-
     function updateCategoryActionButtonState() {
-        const icon = toggleAllGroupsBtn.querySelector('i');
-        toggleAllGroupsBtn.title = '跳到第一个分组';
-        toggleAllGroupsBtn.setAttribute('aria-label', '跳到第一个分组');
-        toggleAllGroupsBtn.classList.remove('active');
-        if (icon) icon.className = 'ri-folder-open-line';
+        const expanded = !document.getElementById('navigation-view').hidden;
+        toggleAllGroupsBtn.setAttribute('aria-label', expanded ? '收起快捷方式' : '打开快捷方式');
+        toggleAllGroupsBtn.setAttribute('aria-expanded', String(expanded));
     }
-
     window.updateCategoryActionButtonState = updateCategoryActionButtonState;
-
-    function runCategoryToolbarAction() {
-        const firstCategory = getFirstCategoryContainer();
-        if (!firstCategory) {
-            showMessage('暂无分组');
-            return;
-        }
-        firstCategory.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
     toggleAllGroupsBtn.addEventListener('click', () => {
-        runCategoryToolbarAction();
+        if (document.getElementById('navigation-view').hidden) openNavigation();
+        else closeNavigation();
     });
-    
-    // 创建垂直位置调整按钮
-    const createVerticalPositionControls = () => {
-        const functionButtons = document.querySelector('.function-buttons');
-        const positionButton = document.createElement('button');
-        positionButton.className = 'icon-button';
-        positionButton.title = '页面布局与密度';
-        positionButton.setAttribute('aria-label', '页面布局与密度');
-        positionButton.id = 'position-button';
-        positionButton.innerHTML = '<i class="ri-layout-line"></i>';
 
-        const dropdownMenu = document.createElement('div');
-        dropdownMenu.className = 'dropdown-menu';
-        dropdownMenu.id = 'position-dropdown';
-        dropdownMenu.style.display = 'none';
+    const positionButton = document.createElement('button');
+    positionButton.type = 'button';
+    positionButton.className = 'icon-button';
+    positionButton.id = 'position-button';
+    positionButton.setAttribute('aria-label', '页面布局与密度');
+    positionButton.setAttribute('aria-haspopup', 'menu');
+    positionButton.setAttribute('aria-expanded', 'false');
+    positionButton.setAttribute('aria-controls', 'position-dropdown');
+    positionButton.innerHTML = '<i class="ri-layout-line" aria-hidden="true"></i>';
+    functionButtons.appendChild(positionButton);
 
-        const options = [
-            { type: 'label', text: '内容位置' },
-            { text: '靠上布局', icon: 'ri-arrow-up-line', action: 'top' },
-            { text: '标准布局', icon: 'ri-align-center', action: 'default' },
-            { text: '靠下布局', icon: 'ri-arrow-down-line', action: 'bottom' },
-            { type: 'divider' },
-            { type: 'label', text: '显示密度' },
-            { text: '紧凑', icon: 'ri-contract-left-right-line', density: 'compact' },
-            { text: '均衡', icon: 'ri-dashboard-line', density: 'balanced' },
-            { text: '舒展', icon: 'ri-expand-left-right-line', density: 'spacious' }
-        ];
-
-        options.forEach(option => {
-            if (option.type === 'label') {
-                const label = document.createElement('div');
-                label.className = 'dropdown-section-title';
-                label.textContent = option.text;
-                dropdownMenu.appendChild(label);
-                return;
-            }
-
-            if (option.type === 'divider') {
-                const divider = document.createElement('div');
-                divider.className = 'dropdown-divider';
-                dropdownMenu.appendChild(divider);
-                return;
-            }
-
-            const menuItem = document.createElement('div');
-            menuItem.className = 'dropdown-item';
-            menuItem.innerHTML = `<i class="${option.icon}"></i> ${option.text}`;
-            if (option.action) menuItem.dataset.action = option.action;
-            if (option.density) menuItem.dataset.density = option.density;
-            dropdownMenu.appendChild(menuItem);
-        });
-
-        functionButtons.appendChild(positionButton);
-        document.body.appendChild(dropdownMenu);
-
-        const container = document.querySelector('.container');
-
-        function updateLayoutMenuState() {
-            const savedPosition = getSetting('contentPosition', 'default');
-            const { density } = loadHomeLayoutSettings();
-            dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
-                const selected = item.dataset.action === savedPosition || item.dataset.density === density;
-                item.classList.toggle('active', selected);
-            });
-        }
-
-        positionButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isVisible = dropdownMenu.style.display === 'block';
-
-            if (isVisible) {
-                dropdownMenu.style.display = 'none';
-            } else {
-                updateLayoutMenuState();
-                const rect = positionButton.getBoundingClientRect();
-                let menuTop = rect.bottom + 5;
-                let menuLeft = rect.left - dropdownMenu.offsetWidth;
-
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
-
-                if (menuLeft < 10) {
-                    menuLeft = rect.right;
-                }
-
-                if (menuLeft + dropdownMenu.offsetWidth > windowWidth - 10) {
-                    menuLeft = windowWidth - dropdownMenu.offsetWidth - 10;
-                }
-
-                dropdownMenu.style.opacity = '0';
-                dropdownMenu.style.display = 'block';
-
-                const menuHeight = dropdownMenu.offsetHeight;
-
-                if (menuTop + menuHeight > windowHeight - 10) {
-                    menuTop = rect.top - menuHeight - 5;
-                }
-
-                dropdownMenu.style.top = menuTop + 'px';
-                dropdownMenu.style.left = menuLeft + 'px';
-                dropdownMenu.style.opacity = '1';
-            }
-        });
-
-        document.addEventListener('click', () => {
-            dropdownMenu.style.display = 'none';
-        });
-
-        dropdownMenu.addEventListener('click', (e) => {
-            const menuItem = e.target.closest('.dropdown-item');
-            if (!menuItem) return;
-
-            const action = menuItem.dataset.action;
-            const density = menuItem.dataset.density;
-
-            if (action) {
-                container.classList.remove('content-position-default', 'content-position-top', 'content-position-bottom');
-                container.classList.add(`content-position-${action}`);
-                setSetting('contentPosition', action);
-                let message = '';
-                switch(action) {
-                    case 'top': message = '内容已切换为靠上布局'; break;
-                    case 'default': message = '内容已切换为标准布局'; break;
-                    case 'bottom': message = '内容已切换为靠下布局'; break;
-                }
-                showMessage(message);
-            }
-
-            if (density) {
-                const settings = { ...loadHomeLayoutSettings(), density };
-                saveHomeLayoutSettings(settings);
-                applyHomeCategoryDisplayMode(settings);
-                syncHomeLayoutControls(settings);
-
-                const densityMessages = {
-                    balanced: '首页已切换为均衡密度',
-                    compact: '首页已切换为紧凑密度',
-                    spacious: '首页已切换为舒展密度'
-                };
-                showMessage(densityMessages[density] || '已更新首页密度');
-            }
-
-            updateLayoutMenuState();
-            dropdownMenu.style.display = 'none';
-        });
-
-        const savedPosition = getSetting('contentPosition', null);
-        if (savedPosition) {
-            switch (savedPosition) {
-                case 'top':
-                    container.classList.add('content-position-top');
-                    break;
-                case 'bottom':
-                    container.classList.add('content-position-bottom');
-                    break;
-                default:
-                    container.classList.add('content-position-default');
-            }
-        } else {
-            container.classList.add('content-position-default');
-        }
-
-        updateLayoutMenuState();
-    };
-
-    createVerticalPositionControls();
     applyTopButtonSettings();
     syncTopButtonControls();
     renderTopButtonSettingsList();

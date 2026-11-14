@@ -53,10 +53,11 @@ function runScript(sandbox, relativePath, exportNames = [], bridge = {}) {
 // 载入数据层,返回沙箱(window 上挂着全部全局函数)
 export function loadDataLayer({ storage } = {}) {
   const ctx = createSandbox({ storage });
-  runScript(ctx.sandbox, 'HTML/js/storage.js');
+  runScript(ctx.sandbox, 'HTML/js/storage.js', ['LAST_USED_LINK_URLS_KEY', 'HOME_FEATURE_SETTINGS_KEY']);
   // 桥接 storage 层到数据层(对应浏览器全局作用域的跨脚本共享)
   const bridge = {
     LAST_USED_LINK_URLS_KEY: ctx.sandbox.LAST_USED_LINK_URLS_KEY,
+    HOME_FEATURE_SETTINGS_KEY: ctx.sandbox.HOME_FEATURE_SETTINGS_KEY,
     getSetting: ctx.sandbox.getSetting,
     setSetting: ctx.sandbox.setSetting,
     getAllSettings: ctx.sandbox.getAllSettings,
@@ -68,9 +69,11 @@ export function loadDataLayer({ storage } = {}) {
     'escapeHTML', 'isSafeUrl', 'sanitizeUrl', 'openSafeUrl', 'getLinkUrls',
     'normalizeLinks', 'loadStoredLinks', 'persistLinks',
     'getSafeLinkUrls', 'getPreferredUrlInfo', 'getUrlChoiceMeta',
-    'isPrivateHost', 'defaultThumbnailFor', 'getAllCategoryNames',
+    'isPrivateHost', 'isTunnelHost', 'defaultThumbnailFor', 'getAllCategoryNames',
     'getLinkStatusCache', 'startStatusMonitor', 'getProbeIntervalMs', 'getStatusCacheTtlMs',
-    'rememberLastUsedLinkUrl'
+    'rememberLastUsedLinkUrl', 'loadHomeFeatureSettings', 'openLinkUrl',
+    'getPinnedLinkUrl', 'setDefaultLinkUrl', 'getUrlProbeState', 'probeLinkStatuses',
+    'getCachedStatusForUrl', 'setLinkStatus', 'getFastestMeasuredUrl'
   ], bridge);
   return { ...ctx, api: ctx.sandbox };
 }

@@ -1,74 +1,164 @@
-# 部署与访问控制指南
+# 本地服务器与 Tailscale 部署
 
-本页覆盖纯静态架构下的部署加固:基础认证(Basic Auth)、HTTPS、以及访问边界说明。容器监控 / 系统状态 / 多账号权限需要后端,超出本项目范围(见文末)。
+## 运行结构
 
-## 基础认证(Basic Auth)
+服务器运行 Node.js 导航服务，宿主机安装 Tailscale。浏览器通过公司局域网 IP、Tailscale IP 或已配置的域名访问同一个服务。Docker 镜像同时提供网页、链接 REST API 和共享配置 API，持久化目录为 `/data`。
 
-导航页会暴露你的服务清单与内网拓扑。若部署在公网可达的环境,建议加一层认证。
-
-### 方案 A:宿主机 Nginx 反向代理 + auth
-
-容器本身只服务静态文件,认证交给前置的 Nginx:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name nav.example.com;
-
-    # 证书(Let's Encrypt / acme.sh 签发)
-    ssl_certificate     /etc/ssl/nav.example.com.fullchain.pem;
-    ssl_certificate_key /etc/ssl/nav.example.com.key;
-
-    # 生成密码文件:htpasswd -c /etc/nginx/nav.htpasswd user
-    auth_basic "Navigation";
-    auth_basic_user_file /etc/nginx/nav.htpasswd;
-
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+```text
+公司电脑 ── 公司 LAN IP:8080 ──┐
+家中电脑 ── Tailscale IP:8080 ──┼── 导航服务 ── /data/links.json
+外出电脑 ── Tailscale IP:8080 ──┘
 ```
 
-### 方案 B:Caddy(自动 HTTPS,配置最短)
+导航页的服务地址由访问者的浏览器直接打开。每个目标服务都需要具备对应的可访问地址，Tailscale 客户端需加入能够访问服务器的 tailnet。
 
-```
-nav.example.com {
-    basic_auth {
-        user $2a$14$…   # caddy hash-password 生成
-    }
-    reverse_proxy 127.0.0.1:8080
-}
-```
+## 启动
 
-### 方案 C:仅内网开放(推荐的家庭布局)
-
-最简单也最安全:服务只监听内网,外网访问走 VPN(Tailscale/WireGuard)。
-
-- docker-compose.yml 端口改为 `127.0.0.1:8080:80`(仅本机)或防火墙放行 8080 仅限内网网段
-- 外网场景使用链接的「隧道」地址(ts.net 等)访问服务本身,导航页仍从内网打开
-
-## HTTPS
-
-- 公网部署:用 Caddy(自动)或 Nginx + Let's Encrypt
-- 纯内网:HTTP 可接受;若需 HTTPS 可用 mkcert 生成本地 CA 证书
-- 注意:PWA 与剪贴板 API 在非 localhost 的 HTTP 下受限
-
-## 更新部署
+在服务器的项目目录运行。
 
 ```bash
-git pull
 docker compose up -d --build
+docker compose logs --tail=50
+tailscale ip -4
 ```
 
-数据卷 `HTML/data` 独立于镜像,更新不影响数据;`links.json` 若为本地私有版本,更新前无需处理(构建时 .dockerignore 会排除它)。
+默认监听 `0.0.0.0:8080`。公司局域网访问 `http://服务器局域网IP:8080`，其他已接入 tailnet 的电脑访问 `http://服务器TailscaleIP:8080`。宿主机防火墙和 tailnet 访问规则需允许对应端口。
 
-## 访问边界说明
+Compose 可通过环境变量调整主机绑定和端口。
 
-| 能力 | 本项目 | 说明 |
-|---|---|---|
-| 静态文件 + 认证 | ✅ 前置代理实现 | 见上 |
-| 多账号 / 每人独立数据 | ❌ 需后端 | 数据在浏览器本地,天然按设备隔离 |
-| 容器状态 / 系统资源 | ❌ 需后端 | 建议直接用 Portainer / Glances,导航页只放入口 |
-| 点击统计 / 使用分析 | ✅ 浏览器本地 | 不上传,无隐私外泄 |
+```bash
+LNP_BIND_IP=100.90.1.2 LNP_PORT=8080 docker compose up -d --build
+```
+
+上述 IP 使用服务器实际的 Tailscale 地址。单独绑定该地址后，公司电脑也通过 Tailscale 地址访问。希望 LAN 和 Tailscale 两种入口同时使用时，保留默认绑定。
+
+数据目录沿用 `./HTML/data:/data`，便于现有部署升级。Linux 宿主机的该目录需要容器用户 UID 1000 可写，现有 JSON 文件也需要该用户可读写。可针对该目录设置权限。
+
+```bash
+sudo chown -R 1000:1000 ./HTML/data
+```
+
+首次启动会从镜像内的公开模板初始化缺失的 `links.json`。已有文件直接读取。`catalog.json` 放入同一挂载目录后所有设备读取同一份目录。
+
+## HTTPS 入口
+
+若通过 Tailscale Serve 提供 HTTPS，可将 Compose 绑定到宿主机环回地址，再转发到服务。
+
+```bash
+LNP_BIND_IP=127.0.0.1 docker compose up -d --build
+tailscale serve --bg http://127.0.0.1:8080
+```
+
+Tailscale Serve 返回的 HTTPS URL 用于浏览器访问。HTTPS 有助于使用剪贴板和离线缓存等浏览器能力。普通 HTTP IP 访问时，命令或路径复制会弹出可手动复制的文本框。
+
+该方式来自 Tailscale 的私有 Docker Web 服务部署文档。[Tailscale 官方指南](https://tailscale.com/docs/solutions/host-private-server-docker)
+
+## 地址与配置同步
+
+每个服务继续保存多个地址及其标签、优先级。例如公司 LAN 地址、Tailscale 地址和公网域名。首页搜索负责网页搜索，底部「快捷方式」在原页面展开服务抽屉，分类作为可选筛选。
+
+访问线路提供自动、本地网络优先、内网穿透优先和公网优先。自动选择依据导航页当前主机名判断环境，并兼顾当前浏览器上次手动选择。手动选择某类线路时优先使用该类地址，缺失时回退到已有地址。Tailscale 的 `100.64.0.0/10` 和 `.ts.net` 地址会自动识别。自定义穿透域名可将地址标签设为「内网穿透」或「FRP」。公司和家中的 LAN 可能重叠，可直接手动选择内网穿透优先。
+
+链接可在抽屉中直接添加，点击「管理」编辑或删除。设置中的链接与分类编辑继续可用。每次修改先写入本机草稿，随后自动保存到服务器。其他设备打开抽屉、切回窗口或定期同步时读取最新配置。
+
+断线会显示暂存状态并保留草稿，恢复连接后自动重试。服务器使用版本检查处理并发写入，客户端合并不同链接与不同字段的修改。两个设备同时修改同一字段时会保留草稿并显示冲突提示，可导出备份后点击「刷新」读取最新版本。旧版本的本机配置保存在恢复草稿入口中。
+
+共享内容包括链接、分类、分类图标、排序和扫描目录隐藏项。主题、访问线路、最近访问和搜索偏好保存在当前浏览器。已有纯静态部署继续支持本机编辑与导入导出，界面显示本机模式，在线管理通过 `npm run serve` 或新版 Docker 服务提供。
+
+## 404 与旧进程升级
+
+页面文件更新后，正在运行的 Node.js 进程仍使用启动时加载的服务器代码。若首页可见而 `/api/config` 或 `/api/catalog` 返回 404，需要重启该项目的进程或重新构建容器。
+
+```bash
+docker compose up -d --build --force-recreate
+curl http://127.0.0.1:8080/api/config
+curl http://127.0.0.1:8080/api/catalog
+```
+
+`/api/catalog` 会在缺少扫描文件时返回示例目录，外置数据目录下的公开模板也有独立路由。旧的 `/HTML/index.html` 地址会重定向至网页入口。
+
+## MCP、AI 与 Skills
+
+普通网站、AI、MCP 和技能统一使用快捷方式磁贴。AI Web 服务直接在设置中添加链接，分类可设为 AI。MCP 和技能支持已有的 `catalog.json` 扫描产物，浏览器统一展示。扫描入口在管理模式下编辑后保存为共享覆盖项，删除后记录隐藏状态，所有设备同步生效。HTTP/SSE MCP 可保存 `urls` 数组以配置多个入口，技能可填写 `url` 或 `urls` 指向说明页。
+
+```bash
+npm run catalog -- --mcp /path/to/mcp.json --skills /path/to/skills
+```
+
+扫描应在拥有这些配置的服务器上运行。点击资源卡片查看实时详情，连接配置、启动命令与技能路径均在详情窗口中提供复制入口。
+
+## 资源详情与服务器配置（1.24.0）
+
+MCP 与 Skills 卡片会打开同页浮层窗口。左侧展示连接或技能元信息，右侧阅读工具、参数 Schema、客户端配置、技能指南和配套文件。原有 URL 气泡仍可直接打开对应地址。
+
+检测请求由导航服务器发出，窗口内标注检测位置。浏览器 URL 气泡的状态来自当前访问设备。MCP 工具状态依据实时服务发现，列表展示服务当前发布的工具及检测时间。Skills 以启用状态和 `SKILL.md` 可读取性判断可用状态。
+
+服务器通过 `LNP_MCP_CONFIG` 读取实际 MCP 配置，未设置时依次使用扫描目录记录的配置路径和 `~/.workbuddy/mcp.json`。STDIO 入口按配置中的 `command`、`args`、`env`、`cwd` 启动短连接进程，发现完毕回收进程。HTTP/SSE 入口使用配置中的端点与请求头，支持 `${VAR}` / `${env:VAR}` 环境变量引用。展示给浏览器的凭据与敏感参数均脱敏。
+
+本机 Node.js 部署可指定现有配置和技能根目录。
+
+```powershell
+$env:LNP_MCP_CONFIG = 'D:\navigation-config\mcp.json'
+$env:LNP_SKILLS_DIR = 'D:\skills'
+npm run serve
+```
+
+容器部署时，在现有 Compose 服务中合并以下配置，并将宿主路径替换为实际路径。MCP 配置放在网页数据目录之外，配置内的命令、工作目录和参数使用容器中的路径。STDIO 服务依赖的可执行程序和包需要安装到导航服务运行环境中。
+
+```yaml
+environment:
+  LNP_MCP_CONFIG: /run/navigation/mcp.json
+  LNP_SKILLS_DIR: /skills
+volumes:
+  - ./HTML/data:/data
+  - /srv/navigation-config/mcp.json:/run/navigation/mcp.json:ro
+  - /srv/skills:/skills:ro
+```
+
+`LNP_SKILLS_DIR` 按目录项原路径的末级文件夹名映射，适合把 Windows 扫描目录迁移到 Linux 服务器。保留原路径直接部署时可省略该变量。默认 MCP 检测超时为 20 秒，可通过 `LNP_MCP_TIMEOUT_MS` 调整。
+
+## 运行与备份
+
+```bash
+npm run serve -- 8080
+curl http://127.0.0.1:8080/api/config
+```
+
+Node.js 运行支持 `SERVE_HOST` 与 `LNP_DATA_DIR` 环境变量。直接运行默认使用 `HTML/data`。Docker 健康检查读取 `/api/config`，可验证实际配置文件可读。
+
+备份服务器的 `links.json`、`catalog.json`，并通过设置导出浏览器配置。服务当前使用受信网络内的共享编辑模式，所有能够访问 API 的客户端都具有编辑能力。公网入口的认证由前置反向代理提供，Tailscale 入口的访问范围通过 tailnet 规则控制。
+
+## 升级与回退
+
+先备份数据目录，再替换代码并运行 `docker compose up -d --build`。升级为 Node.js 服务后容器端口为 8080，宿主机端口保持 8080。原有 Nginx 自定义代理若使用容器端口 80，需要同步改为 8080。
+
+回退代码时恢复升级前镜像与 Compose 配置，数据目录继续保留。新增的 `settings` 字段与旧版 `links` 数据兼容。
+
+
+## 网络环境气泡与首页信息（1.20.0）
+
+右上角气泡自动显示本机、内网、Tailscale 或公网访问线路，也支持手动选择家里、公司等自定义环境。环境配置在设置的「首页内容 → 网络环境」维护。名称、优先线路和检测地址共享保存，当前所选环境保存在各自浏览器。
+
+检测请求由访问页面的电脑发出，可达性结果反映该电脑到检测地址的访问情况。家里、公司可填写各自的局域网入口作为检测地址。未填写地址时显示未配置状态。浏览器跨域、HTTPS 和私网访问限制可能使检测显示未响应，实际访问仍可通过手动选择线路确认。
+
+时间和天气信息条恢复默认显示，原有时间格式、天气城市、温度单位继续沿用。天气结果缓存 15 分钟，网络请求有超时与失败状态。
+
+全屏天气特效在「首页内容 → 天气显示」开关，默认开启并按浏览器保存。特效与天气文字显示独立，沿用首个城市的同一份天气请求与缓存，每 15 分钟更新。六小时内相邻观测降温至少 5°C 触发一小时冷色边缘。天气数据超过 30 分钟或请求失败时收起特效，后台标签暂停粒子绘制。天气来自访问端浏览器请求 wttr.in，需能访问该服务。离线缓存包含天气特效脚本与样式。
+
+## 箭头入口与延迟选路（1.25.0）
+
+快捷方式入口使用小箭头，展开后切换为向上箭头。自动模式的右上角气泡显示“自动选路”，旁边的 `XXms` 为当前电脑到导航页的连接延迟，展开后查看各环境的延迟。家里、公司等环境在设置中填写各自可访问的 HTTP/HTTPS 检测地址，未配置的环境显示待设置。
+
+延迟使用当前访问电脑发起的 HTTP 往返请求测量，包含连接与服务响应时间。页面加载、恢复前台、恢复联网后自动检测，后续按设置频率刷新，默认每分钟一次。环境检测和服务 URL 检测共用六个并发名额，同一地址共享结果。
+
+自动模式逐个服务比较各 URL 的测量结果，打开延迟最低的可响应地址。公司部署的导航可以在同一次访问中，让家中 NAS 走家中局域网、公司知识库走 Tailscale。可读 HTTP 错误及过期结果退出竞争，跨域不透明响应显示“有响应 · 未确认”和毫秒数。尚未取得测量结果时沿用配置优先级，页面加载和展开抽屉都会立即触发检测。固定默认 URL 优先生效，手动选择某类线路时优先比较该类地址，已确认失败时回退到其他可响应地址。
+
+检测频率可在“设置 → 界面布局 → 网络延迟与在线状态检测”调整。旧 `smartRouting` 字段作为兼容数据保留，自动模式已统一按实测延迟选路。
+
+## 右上角工具栏（1.26.0）
+
+默认显示路线状态与设置。鼠标悬停、键盘聚焦时展开其他已启用工具，移开并离开键盘焦点后收起。触屏长按设置或路线按钮 450 毫秒可展开工具，轻点继续执行按钮原有动作。自定义按钮和已有的显示开关继续生效。
+
+按钮提示使用独立浮层显示，设置按钮显示“设置”，布局和自定义按钮也有对应文字。键盘可用左右方向键切换工具，布局菜单支持上下方向键、Enter 与 Escape。
+
+布局菜单选择首页位置后即时预览对应位置。选择网格密度会展开快捷方式展示紧凑、均衡或舒展效果，设置控件同步更新。极简模式选择首页位置时退出极简模式进行预览，打开快捷抽屉时可暂时显示完整网格，收起后返回极简界面。

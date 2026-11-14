@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -135,13 +135,13 @@ for (const reference of references) {
   }
 }
 
-for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js', 'HTML/js/home-render.js', 'HTML/js/settings-links.js', 'HTML/js/launcher.js', 'HTML/js/search-engines.js', 'HTML/js/display.js', 'HTML/js/catalog.js', 'HTML/sw.js', 'scripts/scan-local.mjs', 'scripts/scan-catalog.mjs', 'scripts/serve.mjs']) {
+for (const relativePath of ['HTML/js/main.js', 'HTML/js/darkMode.js', 'HTML/js/home-render.js', 'HTML/js/settings-links.js', 'HTML/js/launcher.js', 'HTML/js/search-engines.js', 'HTML/js/display.js', 'HTML/js/catalog.js', 'HTML/js/navigation.js', 'HTML/js/network-environments.js', 'HTML/js/server-sync.js', 'scripts/config-store.mjs', 'scripts/mcp-server.mjs', 'HTML/sw.js', 'scripts/scan-local.mjs', 'scripts/scan-catalog.mjs', 'scripts/serve.mjs']) {
   const result = spawnSync(process.execPath, ['--check', join(root, relativePath)], { encoding: 'utf8' });
   if (result.status !== 0) errors.push(`${relativePath}: JavaScript 语法检查失败\n${result.stderr.trim()}`);
 }
 
-const shellCheck = spawnSync('sh', ['-n', join(root, 'docker/10-init-links-json.sh')], { encoding: 'utf8' });
-if (shellCheck.status !== 0) errors.push(`docker/10-init-links-json.sh: ${shellCheck.stderr.trim()}`);
+const shellCheck = spawnSync(process.platform === 'win32' && existsSync('C:/Program Files/Git/bin/sh.exe') ? 'C:/Program Files/Git/bin/sh.exe' : 'sh', ['-n', join(root, 'docker/10-init-links-json.sh')], { encoding: 'utf8' });
+if (shellCheck.status !== 0) errors.push(`docker/10-init-links-json.sh: ${shellCheck.error?.message || shellCheck.stderr?.trim() || 'Shell 检查失败'}`);
 
 if (warnings.length > 0) console.warn(warnings.join('\n'));
 

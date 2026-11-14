@@ -5,22 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>导航页 — 本地网络导航</title>
     <meta name="robots" content="noindex, nofollow">
-    <meta name="description" content="轻量级个人本地网络导航页：自定义链接分类、多搜索引擎、时钟天气、深色模式，数据本地存储可导入导出。">
+    <meta name="description" content="轻量级本地 / 内网导航页：搜索首页、快捷抽屉、网站 / AI / MCP / Skills 统一收纳、多地址智能选路、服务器共享配置。">
     <meta name="author" content="Local Navigation Page">
     <!-- Open Graph / 社交分享 -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="导航页 — 本地网络导航">
-    <meta property="og:description" content="轻量级个人本地网络导航页：自定义链接分类、多搜索引擎、时钟天气、深色模式。">
+    <meta property="og:description" content="搜索首页 + 快捷抽屉：网站、AI、MCP 与 Skills 统一收纳，多地址智能选路，服务器共享配置。">
     <meta property="og:locale" content="zh_CN">
-    <meta property="og:image" content="https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/assets/day-mode.png">
+    <meta property="og:image" content="https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/assets/home-day.png">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="stylesheet" href="CSS/tokens.css?v=1.17.1">
-    <link rel="stylesheet" href="CSS/styles.css?v=1.17.1">
-	<link rel="stylesheet" href="CSS/search_input.css?v=1.17.1">
-	<link rel="stylesheet" href="CSS/settings_box.css?v=1.17.1">
+    <link rel="stylesheet" href="CSS/tokens.css?v=1.27.0">
+    <link rel="stylesheet" href="CSS/styles.css?v=1.27.0">
+	<link rel="stylesheet" href="CSS/search_input.css?v=1.27.0">
+	<link rel="stylesheet" href="CSS/settings_box.css?v=1.27.0">
     <!-- 字体与图标本地化：断网/纯内网环境图标字体不缺失 -->
-    <link rel="stylesheet" href="CSS/fonts.css?v=1.17.1">
-    <link rel="stylesheet" href="CSS/remixicon.css?v=1.17.1">
+    <link rel="stylesheet" href="CSS/fonts.css?v=1.27.0">
+    <link rel="stylesheet" href="CSS/remixicon.css?v=1.27.0">
+    <link rel="stylesheet" href="CSS/navigation.css?v=1.27.0">
+    <link rel="stylesheet" href="CSS/resource-details.css?v=1.27.0">
+    <link rel="stylesheet" href="CSS/toolbar.css?v=1.27.0">
+    <link rel="stylesheet" href="CSS/weather-effects.css?v=1.27.0">
     <!-- 缩略图与 favicon 服务：链接卡片首屏就会请求 -->
     <link rel="preconnect" href="https://s0.wp.com">
     <link rel="dns-prefetch" href="https://s0.wp.com">
@@ -28,12 +32,19 @@
     <link rel="dns-prefetch" href="https://www.google.com">
     <meta name="theme-color" content="#5D5FEF">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F172A">
-    <link rel="manifest" href="manifest.webmanifest?v=1.17.1">
+    <link rel="manifest" href="manifest.webmanifest?v=1.27.0">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235D5FEF'/%3E%3Cstop offset='1' stop-color='%23FF7D51'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 68V32h8l16 24V32h8v36h-8L38 44v24z' fill='white'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235D5FEF'/%3E%3Cstop offset='1' stop-color='%23FF7D51'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 68V32h8l16 24V32h8v36h-8L38 44v24z' fill='white'/%3E%3C/svg%3E">
 </head>
 
-<body>
+<body class="liquid-home">
+    <div id="weather-atmosphere" data-weather="none" data-cold="false" aria-hidden="true">
+        <canvas class="weather-rain"></canvas>
+        <canvas class="weather-snow"></canvas>
+        <div class="weather-mist weather-mist-back"></div>
+        <div class="weather-mist weather-mist-front"></div>
+        <div class="weather-frost"></div>
+    </div>
     <script>
         // 首帧前应用夜间主题，避免 darkMode.js 在 DOMContentLoaded 才执行导致的闪白
         (function () {
@@ -50,7 +61,7 @@
         })();
     </script>
     <!-- 跳到主内容（键盘可访问性） -->
-    <a href="#link-container" class="skip-link">跳到主内容</a>
+    <a href="#navigation-view" class="skip-link">跳到主内容</a>
 
     <!-- 键盘启动器（Cmd/Ctrl+K 唤起，跨分组即时搜索启动） -->
     <div id="launcher" class="launcher-overlay" role="dialog" aria-modal="true" aria-label="启动器" hidden>
@@ -125,35 +136,35 @@
         </div>
     </div>
 
-    <div class="top-right-buttons">
-        <!-- 功能按钮区域 -->
-        <div class="function-buttons">
-            <!-- 一键收起/展开按钮将在JS中添加到这里 -->
-            <!-- 布局调整按钮将在JS中添加到这里 -->
+    <div class="top-right-buttons" role="toolbar" aria-label="页面工具" aria-description="悬停或键盘聚焦展开工具，触屏长按设置或路线按钮展开">
+        <div class="toolbar-extras" id="toolbar-extras">
+            <div class="function-buttons"></div>
+            <div class="button-divider" aria-hidden="true"></div>
+            <button id="toggle-mode" class="icon-button" title="切换昼夜模式" aria-label="切换昼夜模式" type="button">
+                <i class="ri-sun-line" id="theme-icon" aria-hidden="true"></i>
+            </button>
         </div>
-        
-        <!-- 分隔线 -->
-        <div class="button-divider"></div>
-        
+        <div class="network-indicator">
+            <button id="network-environment-button" class="network-environment-button" type="button" aria-expanded="false" aria-controls="network-environment-popover">
+                <span class="environment-dot" aria-hidden="true"></span><span id="network-environment-label">网络</span><span id="network-environment-latency" hidden></span><i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+            </button>
+            <section id="network-environment-popover" class="network-environment-popover" aria-label="网络环境" hidden>
+                <div class="environment-heading"><strong>网络环境</strong><span id="browser-network-state"></span></div>
+                <div id="network-environment-list"></div>
+                <div class="environment-footer"><button id="network-recheck" type="button">重新检测</button><button id="network-configure" type="button">管理环境</button></div>
+            </section>
+        </div>
         <!-- 系统设置按钮区域 -->
         <div class="settings-buttons">
-            <!-- MCP / 技能目录 -->
-            <button id="open-catalog" class="icon-button" title="MCP 与技能">
-                <i class="ri-robot-2-line"></i>
-            </button>
-            <!-- 切换模式按钮 -->
-            <button id="toggle-mode" class="icon-button" title="切换昼夜模式">
-                <i class="ri-sun-line" id="theme-icon"></i>
-            </button>
-            
             <!-- 设置按钮 -->
-            <button id="open-settings" class="icon-button" title="打开设置">
-                <i class="ri-settings-3-line"></i>
+            <button id="open-settings" class="icon-button" title="设置" aria-label="设置" type="button">
+                <i class="ri-settings-3-line" aria-hidden="true"></i>
             </button>
         </div>
     </div>
 
     <main class="container">
+    <div class="home-header">
         <!-- 简洁标题 -->
         <div class="page-header">
             <h1>我的导航</h1>
@@ -175,7 +186,7 @@
         <div class="search-container-wrapper">
             <!-- 搜索框和按钮 -->
             <div class="search-container">
-                <input type="text" id="search-input" placeholder="输入搜索词，/引擎名 可指定引擎">
+                <input type="text" id="search-input" placeholder="输入搜索词，/引擎名 可指定引擎" aria-label="网页搜索" autocomplete="off">
                 <div class="search-buttons">
                     <button class="search-button" data-engine="百度">百度</button>
                     <button class="search-button" data-engine="Google">谷歌</button>
@@ -184,38 +195,27 @@
             </div>
         </div>
 
-        <!-- 最近使用（快捷访问） -->
-        <div id="recent-links" class="recent-links" hidden></div>
+    </div>
 
-        <!-- 分组视图标签（多视图：全部 / 各分组） -->
-        <div id="view-tabs" class="view-tabs" hidden></div>
-
-        <!-- 动态渲染的链接部分 -->
-        <div id="link-container" tabindex="-1">
-            <!-- 这里将会动态添加链接 -->
-        </div>
-    </main>
-
-    <!-- MCP / 技能目录（全屏） -->
-    <section id="catalog-view" class="catalog-view" role="dialog" aria-modal="true" aria-labelledby="catalog-title" hidden>
-        <div class="catalog-inner">
-            <header class="catalog-header">
-                <button id="catalog-back" class="icon-button" title="返回（Esc）" aria-label="返回">
-                    <i class="ri-arrow-left-line"></i>
-                </button>
-                <div class="catalog-heading">
-                    <h2 id="catalog-title">MCP 与技能</h2>
-                    <p id="catalog-summary">本机已部署的 MCP 服务和技能</p>
-                </div>
-                <div class="catalog-tabs" role="tablist" aria-label="目录类型">
-                    <button type="button" class="catalog-tab active" data-kind="mcp" role="tab" aria-selected="true">MCP</button>
-                    <button type="button" class="catalog-tab" data-kind="skill" role="tab" aria-selected="false">技能</button>
-                </div>
-                <input id="catalog-search" class="catalog-search" type="search" placeholder="搜索名称 / 描述 / 标签" autocomplete="off" aria-label="搜索目录">
-            </header>
-            <div id="catalog-list" class="catalog-list"></div>
+    <button id="open-navigation" class="navigation-dock" type="button" aria-expanded="false" aria-controls="navigation-view" aria-label="打开快捷方式" title="打开快捷方式">
+        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+    </button>
+    <section id="navigation-view" aria-label="快捷方式" hidden>
+        <div class="navigation-shell">
+            <div class="navigation-toolbar">
+                <label class="navigation-find"><i class="ri-search-line" aria-hidden="true"></i><input id="navigation-search" type="search" placeholder="查找快捷方式" aria-label="查找快捷方式" autocomplete="off"></label>
+                <label class="navigation-select">默认线路<select id="network-mode"><option value="auto">自动 · 最低延迟</option><option value="local">局域网优先</option><option value="tunnel">内网穿透优先</option><option value="remote">公网优先</option></select></label>
+            </div>
+            <div id="view-tabs" class="view-tabs"></div>
+            <div id="recent-links" class="recent-links" hidden></div>
+            <div id="link-container" tabindex="-1"></div>
+            <footer class="navigation-footer">
+                <span id="server-sync-status" role="status" data-state="loading">正在连接服务器</span>
+                <div><button id="server-recover" type="button" hidden>恢复本机草稿</button><button id="server-pull" type="button">刷新</button><button id="server-retry" type="button" hidden>重试保存</button></div>
+            </footer>
         </div>
     </section>
+    </main>
 
     <!-- 设置界面 -->
     <div id="settings-container" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -225,6 +225,14 @@
                     <i class="ri-settings-3-line" aria-hidden="true"></i>
                     <h2 id="settings-title">设置</h2>
                 </div>
+            <div class="settings-searchbar">
+                <i class="ri-search-line"></i>
+                <input type="text" id="settings-search-input" placeholder="搜索设置或链接" aria-label="搜索设置或链接">
+                <button type="button" id="clear-settings-search" title="清空设置搜索">
+                    <i class="ri-close-line"></i>
+                </button>
+                <span id="settings-search-count" aria-live="polite"></span>
+            </div>
                 <div class="header-actions">
                     <button id="open-about" class="icon-button" title="关于" aria-label="关于本应用">
                         <i class="ri-information-line"></i>
@@ -288,115 +296,41 @@
                 </button>
             </div>
 
-            <div class="settings-searchbar">
-                <i class="ri-search-line"></i>
-                <input type="text" id="settings-search-input" placeholder="搜索设置项">
-                <button type="button" id="clear-settings-search" title="清空设置搜索">
-                    <i class="ri-close-line"></i>
-                </button>
-                <span id="settings-search-count" aria-live="polite"></span>
-            </div>
+
             
             <!-- 标签页内容 -->
             <div class="settings-content">
                 <!-- 链接管理标签页 -->
                 <div class="tab-content active" id="links-tab">
-                    <div class="tab-header links-manager-header">
-                        <i class="ri-links-line"></i>
-                        <div>
-                            <h3>链接与分组</h3>
-                            <p>搜索、筛选、编辑链接，并管理首页导航分组</p>
+                    <div class="links-manager-toolbar">
+                        <div class="links-manager-heading"><h3 id="links-collection-title">所有入口</h3><span id="links-result-count" aria-live="polite"></span></div>
+                        <button class="btn-primary" id="add-link-toolbar-btn" type="button"><i class="ri-add-line" aria-hidden="true"></i><span>添加入口</span></button>
+                    </div>
+                    <input type="hidden" id="links-search">
+                    <div class="links-workspace">
+                        <aside class="links-group-rail" aria-label="按分组筛选">
+                            <div id="settings-group-filters"></div>
+                            <button id="manage-categories-btn" aria-label="管理分组" title="管理分组" class="group-manage-button" type="button"><i class="ri-folder-settings-line" aria-hidden="true"></i>管理分组</button>
+                        </aside>
+                        <div class="links-collection">
+                            <div class="links-list-toolbar">
+                                <span id="links-filter-summary">全部类型</span>
+                                <select id="links-kind-filter" aria-label="按入口类型筛选"><option value="">全部类型</option><option value="site">网站与服务</option><option value="ai">AI</option><option value="mcp">MCP</option><option value="skill">Skills</option></select>
+                            </div>
+                            <div id="existing-links" class="links-groups"></div>
+                            <div class="links-empty" id="links-empty"><div class="empty-icon"><i class="ri-inbox-line" aria-hidden="true"></i></div><p>暂无入口</p><span>点击“添加入口”开始</span></div>
                         </div>
                     </div>
 
-                    <!-- 统计卡片 -->
-                    <div class="links-stats-row">
-                        <div class="stat-card">
-                            <div class="stat-icon links-stat">
-                                <i class="ri-links-line"></i>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-value" id="total-links">0</span>
-                                <span class="stat-label">总链接数</span>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon categories-stat">
-                                <i class="ri-folder-line"></i>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-value" id="total-categories">0</span>
-                                <span class="stat-label">分类数</span>
-                            </div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-icon storage-stat">
-                                <i class="ri-database-2-line"></i>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-value" id="storage-size-mini">0 KB</span>
-                                <span class="stat-label">数据大小</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 工具栏 -->
-                    <div class="links-toolbar">
-                        <div class="links-search">
-                            <i class="ri-search-line"></i>
-                            <input type="text" id="links-search" placeholder="搜索名称、URL、分组或标签">
-                            <button type="button" class="links-search-clear" id="clear-links-search" title="清空搜索">
-                                <i class="ri-close-line"></i>
-                            </button>
-                        </div>
-                        <div class="links-filter">
-                            <select id="category-filter">
-                                <option value="">全部分组</option>
-                            </select>
-                            <button class="btn-icon" id="manage-categories-btn" title="管理分类">
-                                <i class="ri-folder-settings-line"></i>
-                            </button>
-                            <button class="btn-primary" id="add-link-toolbar-btn">
-                                <i class="ri-add-line"></i>
-                                <span>添加链接</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- 提示信息 -->
-                    <div class="links-hint">
-                        <i class="ri-information-line"></i>
-                        <span>在添加链接时输入新分组即可创建分组；搜索会同时匹配名称、URL、分组和标签</span>
-                    </div>
-
-                    <div class="links-results-bar">
-                        <span id="links-result-count">显示 0 个链接</span>
-                        <span>按分组自动归类</span>
-                    </div>
-                    
-                    <!-- 链接列表 -->
-                    <div class="links-list-container">
-                        <div id="existing-links" class="links-groups">
-                            <!-- 这里显示当前的网址列表 -->
-                        </div>
-                        <div class="links-empty" id="links-empty">
-                            <div class="empty-icon">
-                                <i class="ri-inbox-line"></i>
-                            </div>
-                            <p>暂无链接</p>
-                            <span>点击右上角"添加链接"按钮开始管理您的导航</span>
-                        </div>
-                    </div>
-                    
                     <!-- 添加/编辑链接弹窗 -->
-                    <div class="modal-overlay" id="link-modal">
+                    <div class="modal-overlay" id="link-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h3 id="modal-title">
                                     <i class="ri-add-circle-line"></i>
                                     <span>添加链接</span>
                                 </h3>
-                                <button class="modal-close" id="modal-close-btn">
+                                <button class="modal-close" id="modal-close-btn" aria-label="关闭入口编辑">
                                     <i class="ri-close-line"></i>
                                 </button>
                             </div>
@@ -405,17 +339,26 @@
                                     <div class="form-item">
                                         <label for="edit-name">
                                             <i class="ri-file-text-line"></i>
-                                            <span>网站名称</span>
+                                            <span>名称</span>
                                         </label>
                                         <div class="input-wrapper">
                                             <i class="ri-file-text-line input-icon"></i>
                                             <input type="text" id="edit-name" name="edit-name" placeholder="例如：GitHub">
                                         </div>
                                     </div>
+                                    <div class="form-item">
+                                        <label for="edit-kind">入口类型</label>
+                                        <select id="edit-kind"><option value="site">网站与服务</option><option value="ai">AI</option><option value="mcp">MCP</option><option value="skill">Skill</option></select>
+                                    </div>
+                                    <div class="form-item full-width" id="copy-value-field" hidden>
+                                        <label for="edit-copy-value">命令或路径</label>
+                                        <input id="edit-copy-value" type="text" placeholder="可填写 MCP 启动命令或 Skill 路径">
+                                        <small class="form-hint">点击入口打开资源详情。MCP 命令在服务器的 mcp.json 中登记，Skill 路径指向服务器可读取的技能目录。</small>
+                                    </div>
                                     <div class="form-item full-width">
                                         <label>
                                             <i class="ri-link"></i>
-                                            <span>网站地址</span>
+                                            <span>访问地址</span>
                                         </label>
                                         <div class="urls-list" id="urls-list">
                                             <!-- 动态填充 URL 列表 -->
@@ -488,14 +431,14 @@
                     </div>
                     
                     <!-- 分类管理弹窗 -->
-                    <div class="modal-overlay" id="category-modal">
+                    <div class="modal-overlay" id="category-modal" role="dialog" aria-modal="true" aria-labelledby="category-modal-title">
                         <div class="modal-content modal-sm">
                             <div class="modal-header">
-                                <h3>
+                                <h3 id="category-modal-title">
                                     <i class="ri-folder-settings-line"></i>
                                     <span>管理分组</span>
                                 </h3>
-                                <button class="modal-close" id="category-modal-close-btn">
+                                <button class="modal-close" id="category-modal-close-btn" aria-label="关闭分组管理">
                                     <i class="ri-close-line"></i>
                                 </button>
                             </div>
@@ -503,9 +446,9 @@
                                 <div class="category-add-row">
                                     <div class="input-wrapper">
                                         <i class="ri-folder-add-line input-icon"></i>
-                                        <input type="text" id="new-category-name" placeholder="输入新分类名称...">
+                                        <input type="text" id="new-category-name" aria-label="新分组名称" placeholder="新分组名称">
                                     </div>
-                                    <button class="btn-primary" id="add-category-btn">
+                                    <button class="btn-primary" id="add-category-btn" type="button" aria-label="创建分组">
                                         <i class="ri-add-line"></i>
                                     </button>
                                 </div>
@@ -830,19 +773,17 @@
                                 </div>
                                 <div class="option-item">
                                     <div class="option-header">
-                                        <i class="ri-route-line"></i>
-                                        <span>智能选路（首选离线时自动切换最快地址）</span>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="smart-routing-toggle">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                                <div class="option-item">
-                                    <div class="option-header">
                                         <i class="ri-pulse-line"></i>
-                                        <span>在线状态探测频率</span>
+                                        <span>网络延迟与在线状态检测</span>
                                     </div>
+                                    <select id="probe-interval-select" class="format-select">
+                                        <option value="30000">30 秒</option>
+                                        <option value="60000" selected>1 分钟</option>
+                                        <option value="120000">2 分钟</option>
+                                        <option value="300000">5 分钟</option>
+                                        <option value="0">关闭探测</option>
+                                    </select>
+                                </div>
                                 <div class="option-item">
                                     <div class="option-header">
                                         <i class="ri-sort-desc"></i>
@@ -852,14 +793,6 @@
                                         <option value="name" selected>按名称（拼音）</option>
                                         <option value="count">按链接数量</option>
                                         <option value="custom">手动排序（在管理分组中调整）</option>
-                                    </select>
-                                </div>
-                                    <select id="probe-interval-select" class="format-select">
-                                        <option value="30000">30 秒</option>
-                                        <option value="60000" selected>1 分钟</option>
-                                        <option value="120000">2 分钟</option>
-                                        <option value="300000">5 分钟</option>
-                                        <option value="0">关闭探测</option>
                                     </select>
                                 </div>
                             </div>
@@ -976,7 +909,7 @@
                                 <div class="option-item">
                                     <div class="option-header">
                                         <i class="ri-arrow-up-down-line"></i>
-                                        <span>跳到分组按钮</span>
+                                        <span>快捷方式入口</span>
                                     </div>
                                     <label class="toggle-switch">
                                         <input type="checkbox" id="show-toggle-all-btn" checked>
@@ -1038,6 +971,7 @@
 
                 <!-- 首页内容标签页 -->
                 <div class="tab-content" id="homecontent-tab">
+
                     <div class="tab-header">
                         <i class="ri-home-smile-line"></i>
                         <div>
@@ -1047,6 +981,14 @@
                     </div>
 
                     <!-- 时间与日期 -->
+                    <div class="settings-section" data-section-id="homecontent.network">
+                        <div class="section-title section-title-static"><div class="section-title-left"><i class="ri-router-line"></i><span>网络环境</span></div></div>
+                        <div class="section-content">
+                            <p class="form-hint">为家里、公司、Tailscale 等环境填写检测地址。当前电脑会定期测量 HTTP 往返延迟，自动模式优先选择响应最快的地址。检测频率在界面布局中调整。</p>
+                            <div id="network-environment-editor"></div>
+                            <button id="network-environment-add" class="btn-secondary" type="button"><i class="ri-add-line" aria-hidden="true"></i>添加环境</button>
+                        </div>
+                    </div>
                     <div class="settings-section" data-section-id="homecontent.time">
                         <div class="section-title">
                             <div class="section-title-left">
@@ -1146,6 +1088,19 @@
                                         <input type="text" id="weather-city-input" placeholder="例如：Beijing, Shanghai" value="shanghai">
                                     </div>
                                     <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
+                                </div>
+                                <div class="option-item weather-effects-option">
+                                    <div class="weather-effects-copy">
+                                        <div class="option-header">
+                                            <i class="ri-rainy-line" aria-hidden="true"></i>
+                                            <span>全屏天气特效</span>
+                                        </div>
+                                        <small class="form-hint weather-effects-hint">跟随首个城市，轻柔呈现雨雪、雾与降温。</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="weather-effects-toggle" aria-label="全屏天气特效" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
                                 <div class="option-item">
                                     <div class="option-header">
@@ -1474,17 +1429,18 @@
                         <div class="section-content">
                             <div class="data-action-row">
                                 <button id="import-bookmarks-btn" class="data-action-btn">
-                                    <button class="data-action-btn" id="export-bookmarks-btn" style="margin-top: 10px;">
-                                        <i class="ri-bookmark-line"></i>
-                                        <span>导出为浏览器书签</span>
-                                        <small>按分组生成 HTML，可直接导入 Chrome / Edge / Firefox</small>
-                                    </button>
+
                                     <i class="ri-bookmark-line" aria-hidden="true"></i>
                                     <div class="data-action-text">
                                         <span>从浏览器书签导入</span>
                                         <small>导入 .html 书签文件或 .csv（自动归类到分组）</small>
                                     </div>
                                 </button>
+                                    <button class="data-action-btn" id="export-bookmarks-btn" >
+                                        <i class="ri-bookmark-line"></i>
+                                        <span>导出为浏览器书签</span>
+                                        <small>按分组生成 HTML，可直接导入 Chrome / Edge / Firefox</small>
+                                    </button>
                                 <input type="file" id="import-bookmarks-file" accept=".html,.htm,.csv" style="display: none;">
                             </div>
                         </div>
@@ -1546,8 +1502,8 @@
                             <div class="settings-persist-note">
                                 <i class="ri-information-line"></i>
                                 <div>
-                                    <strong>当前修改会自动保存到浏览器本地。</strong>
-                                    <p>链接和设置会在同一浏览器、同一访问地址下保留。links.json 作为默认模板使用；迁移设备、换域名或 Docker 备份时，请导出完整配置。</p>
+                                    <strong>链接与分类自动保存到服务器。</strong>
+                                    <p>在线模式下，添加、修改、删除会自动保存并同步到其他设备。主题和访问线路按设备保存。连接中断时保留本机草稿，恢复连接后重试。</p>
                                 </div>
                             </div>
                         </div>
@@ -1633,15 +1589,44 @@
     <i class="ri-arrow-up-line"></i>
 </button>
 
-<script src="js/storage.js?v=1.17.1" defer></script>
-<script src="js/links-data.js?v=1.17.1" defer></script>
-<script src="js/catalog.js?v=1.17.1" defer></script>
-<script src="js/home-render.js?v=1.17.1" defer></script>
-<script src="js/settings-links.js?v=1.17.1" defer></script>
-<script src="js/display.js?v=1.17.1" defer></script>
-<script src="js/search-engines.js?v=1.17.1" defer></script>
-<script src="js/launcher.js?v=1.17.1" defer></script>
-<script src="js/main.js?v=1.17.1" defer></script>
-<script src="js/darkMode.js?v=1.17.1" defer></script>
+<dialog id="resource-detail-dialog" class="resource-dialog" aria-labelledby="resource-title">
+    <header class="resource-header">
+        <span id="resource-avatar" class="resource-avatar" aria-hidden="true"></span>
+        <div class="resource-heading">
+            <span id="resource-kind" class="resource-eyebrow"></span>
+            <h2 id="resource-title"></h2>
+            <p id="resource-description"></p>
+        </div>
+        <div class="resource-actions">
+            <button type="button" id="resource-refresh" class="resource-icon-button" aria-label="重新检测" title="重新检测"><i class="ri-refresh-line" aria-hidden="true"></i></button>
+            <button type="button" id="resource-close" class="resource-icon-button" aria-label="关闭详情" title="关闭详情" autofocus><i class="ri-close-line" aria-hidden="true"></i></button>
+        </div>
+    </header>
+    <div class="resource-body">
+        <aside id="resource-connection" class="resource-connection" aria-label="资源信息"></aside>
+        <section class="resource-workspace">
+            <nav id="resource-tabs" class="resource-tabs" aria-label="详情视图"></nav>
+            <div id="resource-content" class="resource-content"></div>
+        </section>
+    </div>
+    <footer class="resource-footer"><span id="resource-status" role="status" aria-live="polite"></span><span id="resource-checked"></span></footer>
+</dialog>
+
+<script src="js/storage.js?v=1.27.0" defer></script>
+<script src="js/links-data.js?v=1.27.0" defer></script>
+<script src="js/network-environments.js?v=1.27.0" defer></script>
+<script src="js/navigation.js?v=1.27.0" defer></script>
+<script src="js/server-sync.js?v=1.27.0" defer></script>
+<script src="js/catalog.js?v=1.27.0" defer></script>
+<script src="js/resource-details.js?v=1.27.0" defer></script>
+<script src="js/home-render.js?v=1.27.0" defer></script>
+<script src="js/settings-links.js?v=1.27.0" defer></script>
+<script src="js/weather-effects.js?v=1.27.0" defer></script>
+<script src="js/display.js?v=1.27.0" defer></script>
+<script src="js/search-engines.js?v=1.27.0" defer></script>
+<script src="js/launcher.js?v=1.27.0" defer></script>
+<script src="js/main.js?v=1.27.0" defer></script>
+<script src="js/toolbar.js?v=1.27.0" defer></script>
+<script src="js/darkMode.js?v=1.27.0" defer></script>
 </body>
 </html>

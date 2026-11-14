@@ -20,13 +20,14 @@
 //   import_links  — 批量导入（只增不删，自动去重）
 //   get_stats     — 分组统计
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { readConfigFile, writeConfigFile } from './config-store.mjs';
+import { readFile } from 'node:fs/promises';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const linksJsonPath = join(root, 'HTML', 'data', 'links.json');
+const linksJsonPath = join(process.env.LNP_DATA_DIR || join(root, 'HTML', 'data'), 'links.json');
 
 // ================= 数据操作 =================
 async function loadLinks() {
@@ -37,7 +38,10 @@ async function loadLinks() {
 }
 
 async function saveLinks(links) {
-  await writeFile(linksJsonPath, JSON.stringify({ links }, null, 4) + '\n', 'utf8');
+  let doc = {};
+  try { doc = await readConfigFile(linksJsonPath); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  await writeConfigFile(linksJsonPath, { ...doc, links });
 }
 
 function isValidUrl(u) {
@@ -173,6 +177,7 @@ async function executeTool(name, args) {
       if (args.url) {
         if (!isValidUrl(args.url)) throw new Error('url 必须是 http/https');
         merged.url = args.url;
+        delete merged.urls;
       }
       if (args.category) merged.category = args.category;
       if (args.tag !== undefined) merged.tag = args.tag;
@@ -225,7 +230,7 @@ async function executeTool(name, args) {
 const serverInfo = {
   protocolVersion: '2024-11-05',
   capabilities: { tools: {} },
-  serverInfo: { name: 'local-navigation-page', version: '1.16.0' }
+  serverInfo: { name: 'local-navigation-page', version: '1.27.0' }
 };
 
 const rl = createInterface({ input: process.stdin });

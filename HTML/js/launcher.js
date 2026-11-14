@@ -11,6 +11,7 @@ let launcherSelected = -1;   // 当前选中索引
 
 function openLauncher() {
     if (!launcherEl) return;
+    void probeLinkStatuses(getNavigationItems());
     launcherEl.hidden = false;
     requestAnimationFrame(() => {
         launcherEl.classList.add('show');
@@ -31,7 +32,7 @@ function renderLauncherResults(query) {
     const q = query.trim().toLowerCase();
     // 按"最近使用"排序，无访问记录的按原顺序
     const recent = getRecentLinks();
-    let pool = [...links].sort((a, b) => {
+    let pool = getNavigationItems().sort((a, b) => {
         const ta = recent[String(a.ID)] || 0;
         const tb = recent[String(b.ID)] || 0;
         return tb - ta;
@@ -64,12 +65,13 @@ function renderLauncherResults(query) {
         const name = escapeHTML(link.name || '未命名');
         const cat = escapeHTML(link.category || '未分组');
         const meta = getUrlChoiceMeta(item.preferredUrl);
-        const routeLabel = { local: '内网', tunnel: '隧道', remote: '公网' }[meta.type] || '';
+        const resource = ['mcp', 'skill'].includes(getNavigationItemKind(link));
+        const routeLabel = resource ? '' : { local: '内网', tunnel: '隧道', remote: '公网' }[meta.type] || '';
         const icon = isSafeUrl(link.thumbnail) ? `<img class="launcher-item-icon" src="${sanitizeUrl(link.thumbnail,'',['http:','https:'])}" alt="" loading="lazy">` : `<i class="ri-links-line launcher-item-icon" aria-hidden="true"></i>`;
         return `<li class="launcher-item ${idx === launcherSelected ? 'selected' : ''}" role="option" data-idx="${idx}" tabindex="-1">
             ${icon}
             <div class="launcher-item-main"><span class="launcher-item-name">${name}</span><span class="launcher-item-meta">${cat}${routeLabel ? ' · ' + routeLabel : ''}</span></div>
-            <kbd class="launcher-item-route route-${meta.type}">${routeLabel}</kbd>
+            <kbd class="launcher-item-route route-${resource ? 'resource' : meta.type}">${resource ? '详情' : routeLabel}</kbd>
         </li>`;
     }).join('');
 }
@@ -87,7 +89,9 @@ function launchSelectedItem() {
     const item = launcherItems[launcherSelected];
     if (item) {
         closeLauncher();
-        openLinkUrl(item.link, item.preferredUrl.address);
+        if (['mcp', 'skill'].includes(getNavigationItemKind(item.link))) openResourceDetails(item.link);
+        else if (!getSafeLinkUrls(item.link).length && item.link.copyValue) createCatalogTile(item.link).querySelector('button').click();
+        else openLinkUrl(item.link, item.preferredUrl.address);
         return;
     }
     // 无候选：尝试 /前缀 关键词直达搜索（与主搜索框同规则）

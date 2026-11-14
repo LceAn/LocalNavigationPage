@@ -54,7 +54,8 @@ test('normalizeLinks:urls 数组内非法地址被剔除,合法地址保留', ()
     ]
   }]);
   assert.equal(out.length, 1);
-  assert.equal(out[0].url, 'http://good.example'); // 剩单地址收敛为 url 字段
+  assert.equal(out[0].urls[0].address, 'http://good.example');
+  assert.equal(out[0].urls[0].label, 'good');
 });
 
 test('normalizeLinks:重复/非法 ID 自动重排,不丢链接', () => {
@@ -69,15 +70,16 @@ test('normalizeLinks:重复/非法 ID 自动重排,不丢链接', () => {
   assert.deepEqual(out.map(l => l.ID).sort((a, b) => a - b), [5, 6, 7]);
 });
 
-test('normalizeLinks:多地址收敛为 urls,单地址收敛为 url 字段', () => {
+test('normalizeLinks:多地址与单地址保留 urls 的标签信息', () => {
   const api = fresh();
   const [multi] = api.normalizeLinks([{ ID: 1, name: 'm', urls: [
     { address: 'http://a.example' }, { address: 'http://b.example' }
   ]}]);
   assert.ok(Array.isArray(multi.urls) && multi.url === undefined);
-  const [single] = api.normalizeLinks([{ ID: 2, name: 's', urls: [{ address: 'http://c.example' }] }]);
-  assert.equal(single.url, 'http://c.example');
-  assert.ok(!Array.isArray(single.urls));
+  const [single] = api.normalizeLinks([{ ID: 2, name: 's', urls: [{ address: 'http://c.example', label: '内网穿透', priority: 3 }] }]);
+  assert.equal(single.urls[0].address, 'http://c.example');
+  assert.equal(single.urls[0].label, '内网穿透');
+  assert.equal(single.urls[0].priority, 3);
 });
 
 test('normalizeLinks:缺 name/category 填默认值', () => {
@@ -236,4 +238,41 @@ test('getSafeLinkUrls:多地址按 priority 升序', () => {
     { address: 'http://a.example', priority: 1 }
   ]});
   assert.deepEqual(out.map(u => u.address), ['http://a.example', 'http://b.example']);
+});
+
+
+test('访问线路模式覆盖旧地址记忆，缺少所选线路时回退已有地址', () => {
+  const api = fresh();
+  const link = { ID: 9, name: '服务', urls: [
+    { address: 'http://192.168.1.20', label: '公司', priority: 1 },
+    { address: 'http://100.90.1.2', label: 'Tailscale', priority: 2 },
+    { address: 'https://example.com', label: '公网', priority: 3 }
+  ] };
+  api.rememberLastUsedLinkUrl(link, 'http://192.168.1.20');
+  api.setSetting('networkMode', 'tunnel');
+  assert.equal(api.getPreferredUrlInfo(link).address, 'http://100.90.1.2');
+  api.setSetting('networkMode', 'remote');
+  assert.equal(api.getPreferredUrlInfo(link).address, 'https://example.com');
+  assert.equal(api.getPreferredUrlInfo({ ID: 10, url: 'https://single.example' }).address, 'https://single.example');
+});
+
+
+test('normalizeLinks:保留仅命令或路径的 MCP 和 Skill 入口', () => {
+  const api = fresh();
+  const result = api.normalizeLinks([
+    { ID: 1, name: 'MCP', kind: 'mcp', copyValue: 'node server.mjs', urls: [] },
+    { ID: 2, name: '技能', kind: 'skill', copyValue: '/data/skills/example', urls: [] },
+    { ID: 3, name: '空网站', kind: 'site', urls: [] }
+  ]);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].copyValue, 'node server.mjs');
+  assert.equal(result[1].copyValue, '/data/skills/example');
+});
+
+
+test('首页默认显示时间天气信息条，并保留后续显式关闭选择', () => {
+  const api = fresh();
+  assert.equal(api.loadHomeFeatureSettings().showInfoBar, true);
+  api.setSetting('homeFeatureSettings', {showInfoBar:false});
+  assert.equal(api.loadHomeFeatureSettings().showInfoBar, false);
 });

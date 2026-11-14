@@ -58,7 +58,7 @@ function renderRecentLinks(allLinks) {
     }
     container.hidden = false;
     container.innerHTML = items.map(link => {
-        const firstUrl = getSafeLinkUrls(link)[0];
+        const firstUrl = getPreferredUrlInfo(link);
         const safeUrl = firstUrl?.address || '#';
         const name = escapeHTML(link.name || '未命名');
         const icon = isSafeUrl(link.thumbnail)
@@ -72,7 +72,7 @@ function renderRecentLinks(allLinks) {
         el.addEventListener('click', event => {
             const link = byId.get(String(el.getAttribute('data-link-id')));
             if (!link) return;
-            const firstUrl = getSafeLinkUrls(link)[0];
+            const firstUrl = getPreferredUrlInfo(link);
             if (!firstUrl) return;
             event.preventDefault();
             openLinkUrl(link, firstUrl.address);
@@ -80,318 +80,133 @@ function renderRecentLinks(allLinks) {
     });
 }
 
-// 渲染链接的函数（按照分类）- 修复版
-// 渲染分组视图标签栏（多视图：全部 / 各分组）
-function renderViewTabs(allLinks) {
-    const tabsEl = document.getElementById('view-tabs');
-    if (!tabsEl) return;
-    const categories = getAllCategoryNames(allLinks);
-    const hasType = (t) => allLinks.some(l => getSafeLinkUrls(l).some(u => getUrlChoiceMeta(u).type === t));
-    const netChips = [
-        { type: 'local', label: '内网', icon: 'ri-home-wifi-line', title: '只看可通过内网地址访问的链接' },
-        { type: 'tunnel', label: '隧道', icon: 'ri-shield-keyhole-line', title: '只看可通过 Tailscale / VPN 等隧道访问的链接' },
-        { type: 'remote', label: '公网', icon: 'ri-global-line', title: '只看可通过公网地址访问的链接' }
-    ].filter(c => hasType(c.type));
-
-    // 没有分组且没有网络差异时不显示标签栏
-    if (categories.length <= 1 && netChips.length === 0) {
-        tabsEl.hidden = true;
-        tabsEl.innerHTML = '';
-        return;
-    }
-    tabsEl.hidden = false;
-    const all = categories.length > 1 ? ['全部', ...categories] : ['全部'];
-    const catTabs = all.map(name => {
-        const isActive = (name === '全部' && !currentViewCategory) || name === currentViewCategory;
-        return `<button type="button" class="view-tab ${isActive ? 'active' : ''}" data-view="${escapeHTML(name)}" aria-pressed="${isActive}">${escapeHTML(name)}</button>`;
-    }).join('');
-    // 网络筛选 chips：可与分组维度叠加（如「云服务 + 内网」）
-    const netTabs = netChips.map(c => {
-        const isOn = currentViewType === c.type;
-        return `<button type="button" class="view-tab view-tab-net route-chip-${c.type} ${isOn ? 'active' : ''}" data-net="${c.type}" title="${c.title}" aria-pressed="${isOn}"><i class="${c.icon}"></i> ${c.label}</button>`;
-    }).join('');
-    tabsEl.innerHTML = catTabs + netTabs;
-
-    tabsEl.querySelectorAll('.view-tab-net').forEach(btn => {
-        btn.addEventListener('click', (event) => {
-            // 阻止冒泡：重渲染会替换 #view-tabs 的 DOM，避免"点空白收起"误判
-            event.stopPropagation();
-            const type = btn.dataset.net;
-            currentViewType = (currentViewType === type) ? '' : type; // 再点一次取消
-            currentViewCategory = '';
-            renderLinksByCategory(links);
-        });
-    });
-    tabsEl.querySelectorAll('.view-tab:not(.view-tab-net)').forEach(btn => {
-        btn.addEventListener('click', (event) => {
-            // 重渲染会替换 #view-tabs 的 DOM，导致本节点脱离文档树，
-            // 事件冒泡到 document 时 closest 失效会被误判为"点空白收起"。故阻止冒泡。
-            event.stopPropagation();
-            // 分类标签现在是页内锚点：不重渲染、不隐藏其它分组
-            const name = btn.dataset.view;
-            currentViewCategory = (name === '全部') ? '' : name;
-            tabsEl.querySelectorAll('.view-tab:not(.view-tab-net)').forEach(item => {
-                const active = item === btn;
-                item.classList.toggle('active', active);
-                item.setAttribute('aria-pressed', String(active));
-            });
-            if (name === '全部') {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            } else {
-                const target = [...document.querySelectorAll('.category-container')]
-                    .find(container => container.dataset.category === name);
-                target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-    });
+// 统一入口类型筛选，分组在设置中管理。
+function renderViewTabs() {
+    const tabs = document.getElementById('view-tabs');
+    const kinds = [['', '全部'], ['site', '网站与服务'], ['ai', 'AI'], ['mcp', 'MCP'], ['skill', 'Skills']];
+    tabs.hidden = false;
+    tabs.innerHTML = kinds.map(([kind, label]) => `<button type="button" class="view-tab ${navigationKind === kind ? 'active' : ''}" data-kind="${kind}" aria-pressed="${navigationKind === kind}">${label}</button>`).join('');
+    tabs.querySelectorAll('button').forEach(button => button.addEventListener('click', () => {
+        navigationKind = button.dataset.kind;
+        renderLinksByCategory(links);
+    }));
 }
 
-// 当前视图筛选的分组（空 = 全部）
-let currentViewCategory = '';
-// 网络类型筛选（'' = 不过滤；local / tunnel / remote）
 let currentViewType = '';
 
 function renderLinksByCategory(allLinks) {
-    const linkContainer = document.getElementById('link-container');
-    document.querySelectorAll('.url-dropdown').forEach(dropdown => dropdown.remove());
-    closeCategoryPanel(false);
-    linkContainer.innerHTML = '';
-
-    // 所有分组始终全部展示；只有网络类型筛选会过滤链接
-    let links = [...allLinks];
-    if (currentViewType) {
-        links = links.filter(l => getSafeLinkUrls(l).some(u => getUrlChoiceMeta(u).type === currentViewType));
-    }
-
-    // 同步视图标签栏
-    renderViewTabs(allLinks);
-
-    const categories = {};
-    links.forEach(link => {
-        const category = link.category || '未分类';
-        if (!categories[category]) {
-            categories[category] = [];
-        }
-        categories[category].push(link);
+    const container = document.getElementById('link-container');
+    if (!container) return;
+    closeRoutePopover(false);
+    const all = getNavigationItems();
+    const filtered = all.filter(item => {
+        if (navigationKind && getNavigationItemKind(item) !== navigationKind) return false;
+        const text = [item.name, item.category, item.tag, item.remarks, ...getSafeLinkUrls(item).map(url => url.address)].join(' ').toLowerCase();
+        return navigationQuery.split(/\s+/).filter(Boolean).every(term => text.includes(term));
     });
-
-    for (const category in categories) {
-        // 组内链接按名称排序，便于按拼音定位
-        categories[category].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN'));
+    renderViewTabs();
+    const list = document.createElement('ul');
+    list.className = 'link-list navigation-grid';
+    filtered.forEach(item => {
+        const tile = getSafeLinkUrls(item).length ? createHomeLinkElement(item) : createCatalogTile(item);
+        list.appendChild(tile);
+    });
+    container.replaceChildren(list);
+    if (getSetting('showThumbnails', true) === false) {
+        container.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => { thumbnail.style.display = 'none'; });
     }
-
-    // 分组按名称排序，与顶部筛选标签栏（getAllCategoryNames）保持同一顺序
-    // 分组排序：按名称（拼音）或按链接数量（设置 → 布局）
-    const sortMode = getSetting('groupSortMode', 'name');
-    let sortedCategories;
-    if (sortMode === 'custom') {
-        // 手动序:按 customCategoryOrder;未记录的分组按名称附后
-        const order = getSetting('customCategoryOrder', []);
-        const rank = new Map((Array.isArray(order) ? order : []).map((name, i) => [name, i]));
-        const nameSorted = Object.keys(categories).sort((a, b) => a.localeCompare(b, 'zh-CN'));
-        sortedCategories = nameSorted
-            .map(name => [name, categories[name]])
-            .sort((a, b) => (rank.get(a[0]) ?? 1e9) - (rank.get(b[0]) ?? 1e9) || a[0].localeCompare(b[0], 'zh-CN'));
-    } else {
-        sortedCategories = Object.entries(categories)
-            .sort((a, b) => sortMode === 'count'
-                ? (b[1].length - a[1].length || a[0].localeCompare(b[0], 'zh-CN'))
-                : a[0].localeCompare(b[0], 'zh-CN'));
-    }
-
-    const renderBatch = document.createDocumentFragment();
-    for (const [category, categoryLinks] of sortedCategories) {
-        const categoryContainer = document.createElement('div');
-        categoryContainer.className = 'category-container expanded';
-        categoryContainer.dataset.category = category;
-        categoryContainer.dataset.linkCount = categoryLinks.length;
-
-        // 组内磁贴手动排序(customTileOrder[分组名] = ID 数组)
-        const tileOrderMap = getSetting('customTileOrder', {}) || {};
-        if (Array.isArray(tileOrderMap[category])) {
-            const rank = new Map(tileOrderMap[category].map((id, i) => [id, i]));
-            categoryLinks.sort((a, b) => (rank.get(a.ID) ?? 1e9) - (rank.get(b.ID) ?? 1e9));
-        }
-
-        const categoryHeader = document.createElement('div');
-        categoryHeader.className = 'category-header';
-
-        const categoryHeaderMain = document.createElement('div');
-        categoryHeaderMain.className = 'category-header-main';
-
-        const categoryTitle = document.createElement('h2');
-        const categoryIcon = document.createElement('i');
-        // 用户自定义图标 > 自动推断;iconify: 前缀走 img
-        const customIcons = getCustomCategoryIcons();
-        const customIcon = customIcons[category];
-        if (customIcon && customIcon.startsWith('iconify:')) {
-            const [, col, name] = customIcon.split(':');
-            categoryIcon.className = '';
-            categoryIcon.innerHTML = `<img src="https://api.iconify.design/${col}/${name}.svg?height=18&color=white" alt="" width="18" height="18" style="vertical-align: -3px;">`;
-        } else {
-            categoryIcon.className = customIcon || categoryIconFor(category);
-        }
-        categoryTitle.appendChild(categoryIcon);
-        categoryTitle.appendChild(document.createTextNode(` ${category}`));
-        categoryHeaderMain.appendChild(categoryTitle);
-
-        const categoryHeaderActions = document.createElement('div');
-        categoryHeaderActions.className = 'category-header-actions';
-
-        const cardCount = document.createElement('span');
-        cardCount.className = 'card-count';
-        const cardCountIcon = document.createElement('i');
-        cardCountIcon.className = 'ri-links-line';
-        cardCount.appendChild(cardCountIcon);
-        cardCount.appendChild(document.createTextNode(` ${categoryLinks.length}`));
-
-        categoryHeaderActions.appendChild(cardCount);
-        categoryHeader.appendChild(categoryHeaderMain);
-        categoryHeader.appendChild(categoryHeaderActions);
-        categoryContainer.appendChild(categoryHeader);
-
-        const linkList = document.createElement('ul');
-        linkList.className = 'link-list';
-        linkList.style.cssText = 'margin: 0; border: none;';
-        // 全部展开：直接渲染所有磁贴，不再等待点击
-        linkList.replaceChildren(...categoryLinks.map(link => createHomeLinkElement(link, currentViewType)));
-        categoryContainer.appendChild(linkList);
-
-        renderBatch.appendChild(categoryContainer);
-    }
-
-    // 空状态：没有任何分组时给出引导，而不是留白
-    if (sortedCategories.length === 0) {
+    if (!filtered.length) {
         const empty = document.createElement('div');
         empty.className = 'home-empty';
-        empty.innerHTML = `
-            <i class="ri-compass-3-line"></i>
-            <p>暂无链接</p>
-            <span>打开右上角「设置 → 链接与分组」添加你的第一个链接</span>
-        `;
-        renderBatch.appendChild(empty);
+        empty.textContent = all.length ? '没有匹配的入口，试试其他关键词或类型' : '在设置中添加你的第一个快捷方式';
+        container.append(empty);
     }
-    // 分组先汇集到 fragment，一次性插入，减少重排次数
-    linkContainer.appendChild(renderBatch);
-
-    // 磁贴拖拽排序：组内 HTML5 DnD,落下即持久化
-    linkContainer.querySelectorAll('.category-container').forEach(container => {
-        const list = container.querySelector('.link-list');
-        const cat = container.dataset.category;
-        if (!list) return;
-        let dragged = null;
-        // 事件委托：磁贴是手风琴展开时才懒渲染的，不能在 render 阶段绑到具体 li 上
-        list.addEventListener('dragstart', (e) => {
-            const li = e.target.closest('li');
-            if (!li || !list.contains(li)) return;
-            dragged = li;
-            li.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', li.dataset.linkId || '');
-        });
-        list.addEventListener('dragend', (e) => {
-            e.target.closest('li')?.classList.remove('dragging');
-            dragged = null;
-        });
-        list.addEventListener('dragover', (e) => {
-            const li = e.target.closest('li');
-            if (!dragged || !li || li === dragged) return;
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            const rect = li.getBoundingClientRect();
-            const after = (e.clientY - rect.top) > rect.height / 2;
-            if (after) list.insertBefore(dragged, li.nextSibling);
-            else list.insertBefore(dragged, li);
-        });
-        list.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const ids = [...list.querySelectorAll('.link-card')].map(a => Number(a.dataset.linkId));
-            const order = getSetting('customTileOrder', {}) || {};
-            order[cat] = ids;
-            setSetting('customTileOrder', order);
-            if (typeof showMessage === 'function') showMessage('顺序已保存');
-        });
-        list.addEventListener('dragover', (e) => e.preventDefault());
-    });
-
-
-    if (getSetting('showThumbnails', true) === false) {
-        linkContainer.querySelectorAll('.link-card-thumbnail').forEach(thumbnail => {
-            thumbnail.style.display = 'none';
-        });
-    }
-
     applyHomeCategoryDisplayMode();
-
-    // 「加载后定位首个分组」：仅在首屏执行一次
-    if (!window.__lnpAutoScrolled && getSetting('defaultExpandFirst', false) === true) {
-        window.__lnpAutoScrolled = true;
-        requestAnimationFrame(() => {
-            document.querySelector('.category-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    }
+    refreshLinkStatusDots();
 }
 
-// 刷新首页所有状态点（探测完成后调用）
+// 每个状态点绑定自己的 URL，检测结果同步到气泡与默认地址菜单。
 function refreshLinkStatusDots() {
-    const probingDisabled = getProbeIntervalMs() === 0;
-    document.querySelectorAll('.link-status-dot').forEach(dot => {
-        const url = dot.dataset.probeUrl;
-        if (!url) return;
-        const status = getCachedStatusForUrl(url);
-        dot.classList.remove('status-pending', 'status-online', 'status-offline', 'status-off');
-        if (probingDisabled) {
-            // 探测已关闭：显示停用态而非误导性的「检测中…」
-            dot.classList.add('status-off');
-            dot.title = '在线探测已关闭（设置 → 布局）';
-        } else if (!status) {
-            dot.classList.add('status-pending');
-            dot.title = '检测中…';
-        } else if (status.online) {
-            dot.classList.add('status-online');
-            dot.title = `在线 · ${status.ms ?? '?'}ms`;
-        } else {
-            dot.classList.add('status-offline');
-            dot.title = '离线或不可达';
+    document.querySelectorAll('.url-state[data-probe-url]').forEach(dot => {
+        const status = getUrlProbeState(dot.dataset.probeUrl);
+        dot.dataset.state = status.state;
+        dot.title = status.text;
+        const text = dot.parentElement.querySelector('.route-status-text');
+        if (text) text.textContent = status.text;
+        const chip = dot.closest('.route-chip');
+        if (chip) {
+            const label = chip.dataset.routeLabel;
+            const suffix = chip.classList.contains('is-default') ? '，默认访问' : '';
+            chip.title = `${label} · ${status.text}\n${chip.href}`;
+            chip.setAttribute('aria-label', `${chip.dataset.linkName}，${label}，${status.text}${suffix}，点击打开`);
         }
     });
+}
+
+// 更新现有卡片的默认线路，保留当前焦点和已打开的地址菜单。
+function refreshAutomaticRoutes() {
+    const entries = new Map(getNavigationItems().map(item => [String(item.ID), item]));
+    document.querySelectorAll('.navigation-grid .shortcut-item[data-link-id]').forEach(card => {
+        const link = entries.get(card.dataset.linkId);
+        if (!link) return;
+        const preferred = getPreferredUrlInfo(link);
+        const main = card.querySelector('.link-card');
+        main.href = preferred.address;
+        main.title = [link.remarks, link.name, preferred.address].filter(Boolean).join('\n');
+        if (!['mcp', 'skill'].includes(getNavigationItemKind(link))) {
+            main.setAttribute('aria-label', `${link.name}，默认访问 ${getRouteChipLabel(preferred, getSafeLinkUrls(link))}`);
+        }
+        card.querySelectorAll('.route-chip').forEach(chip => {
+            const selected = chip.getAttribute('href') === preferred.address;
+            chip.classList.toggle('is-default', selected);
+            const star = chip.querySelector('.ri-star-fill');
+            if (!selected) star?.remove();
+            else if (!star && getSafeLinkUrls(link).length > 1) {
+                const icon = document.createElement('i');
+                icon.className = 'ri-star-fill';
+                icon.setAttribute('aria-hidden', 'true');
+                chip.append(icon);
+            }
+        });
+    });
+    refreshLinkStatusDots();
+}
+
+function createUrlStatusIndicator(address) {
+    const dot = document.createElement('span');
+    dot.className = 'url-state';
+    dot.dataset.probeUrl = address;
+    dot.setAttribute('aria-hidden', 'true');
+    return dot;
+}
+
+function getRouteChipLabel(url, safeUrls) {
+    const type = getUrlChoiceMeta(url).type;
+    const parsed = new URL(url.address, window.location.href);
+    const protocol = parsed.protocol;
+    const host = parsed.hostname;
+    const tunnelName = isTunnelHost(host) || /tailscale/i.test(url.label || '') ? 'Tailscale' : '内网穿透';
+    const name = { 'file:': '本地文件', 'mailto:': '邮件', 'tel:': '电话', 'ftp:': 'FTP' }[protocol] || { local: '局域网', tunnel: tunnelName, remote: '公网' }[type];
+    const peers = safeUrls.filter(item => getUrlChoiceMeta(item).type === type);
+    return peers.length > 1 ? `${name} · ${url.label || peers.indexOf(url) + 1}` : name;
 }
 
 function createHomeLinkElement(link, preferredType = '') {
     const listItem = document.createElement('li');
+    listItem.className = 'shortcut-item';
     listItem.draggable = true;
+    listItem.dataset.linkId = link.ID;
     const safeUrls = getSafeLinkUrls(link);
-    // 网络筛选激活时，直接采用该路线的地址：避免「筛内网、点开却是公网」的错位
-    const routeMatched = preferredType
-        ? safeUrls.find(url => getUrlChoiceMeta(url).type === preferredType)
-        : null;
-    const preferredUrlInfo = routeMatched || getPreferredUrlInfo(link, safeUrls);
+    let preferredUrlInfo = safeUrls.find(url => preferredType && getUrlChoiceMeta(url).type === preferredType) || getPreferredUrlInfo(link, safeUrls);
     const preferredMeta = getUrlChoiceMeta(preferredUrlInfo);
-    let effectiveAddress = preferredUrlInfo.address;
-    if (safeUrls.length > 1) {
-        listItem.classList.add('multi-url-link-item');
-    }
-
+    const shell = document.createElement('div');
+    shell.className = 'shortcut-card';
     const linkCard = document.createElement('a');
-    linkCard.href = effectiveAddress;
+    linkCard.href = preferredUrlInfo.address;
     linkCard.className = 'link-card';
     linkCard.dataset.linkId = link.ID;
-    listItem.dataset.linkId = link.ID;
-    linkCard.setAttribute('role', 'button');
-    linkCard.setAttribute('tabindex', '0');
-    linkCard.setAttribute('aria-label', `${link.name || '未命名'}，打开${preferredUrlInfo.label || '默认'}地址`);
-
-    // 悬浮提示：名称 + 当前地址；有备注时置顶
-    const cardTitle = (address) => (link.remarks ? '📌 ' + link.remarks + '\n' : '') + `${link.name || '未命名'}\n${address}`;
-
-    // 统一的地址更新入口：角标切换、下拉选择、筛选都用它，保证 href 与点击目标一致
-    const applyAddress = (address) => {
-        effectiveAddress = address;
-        linkCard.href = address;
-        linkCard.title = cardTitle(address);
-    };
-    linkCard.title = cardTitle(effectiveAddress);
-
+    linkCard.setAttribute('aria-label', `${link.name}，默认访问 ${getRouteChipLabel(preferredUrlInfo, safeUrls)}`);
+    linkCard.title = [link.remarks, link.name, preferredUrlInfo.address].filter(Boolean).join('\n');
     const thumbnail = document.createElement('div');
     thumbnail.className = 'link-card-thumbnail';
     const thumbnailUrl = sanitizeUrl(link.thumbnail, '', ['http:', 'https:']);
@@ -409,7 +224,6 @@ function createHomeLinkElement(link, preferredType = '') {
 
     // 首字母方块作底，尝试叠加站点 favicon；favicon 加载失败则保留首字母
     const applyLetterAvatar = () => {
-        const statusDot = thumbnail.querySelector('.link-status-dot');
         thumbnail.classList.add('placeholder', 'letter', tileHueClass(link.name));
         thumbnail.textContent = String(link.name || '?').trim().charAt(0).toUpperCase() || '?';
         try {
@@ -430,7 +244,6 @@ function createHomeLinkElement(link, preferredType = '') {
                 thumbnail.appendChild(fav);
             }
         } catch (_) { /* 地址非法则只用首字母 */ }
-        if (statusDot) thumbnail.appendChild(statusDot);
     };
 
     if (thumbnailReachable) {
@@ -453,283 +266,247 @@ function createHomeLinkElement(link, preferredType = '') {
         applyLetterAvatar();
     }
 
-    // 路线小图标：缩略图左下角（状态点在右下角），内外网一眼区分
-    const routeBadgeIcon = document.createElement('span');
-    routeBadgeIcon.className = 'link-route-icon ri-global-line';
-    thumbnail.appendChild(routeBadgeIcon);
-    linkCard.appendChild(thumbnail);
-
-    // 状态监控点：仅当当前展示的 URL 可探测（内网/隧道）时显示
-    const probeableUrl = routeMatched
-        ? (isProbingUrl(routeMatched) ? routeMatched : null)
-        : safeUrls.find(isProbingUrl);
-    if (probeableUrl) {
-        const statusDot = document.createElement('span');
-        statusDot.className = 'link-status-dot status-pending';
-        statusDot.dataset.probeUrl = routeMatched
-            ? probeableUrl.address
-            : getPreferredUrlInfo(link, safeUrls.filter(isProbingUrl)).address;
-        statusDot.title = '检测中…';
-        thumbnail.appendChild(statusDot);
-    }
 
     const content = document.createElement('div');
     content.className = 'link-card-content';
-
     const title = document.createElement('div');
     title.className = 'link-card-title';
     title.textContent = link.name || '未命名';
-    content.appendChild(title);
-
-    if (safeUrls.length > 1) {
-        const subtitle = document.createElement('div');
-        subtitle.className = 'link-card-subtitle';
-        subtitle.textContent = `当前路径：${preferredUrlInfo.label || '默认'}`;
-        content.appendChild(subtitle);
-    }
-
-    // 内/外网路径视觉：全部链接都按当前路径着色描边；多地址另有可点击徽章
-    const urlTypes = new Set(safeUrls.map(url => getUrlChoiceMeta(url).type));
-    let currentType = preferredMeta.type;
-    linkCard.classList.add('card-route-' + currentType);
-    {
-        const routeIcons = { local: 'ri-home-wifi-line', tunnel: 'ri-shield-keyhole-line', remote: 'ri-global-line' };
-        routeBadgeIcon.className = 'link-route-icon ' + (routeIcons[currentType] || 'ri-global-line');
-        routeBadgeIcon.title = '访问路径：' + ({ local: '内网', tunnel: '隧道', remote: '公网' }[currentType] || '公网');
-    }
-    if (urlTypes.size > 1) {
-        const routeBadge = document.createElement('span');
-        routeBadge.className = `link-route-badge route-${currentType}`;
-        const labels = { local: '内网', tunnel: '隧道', remote: '公网' };
-        const routeIcons = { local: 'ri-home-wifi-line', tunnel: 'ri-shield-keyhole-line', remote: 'ri-global-line' };
-        routeBadge.textContent = labels[currentType] || '公网';
-        routeBadge.title = `当前访问路径：${labels[currentType] || '公网'}（点击切换）`;
-        // 点击角标：在可用路径间循环切换，并记住选择
-        routeBadge.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            const order = ['local', 'tunnel', 'remote'];
-            const available = order.filter(t => urlTypes.has(t));
-            // 用可变 currentType 计算下一站：只读初始值会导致第二次点击原地打转
-            const curIdx = available.indexOf(currentType);
-            const nextType = available[(curIdx + 1) % available.length];
-            const nextUrl = safeUrls.find(u => getUrlChoiceMeta(u).type === nextType);
-            if (nextUrl) {
-                rememberLastUsedLinkUrl(link, nextUrl.address);
-                // 更新角标、卡片描边、href 与副标题
-                const newMeta = getUrlChoiceMeta(nextUrl);
-                currentType = newMeta.type;
-                routeBadge.className = `link-route-badge route-${currentType}`;
-                routeBadge.textContent = labels[currentType] || '公网';
-                routeBadgeIcon.className = 'link-route-icon ' + (routeIcons[currentType] || 'ri-global-line');
-                routeBadge.title = `当前访问路径：${labels[currentType] || '公网'}（点击切换）`;
-                linkCard.classList.remove('card-route-local', 'card-route-tunnel', 'card-route-remote');
-                linkCard.classList.add('card-route-' + currentType);
-                applyAddress(nextUrl.address);
-                const subtitleEl = linkCard.querySelector('.link-card-subtitle');
-                if (subtitleEl) subtitleEl.textContent = `当前路径：${labels[currentType] || '公网'}`;
-            }
-        });
-        linkCard.appendChild(routeBadge);
-    }
-
-    linkCard.appendChild(content);
-
-    if (link.tag) {
-        const tag = document.createElement('span');
-        tag.className = 'link-card-tag';
-        tag.textContent = link.tag;
-        linkCard.appendChild(tag);
-    }
-
-    if (safeUrls.length > 1) {
-        setupMultiUrlDropdown(linkCard, link, safeUrls, applyAddress);
-    }
+    content.append(title);
+    linkCard.append(thumbnail, content);
 
     function openPreferredUrl(event) {
-        if (event.target.closest('.link-card-urls, .url-dropdown, button')) {
+        preferredUrlInfo = safeUrls.find(url => preferredType && getUrlChoiceMeta(url).type === preferredType) || getPreferredUrlInfo(link, safeUrls);
+        if (['mcp', 'skill'].includes(getNavigationItemKind(link))) {
+            event.preventDefault();
+            openResourceDetails(link, linkCard);
             return;
         }
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
         event.preventDefault();
-        // 使用当前生效地址（筛选结果 / 角标或下拉切换后的地址），而不是重新推导
-        const currentAddress = effectiveAddress;
         if (event.shiftKey) {
-            // Shift+点击：以网页小窗打开（Sun-Panel 风格的临时会话窗）
-            const w = window.open(currentAddress, '_blank', 'noopener,width=1100,height=780');
-            if (w) { recordRecentLink(link); rememberLastUsedLinkUrl(link, currentAddress); }
+            const opened = window.open(preferredUrlInfo.address, '_blank', 'noopener,width=1100,height=780');
+            if (opened) recordRecentLink(link);
             return;
         }
-        openLinkUrl(link, currentAddress);
+        openLinkUrl(link, preferredUrlInfo.address);
+    }
+    linkCard.addEventListener('click', openPreferredUrl);
+    if (['mcp', 'skill'].includes(getNavigationItemKind(link))) {
+        linkCard.setAttribute('aria-haspopup', 'dialog');
+        linkCard.setAttribute('aria-label', `${link.name}，查看${getNavigationItemKind(link) === 'mcp' ? '连接与工具' : '使用指南与能力'}`);
+    }
+    linkCard.addEventListener('keydown', event => {
+        if (event.key === ' ') openPreferredUrl(event);
+    });
+    shell.append(linkCard);
+
+    if (safeUrls.length) {
+        shell.classList.add('has-route-options');
+        const options = document.createElement('button');
+        options.type = 'button';
+        options.className = 'route-settings-button';
+        options.dataset.linkId = link.ID;
+        options.title = '默认访问与状态';
+        options.setAttribute('aria-label', `${link.name} 的默认访问地址`);
+        options.setAttribute('aria-expanded', 'false');
+        options.setAttribute('aria-controls', 'route-popover');
+        options.innerHTML = '<i class="ri-more-line" aria-hidden="true"></i>';
+        options.addEventListener('click', event => {
+            event.stopPropagation();
+            openRoutePopover(link, options);
+        });
+        shell.append(options);
     }
 
-    linkCard.addEventListener('click', openPreferredUrl);
-    linkCard.addEventListener('keydown', event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-            openPreferredUrl(event);
+    const routes = document.createElement('div');
+    routes.className = 'route-chips';
+    routes.setAttribute('aria-label', `${link.name} 的访问地址`);
+    safeUrls.forEach(url => {
+        const chip = document.createElement('a');
+        chip.className = 'route-chip route-' + getUrlChoiceMeta(url).type;
+        chip.href = url.address;
+        chip.target = '_blank';
+        chip.rel = 'noopener noreferrer';
+        chip.dataset.routeLabel = getRouteChipLabel(url, safeUrls);
+        chip.dataset.linkName = link.name;
+        const isDefault = url.address === preferredUrlInfo.address;
+        chip.classList.toggle('is-default', isDefault);
+        const text = document.createElement('span');
+        text.className = 'route-chip-label';
+        text.textContent = chip.dataset.routeLabel;
+        chip.append(createUrlStatusIndicator(url.address), text);
+        if (isDefault && safeUrls.length > 1) {
+            const star = document.createElement('i');
+            star.className = 'ri-star-fill';
+            star.setAttribute('aria-hidden', 'true');
+            chip.append(star);
         }
+        chip.addEventListener('click', () => {
+            recordRecentLink(link);
+            recordVisitCount(link.ID);
+        });
+        routes.append(chip);
     });
-
-    listItem.appendChild(linkCard);
+    shell.append(routes);
+    listItem.append(shell);
     return listItem;
 }
 
-// 获取链接的 URL 列表（支持新旧格式）
-// 设置多 URL 快捷切换
-function setupMultiUrlDropdown(linkCard, link, safeUrls, onAddressChange) {
-    if (safeUrls.length <= 1) return;
-    linkCard.classList.add('has-multiple-urls');
+let routePopover = null;
+let routePopoverAnchor = null;
 
-    const urlsContainer = document.createElement('div');
-    urlsContainer.className = 'link-card-urls';
-    const visibleUrls = safeUrls.length <= 4 ? safeUrls : safeUrls.slice(0, 3);
+function closeRoutePopover(restoreFocus = true) {
+    const anchor = routePopoverAnchor;
+    routePopover?.remove();
+    routePopover = null;
+    routePopoverAnchor = null;
+    anchor?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus && anchor?.isConnected) anchor.focus({ preventScroll: true });
+}
 
-    const urlsDropdown = document.createElement('div');
-    urlsDropdown.className = 'url-dropdown';
-    urlsDropdown.id = `url-dropdown-${link.ID}-${Date.now()}`;
-    
-    const dropdownHeader = document.createElement('div');
-    dropdownHeader.className = 'url-dropdown-header';
-    dropdownHeader.innerHTML = `
-        <span>选择地址</span>
-        <span class="url-count">${safeUrls.length}个</span>
-    `;
-    urlsDropdown.appendChild(dropdownHeader);
-
-    function updateSelectedUrl(selectedUrl) {
-        const currentUrl = selectedUrl || getPreferredUrlInfo(link, safeUrls).address;
-        urlsContainer.querySelectorAll('.url-quick-choice').forEach(button => {
-            const selected = button.dataset.url === currentUrl;
-            button.classList.toggle('selected', selected);
-            button.setAttribute('aria-pressed', String(selected));
-        });
-        urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
-            item.classList.toggle('selected', item.dataset.url === currentUrl);
-        });
-        const subtitle = linkCard.querySelector('.link-card-subtitle');
-        const selectedInfo = safeUrls.find(url => url.address === currentUrl);
-        if (subtitle && selectedInfo) {
-            subtitle.textContent = `当前路径：${selectedInfo.label}`;
-        }
+function openRoutePopover(link, anchor) {
+    if (routePopoverAnchor === anchor) {
+        closeRoutePopover();
+        return;
     }
+    closeRoutePopover(false);
+    const safeUrls = getSafeLinkUrls(link);
+    const pinned = getPinnedLinkUrl(link, safeUrls);
+    routePopoverAnchor = anchor;
+    routePopover = document.createElement('section');
+    routePopover.id = 'route-popover';
+    routePopover.className = 'route-popover';
+    routePopover.setAttribute('role', 'dialog');
+    routePopover.setAttribute('aria-label', `${link.name} 的默认访问地址`);
+    const heading = document.createElement('header');
+    heading.className = 'route-popover-heading';
+    const headingText = document.createElement('div');
+    const title = document.createElement('strong');
+    title.textContent = '默认访问';
+    const context = document.createElement('small');
+    context.textContent = `${link.name} · 当前设备`;
+    headingText.append(title, context);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'icon-button';
+    close.setAttribute('aria-label', '关闭默认地址菜单');
+    close.innerHTML = '<i class="ri-close-line" aria-hidden="true"></i>';
+    close.addEventListener('click', () => closeRoutePopover());
+    heading.append(headingText, close);
+    const choices = document.createElement('div');
+    choices.className = 'route-default-choices';
+    choices.setAttribute('role', 'radiogroup');
+    choices.setAttribute('aria-label', '默认访问地址');
 
-    function openChoice(urlObj) {
-        rememberLastUsedLinkUrl(link, urlObj.address);
-        recordRecentLink(link);
-        updateSelectedUrl(urlObj.address);
-        if (typeof onAddressChange === 'function') onAddressChange(urlObj.address);
-        openSafeUrl(urlObj.address);
-    }
-
-    visibleUrls.forEach((urlObj, index) => {
-        const label = getUrlDisplayLabel(urlObj, index);
-        const meta = getUrlChoiceMeta(urlObj);
+    function addChoice(url) {
+        const selected = url ? pinned === url.address : !pinned;
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `url-quick-choice ${meta.type}`;
-        button.dataset.url = urlObj.address;
-        button.title = `${label}：${urlObj.address}`;
-        button.innerHTML = `<i class="${meta.icon}"></i><span>${escapeHTML(label)}</span>`;
-        button.addEventListener('click', event => {
-            event.stopPropagation();
-            event.preventDefault();
-            openChoice(urlObj);
-        });
-        urlsContainer.appendChild(button);
-    });
-
-    safeUrls.forEach((urlObj, idx) => {
-        const urlItem = document.createElement('div');
-        urlItem.className = 'url-dropdown-item';
-        urlItem.dataset.url = urlObj.address;
-        urlItem.dataset.index = idx;
-        const label = getUrlDisplayLabel(urlObj, idx);
-        const meta = getUrlChoiceMeta(urlObj);
-        
-        urlItem.innerHTML = `
-            <div class="status-wrapper">
-                <span class="url-type-icon ${meta.type}"><i class="${meta.icon}"></i></span>
-            </div>
-            <div class="url-info">
-                <div class="url-label">${escapeHTML(label)}</div>
-                <div class="url-address">${escapeHTML(urlObj.address)}</div>
-            </div>
-            <div class="url-meta">
-                <span class="priority-badge">优先级${escapeHTML(urlObj.priority || idx + 1)}</span>
-                <i class="ri-external-link-line external-link"></i>
-            </div>
-        `;
-        urlsDropdown.appendChild(urlItem);
-    });
-
-    let urlsButton = null;
-    if (safeUrls.length > visibleUrls.length) {
-        urlsButton = document.createElement('button');
-        urlsButton.type = 'button';
-        urlsButton.className = 'url-overflow-btn';
-        urlsButton.innerHTML = `<i class="ri-more-line"></i><span>更多</span>`;
-        urlsButton.title = '选择更多地址';
-        urlsContainer.appendChild(urlsButton);
-    }
-
-    urlsContainer.appendChild(urlsDropdown);
-    linkCard.appendChild(urlsContainer);
-    
-    document.body.appendChild(urlsDropdown);
-    
-    function showDropdown(e, anchor = urlsButton || urlsContainer) {
-        if (e) {
-            e.stopPropagation();
-            e.preventDefault();
+        button.className = 'route-default-choice';
+        button.dataset.defaultUrl = url?.address || '';
+        button.setAttribute('role', 'radio');
+        button.setAttribute('aria-checked', String(selected));
+        const info = document.createElement('div');
+        info.className = 'route-choice-info';
+        const name = document.createElement('span');
+        const routeLabel = url ? getRouteChipLabel(url, safeUrls) : '';
+        name.textContent = url ? routeLabel + (url.label && !routeLabel.includes(url.label) ? ' · ' + url.label : '') : '跟随全局线路';
+        const address = document.createElement('small');
+        address.textContent = url?.address || ({ auto: '自动选择', local: '局域网优先', tunnel: '内网穿透优先', remote: '公网优先' }[getSetting('networkMode', 'auto')]);
+        const titleRow = document.createElement('div');
+        titleRow.className = 'route-choice-top';
+        titleRow.append(name);
+        info.append(titleRow, address);
+        const check = document.createElement('i');
+        check.className = selected ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line';
+        check.setAttribute('aria-hidden', 'true');
+        button.append(info, check);
+        if (url) {
+            const status = document.createElement('div');
+            status.className = 'route-choice-status';
+            const text = document.createElement('span');
+            text.className = 'route-status-text';
+            status.append(createUrlStatusIndicator(url.address), text);
+            titleRow.append(status);
         }
-        
-        // 关闭其他所有下拉菜单
-        document.querySelectorAll('.url-dropdown.show').forEach(d => {
-            if (d !== urlsDropdown) d.classList.remove('show');
+        button.addEventListener('click', () => {
+            setDefaultLinkUrl(link, url?.address || '');
+            closeRoutePopover(false);
+            renderLinksByCategory(links);
+            renderRecentLinks(links);
+            [...document.querySelectorAll('.route-settings-button')].find(button => button.dataset.linkId === String(link.ID))?.focus({ preventScroll: true });
+            window.showMessage?.(url ? '已设置此设备的默认地址' : '已跟随全局线路');
         });
-        
-        const anchorRect = anchor.getBoundingClientRect();
-        const dropdownHeight = Math.min(300, 48 + safeUrls.length * 58);
-        const hasRoomBelow = anchorRect.bottom + dropdownHeight + 12 < window.innerHeight;
-        
-        urlsDropdown.style.position = 'fixed';
-        urlsDropdown.style.left = Math.max(8, Math.min(anchorRect.left, window.innerWidth - 240)) + 'px';
-        urlsDropdown.style.top = hasRoomBelow ? `${anchorRect.bottom + 8}px` : 'auto';
-        urlsDropdown.style.bottom = hasRoomBelow ? 'auto' : `${window.innerHeight - anchorRect.top + 8}px`;
-        urlsDropdown.style.zIndex = '9999';
-        
-        urlsDropdown.offsetHeight;
-        urlsDropdown.classList.add('show');
+        choices.append(button);
     }
-    
-    if (urlsButton) {
-        urlsButton.addEventListener('click', event => showDropdown(event, urlsButton));
-    }
-    
-    urlsDropdown.querySelectorAll('.url-dropdown-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const selectedUrl = safeUrls.find(url => url.address === item.dataset.url);
-            if (selectedUrl) {
-                openChoice(selectedUrl);
-            }
-            urlsDropdown.classList.remove('show');
-        });
-        
-        const externalLink = item.querySelector('.external-link');
-        if (externalLink) {
-            externalLink.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const selectedUrl = safeUrls.find(url => url.address === item.dataset.url);
-                if (selectedUrl) {
-                    openChoice(selectedUrl);
-                }
-                urlsDropdown.classList.remove('show');
-            });
+    addChoice(null);
+    safeUrls.forEach(addChoice);
+    choices.addEventListener('keydown', event => {
+        if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+        event.preventDefault();
+        const buttons = [...choices.querySelectorAll('button')];
+        const index = buttons.indexOf(document.activeElement);
+        const next = (index + (event.key === 'ArrowDown' ? 1 : buttons.length - 1)) % buttons.length;
+        buttons[next].focus();
+    });
+    const footer = document.createElement('footer');
+    footer.className = 'route-popover-footer';
+    const scope = document.createElement('span');
+    scope.textContent = '从当前浏览器检测';
+    const recheck = document.createElement('button');
+    recheck.type = 'button';
+    recheck.textContent = getProbeIntervalMs() ? '重新检测' : '探测已关闭';
+    recheck.disabled = getProbeIntervalMs() === 0;
+    recheck.addEventListener('click', async () => {
+        recheck.disabled = true;
+        recheck.textContent = '检测中';
+        try { await probeLinkStatuses([link]); }
+        finally {
+            recheck.disabled = getProbeIntervalMs() === 0;
+            recheck.textContent = getProbeIntervalMs() ? '重新检测' : '探测已关闭';
         }
     });
-
-    updateSelectedUrl();
+    footer.append(scope, recheck);
+    routePopover.append(heading, choices, footer);
+    document.body.append(routePopover);
+    refreshLinkStatusDots();
+    const bounds = anchor.getBoundingClientRect();
+    const popup = routePopover.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    let left = Math.max(12, Math.min(bounds.right - popup.width, viewportWidth - popup.width - 12));
+    let top = bounds.bottom + 8;
+    if (top + popup.height > viewportHeight - 12) {
+        if (bounds.top - popup.height - 8 >= 12) top = bounds.top - popup.height - 8;
+        else {
+            top = Math.max(12, Math.min(bounds.top, viewportHeight - popup.height - 12));
+            if (bounds.right + popup.width + 8 <= viewportWidth - 12) left = bounds.right + 8;
+            else if (bounds.left - popup.width - 8 >= 12) left = bounds.left - popup.width - 8;
+        }
+    }
+    routePopover.style.left = left + 'px';
+    routePopover.style.top = top + 'px';
+    anchor.setAttribute('aria-expanded', 'true');
+    choices.querySelector('[aria-checked="true"]').focus({ preventScroll: true });
 }
+
+document.addEventListener('click', event => {
+    if (routePopover && !routePopover.contains(event.target) && !routePopoverAnchor.contains(event.target)) closeRoutePopover(false);
+});
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && routePopover) {
+        event.preventDefault();
+        closeRoutePopover();
+    }
+});
+document.addEventListener('focusin', event => {
+    if (routePopover && !routePopover.contains(event.target) && event.target !== routePopoverAnchor) closeRoutePopover(false);
+});
+window.addEventListener('resize', () => closeRoutePopover(false));
+window.addEventListener('scroll', event => {
+    if (routePopover && !routePopover.contains(event.target)) closeRoutePopover(false);
+}, { capture: true, passive: true });
 
 // ================================
 
@@ -739,7 +516,7 @@ document.addEventListener('keydown', (event) => {
     const tag = (document.activeElement?.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
 
-    const cards = [...document.querySelectorAll('.category-container.expanded .link-card')];
+    const cards = [...document.querySelectorAll('.navigation-grid .link-card')];
     if (!cards.length) return;
     const current = document.activeElement?.classList?.contains('link-card')
         ? document.activeElement
@@ -756,7 +533,10 @@ document.addEventListener('keydown', (event) => {
 
     if (!current) return;
     event.preventDefault();
-    const columns = Math.max(1, Math.round(current.parentElement.offsetWidth / (current.offsetWidth || 1)));
+    const grid = current.closest('.navigation-grid');
+    const item = current.closest('li');
+    const gap = Number.parseFloat(getComputedStyle(grid).columnGap) || 0;
+    const columns = Math.max(1, Math.round((grid.clientWidth + gap) / (item.offsetWidth + gap)));
     const idx = cards.indexOf(current);
     let next = idx;
     if (event.key === 'Home') { next = 0; }
@@ -781,7 +561,7 @@ document.addEventListener('keydown', (event) => {
         menu.id = 'link-context-menu';
         menu.setAttribute('role', 'menu');
         menu.hidden = true;
-        document.body.appendChild(menu);
+        document.getElementById('navigation-view').appendChild(menu);
         // 点击其他位置/Escape 关闭
         document.addEventListener('click', (e) => {
             if (!menu.contains(e.target)) hide();
@@ -840,8 +620,8 @@ document.addEventListener('keydown', (event) => {
         const card = e.target.closest('.link-card');
         if (!card) return;
         e.preventDefault();
-        const linkId = Number(card.dataset.linkId);
-        const link = (typeof links !== 'undefined' ? links : []).find(l => l.ID === linkId);
+        const linkId = card.dataset.linkId;
+        const link = getNavigationItems().find(item => String(item.ID) === linkId);
         if (!link) return;
         const safeUrls = getSafeLinkUrls(link);
         const preferred = getPreferredUrlInfo(link, safeUrls);
@@ -868,11 +648,12 @@ document.addEventListener('keydown', (event) => {
             safeUrls.forEach(u => {
                 const meta = getUrlChoiceMeta(u);
                 const label = { local: '内网', tunnel: '隧道', remote: '公网' }[meta.type] || '公网';
-                m.appendChild(item('直达' + label + '：' + (u.label || u.address), meta.icon, () => openLinkUrl(link, u.address)));
+                m.appendChild(item('直达' + label + '：' + (u.label || u.address), meta.icon, () => openLinkUrl(link, u.address, { direct: true })));
             });
         }
         m.appendChild(separator());
         m.appendChild(item('在设置中编辑', 'ri-edit-line', () => {
+            closeNavigation();
             window.openSettingsPanel?.();
             setTimeout(() => window.openEditModal?.(link), 150);
         }));
