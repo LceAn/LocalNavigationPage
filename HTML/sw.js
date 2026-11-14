@@ -9,23 +9,23 @@
  *
  * 发版时同步修改 CACHE_VERSION，激活时会自动清理旧缓存。
  */
-const CACHE_VERSION = 'lnp-v1.28.2';
+const CACHE_VERSION = 'lnp-v1.28.3';
 const APP_SHELL = [
     './',
     './index.html',
-    './CSS/navigation.css?v=1.28.2',
-    './CSS/toolbar.css?v=1.28.2',
-    './js/toolbar.js?v=1.28.2',
-    './CSS/weather-effects.css?v=1.28.2',
-    './js/weather-effects.js?v=1.28.2',
-    './CSS/resource-details.css?v=1.28.2',
-    './js/resource-details.js?v=1.28.2',
-    './CSS/fonts.css?v=1.28.2',
-    './CSS/remixicon.css?v=1.28.2',
-    './CSS/tokens.css?v=1.28.2',
-    './CSS/styles.css?v=1.28.2',
-    './CSS/search_input.css?v=1.28.2',
-    './CSS/settings_box.css?v=1.28.2',
+    './CSS/navigation.css?v=1.28.3',
+    './CSS/toolbar.css?v=1.28.3',
+    './js/toolbar.js?v=1.28.3',
+    './CSS/weather-effects.css?v=1.28.3',
+    './js/weather-effects.js?v=1.28.3',
+    './CSS/resource-details.css?v=1.28.3',
+    './js/resource-details.js?v=1.28.3',
+    './CSS/fonts.css?v=1.28.3',
+    './CSS/remixicon.css?v=1.28.3',
+    './CSS/tokens.css?v=1.28.3',
+    './CSS/styles.css?v=1.28.3',
+    './CSS/search_input.css?v=1.28.3',
+    './CSS/settings_box.css?v=1.28.3',
     './assets/fonts/remixicon.woff2',
     './assets/fonts/inter-var-latin.woff2'
 ];
