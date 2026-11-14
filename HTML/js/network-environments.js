@@ -18,8 +18,13 @@ function getCurrentNetworkLabel(profiles, selectedId, online = true, mode = 'aut
     return { local: '局域网优先', tunnel: '内网穿透优先', remote: '公网优先' }[mode] || '自动选路';
 }
 
+const NETWORK_ROUTE_LABELS = { local: '本地网络优先', tunnel: '内网穿透优先', remote: '公网优先', auto: '自动选择' };
+
 function getNetworkEnvironmentMeasurement(profile) {
-    if (!profile?.probeUrl) return { state: 'unknown', text: '待设置检测地址', ms: null };
+    // 检测地址是可选项：没填时展示已选线路，而不是提示“待配置”
+    if (!profile?.probeUrl) {
+        return { state: 'unmeasured', text: NETWORK_ROUTE_LABELS[profile?.route] || '自动选择', ms: null };
+    }
     if (window.navigator?.onLine === false) return { state: 'unreachable', text: '离线', ms: null };
     const state = getUrlProbeState(profile.probeUrl);
     const cached = getCachedStatusForUrl(profile.probeUrl);
@@ -58,12 +63,15 @@ function getNetworkEnvironmentMeasurement(profile) {
         const latency = document.getElementById('network-environment-latency');
         latency.hidden = measurement.ms === null;
         latency.textContent = measurement.ms === null ? '' : measurement.ms + 'ms';
+        const hasProbe = selected === 'auto' || Boolean(activeProfile?.probeUrl);
         const connectionDescription = selected === 'auto' ? '各服务独立选路，此数值为当前导航连接的延迟' : '手动选择的网络环境';
-        button.title = connectionDescription + ' · 当前电脑 HTTP 往返延迟';
+        button.title = connectionDescription + (hasProbe ? ' · 当前电脑 HTTP 往返延迟' : ' · 未设置检测地址，按线路选择');
         button.setAttribute('aria-label', `${name}${measurement.ms === null ? '' : '，' + measurement.ms + 'ms'}，${selected === 'auto' && mode === 'auto' ? '自动选择' : '手动选择'}，查看网络环境`);
         button.dataset.offline = String(!navigator.onLine);
         button.dataset.state = measurement.state;
-        document.getElementById('browser-network-state').textContent = navigator.onLine ? 'HTTP 往返延迟' : '浏览器离线';
+        document.getElementById('browser-network-state').textContent = !navigator.onLine
+            ? '浏览器离线'
+            : hasProbe ? 'HTTP 往返延迟' : '按线路选择 · 未测速';
         const list = document.getElementById('network-environment-list');
         const focusedId = list.contains(document.activeElement) ? document.activeElement.dataset.environmentId : null;
         list.replaceChildren();
@@ -165,7 +173,7 @@ function getNetworkEnvironmentMeasurement(profile) {
             const probe = document.createElement('input');
             probe.className = 'environment-probe';
             probe.value = profile.probeUrl;
-            probe.placeholder = '检测地址（可选）';
+            probe.placeholder = '检测地址（可选，用于显示延迟）';
             probe.setAttribute('aria-label', profile.name + ' 的检测地址');
             const remove = document.createElement('button');
             remove.type = 'button';
