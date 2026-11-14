@@ -78,36 +78,23 @@ function updateLinksResultCount(filteredCount, totalCount) {
 }
 
 function renderSettingsGroupFilters(allLinks, categoryNames) {
-    const rail = document.getElementById('settings-group-filters');
-    if (!rail) return;
-    rail.replaceChildren();
-    ['', ...categoryNames].forEach(category => {
-        const count = category ? allLinks.filter(link => (link.category || '未分类') === category).length : allLinks.length;
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'settings-group-filter';
-        button.setAttribute('aria-pressed', String(settingsLinkCategory === category));
-        button.dataset.category = category;
-        const name = document.createElement('span');
-        name.textContent = category || '全部';
-        const badge = document.createElement('small');
-        badge.textContent = count;
-        button.append(name, badge);
-        button.addEventListener('click', () => {
-            settingsLinkCategory = category;
-            renderLinksInSettings(links);
-            document.querySelectorAll('.settings-group-filter').forEach(item => {
-                if (item.dataset.category === category) item.focus({ preventScroll: true });
-            });
-        });
-        rail.append(button);
-    });
+    const select = document.getElementById('links-group-filter');
+    if (!select) return;
+    if (!categoryNames.includes(settingsLinkCategory)) settingsLinkCategory = '';
+    select.innerHTML = [
+        '<option value="">全部分组</option>',
+        ...categoryNames.map(category => {
+            const count = allLinks.filter(link => (link.category || '未分类') === category).length;
+            return `<option value="${escapeHTML(category)}">${escapeHTML(category)} (${count})</option>`;
+        })
+    ].join('');
+    select.value = settingsLinkCategory;
 }
 
 function renderLinksInSettings(sourceLinks) {
     const list = document.getElementById('existing-links');
     if (!list) return;
-    const allLinks = getNavigationItems(Array.isArray(sourceLinks) ? sourceLinks : links);
+    const allLinks = getNavigationItems(Array.isArray(sourceLinks) ? sourceLinks : links, true);
     const categoryNames = getAllCategoryNames(allLinks);
     if (!categoryNames.includes(settingsLinkCategory)) settingsLinkCategory = '';
     renderSettingsGroupFilters(allLinks, categoryNames);
@@ -124,13 +111,26 @@ function renderLinksInSettings(sourceLinks) {
 }
 
 // 扫描得到的目录项首次修改时保存为覆盖记录，后续扫描继续使用同一 catalogKey。
-function assignSettingsLinkCategory(link, category) {
+function ensureSettingsLinkRecord(link) {
     const stored = links.find(item => item.ID === link.ID || (link.catalogKey && item.catalogKey === link.catalogKey));
-    if (stored) stored.category = category;
-    else {
-        const nextId = Math.max(0, ...links.map(item => Number(item.ID) || 0)) + 1;
-        links.push({ ...link, ID: nextId, category });
-    }
+    if (stored) return stored;
+    const nextId = Math.max(0, ...links.map(item => Number(item.ID) || 0)) + 1;
+    const record = { ...link, ID: nextId };
+    delete record.catalog;
+    links.push(record);
+    return record;
+}
+
+function assignSettingsLinkCategory(link, category) {
+    ensureSettingsLinkRecord(link).category = category;
+}
+
+function setSettingsLinkEnabled(link, enabled) {
+    const stored = ensureSettingsLinkRecord(link);
+    stored.enabled = enabled !== false;
+    window.persistLinks?.();
+    refreshSettingsLinkViews();
+    window.showMessage?.(stored.enabled ? `已启用「${link.name}」` : `已停用「${link.name}」`);
 }
 
 function refreshSettingsLinkViews() {
@@ -244,6 +244,8 @@ function createLinkItem(link) {
     row.dataset.linkId = String(link.ID);
     row.dataset.category = link.category || '未分类';
     row.draggable = links.some(item => item.ID === link.ID);
+    const enabled = link.enabled !== false;
+    if (!enabled) row.classList.add('is-disabled');
 
     const drag = document.createElement('span');
     drag.className = 'link-drag-handle';
@@ -326,7 +328,7 @@ function createLinkItem(link) {
     const category = document.createElement('select');
     category.className = 'settings-row-category';
     category.setAttribute('aria-label', `移动 ${link.name} 到分组`);
-    getAllCategoryNames(getNavigationItems()).forEach(value => {
+    getAllCategoryNames(getNavigationItems(links, true)).forEach(value => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = value;
@@ -342,6 +344,20 @@ function createLinkItem(link) {
 
     const actions = document.createElement('div');
     actions.className = 'link-actions';
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.className = 'toggle-switch mini settings-link-switch';
+    toggleLabel.title = enabled ? '停用此快捷方式' : '启用此快捷方式';
+    const toggleInput = document.createElement('input');
+    toggleInput.type = 'checkbox';
+    toggleInput.checked = enabled;
+    toggleInput.setAttribute('aria-label', `${enabled ? '停用' : '启用'} ${link.name}`);
+    const toggleSlider = document.createElement('span');
+    toggleSlider.className = 'toggle-slider';
+    toggleInput.addEventListener('change', () => setSettingsLinkEnabled(link, toggleInput.checked));
+    toggleLabel.append(toggleInput, toggleSlider);
+    actions.append(toggleLabel);
+
     [['edit', 'ri-edit-line', '编辑', () => window.openEditModal(link)],
      ['delete', 'ri-delete-bin-line', '删除', () => deleteSettingsLink(link)]].forEach(([type, icon, label, action]) => {
         const button = document.createElement('button');
@@ -358,6 +374,10 @@ function createLinkItem(link) {
 }
 
 (() => {
+    document.getElementById('links-group-filter')?.addEventListener('change', event => {
+        settingsLinkCategory = event.target.value;
+        renderLinksInSettings(links);
+    });
     const message = document.getElementById('message-container');
     message?.addEventListener('click', undoSettingsLinkDelete);
     message?.addEventListener('keydown', event => {

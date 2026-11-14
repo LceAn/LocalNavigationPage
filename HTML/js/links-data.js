@@ -477,7 +477,8 @@ function normalizeLinks(rawLinks) {
             ID: id,
             name: String(link?.name || '未命名'),
             category: String(link?.category || '未分类'),
-            tag: String(link?.tag || '')
+            tag: String(link?.tag || ''),
+            enabled: link?.enabled !== false
         };
 
         if (Array.isArray(link?.urls)) {

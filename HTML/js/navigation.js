@@ -23,7 +23,7 @@ function transitionNavigationLayout(updateLayout) {
     });
 }
 
-function getNavigationItems(sourceLinks = links) {
+function getNavigationItems(sourceLinks = links, includeDisabled = false) {
     const hidden = getSetting('hiddenCatalogKeys', []);
     const overridden = new Set(sourceLinks.map(item => item.catalogKey).filter(Boolean));
     const catalog = (window.catalogEntries || []).filter(item => !hidden.includes(item.catalogKey) && !overridden.has(item.catalogKey));
@@ -31,7 +31,8 @@ function getNavigationItems(sourceLinks = links) {
         const original = (window.catalogEntries || []).find(entry => entry.catalogKey && entry.catalogKey === item.catalogKey);
         return original ? { ...original, ...item, catalog: false } : item;
     });
-    return [...hydrated, ...catalog];
+    const items = [...hydrated, ...catalog];
+    return includeDisabled ? items : items.filter(item => item.enabled !== false);
 }
 
 function getNavigationItemKind(item) {

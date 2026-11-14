@@ -4129,3 +4129,49 @@ body.dark-mode .search-hint {
         padding: 14px;
     }
 }
+
+/* 快捷方式独立页：启停开关与禁用态 */
+.settings-link-switch {
+    flex: 0 0 auto;
+    margin: 0 2px 0 4px;
+}
+.settings-link-item.is-disabled {
+    opacity: 0.58;
+}
+.settings-link-item.is-disabled .settings-link-name {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+}
+.links-list-toolbar {
+    flex-wrap: wrap;
+}
+.links-list-toolbar select {
+    max-width: 180px;
+}
+.groups-manager {
+    padding: 4px 0;
+}
+.groups-manager .categories-list {
+    max-height: none;
+}
+.groups-manager .category-add-row .btn-primary {
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+}
+.groups-manager .category-add-row .input-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+.groups-manager #new-category-name {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--glass-line);
+    border-radius: 10px;
+    background: var(--glass-card);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 12px;
+}

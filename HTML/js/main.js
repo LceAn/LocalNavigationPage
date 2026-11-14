@@ -246,7 +246,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // §3.1 全局匹配：在所有标签页（非 links）里搜，找出首个命中分区所在标签页
         const searchableTabs = [...tabContents].filter(t => t.id !== 'links-tab');
-        const matchingLinks = query2 ? getNavigationItems().filter(link => getLinkSearchText(link).includes(query2)).length : 0;
+        const matchingLinks = query2 ? getNavigationItems(links, true).filter(link => getLinkSearchText(link).includes(query2)).length : 0;
         let firstHitTab = matchingLinks ? document.getElementById('links-tab') : null;
         let totalHits = matchingLinks;
         let activeTabHasHits = activeTabName === 'links' && matchingLinks > 0;
@@ -324,6 +324,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // 如果切换到链接管理标签页，重新渲染链接
         if (targetTab === 'links') {
             renderLinksInSettingsIfVisible(links);
+        }
+        if (targetTab === 'groups') {
+            renderCategoriesList();
         }
 
         applySettingsSearch();
@@ -487,7 +490,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // 各编辑弹窗：按可见性依次关闭（display:flex 表示打开）
         const modals = [
             { el: linkModal, close: () => closeModal() },
-            { el: categoryModal, close: () => closeCategoryModal() },
             { el: topButtonModal, close: () => closeTopButtonModal() },
             { el: document.getElementById('search-engine-modal'), close: () => closeSearchEngineModal() }
         ];
@@ -694,40 +696,18 @@ document.addEventListener("DOMContentLoaded", function () {
     // ================================
     // 分类管理功能
     // ================================
-    const categoryModal = document.getElementById('category-modal');
-    const manageCategoriesBtn = document.getElementById('manage-categories-btn');
-    const categoryModalCloseBtn = document.getElementById('category-modal-close-btn');
     const newCategoryNameInput = document.getElementById('new-category-name');
     const addCategoryBtn = document.getElementById('add-category-btn');
     const categoriesList = document.getElementById('categories-list');
-    
-    // 打开分类管理弹窗
-    function openCategoryModal() {
-        renderCategoriesList();
-        categoryModal.style.display = 'flex';
-        requestAnimationFrame(() => {
-            categoryModal.classList.add('show');
-            newCategoryNameInput.focus();
-        });
-    }
-    
-    // 关闭分类管理弹窗
-    function closeCategoryModal() {
-        categoryModal.classList.remove('show');
-        setTimeout(() => {
-            categoryModal.style.display = 'none';
-            manageCategoriesBtn.focus();
-        }, 250);
-    }
-    
+
     // 渲染分类列表
     function renderCategoriesList() {
         const categories = {};
-        getAllCategoryNames(getNavigationItems()).forEach(category => {
+        getAllCategoryNames(getNavigationItems(links, true)).forEach(category => {
             categories[category] = 0;
         });
 
-        getNavigationItems().forEach(link => {
+        getNavigationItems(links, true).forEach(link => {
             const category = link.category || '未分类';
             if (!categories[category]) {
                 categories[category] = 0;
@@ -819,7 +799,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function moveCategory(name, delta) {
         // 基于当前展示顺序建立完整序列(未记录的分组保持名称序附在后面)
-        const current = getAllCategoryNames(getNavigationItems());
+        const current = getAllCategoryNames(getNavigationItems(links, true));
         const saved = getCustomCategoryOrder();
         const known = [...new Set([...saved.filter(c => current.includes(c)), ...current])];
         const idx = known.indexOf(name);
@@ -843,7 +823,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         name = name.trim();
         
-        const categories = getAllCategoryNames(getNavigationItems());
+        const categories = getAllCategoryNames(getNavigationItems(links, true));
         if (categories.includes(name)) {
             showMessage('分组已存在');
             return;
@@ -866,7 +846,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const customCategories = getCustomCategories()
                 .map(category => category === oldName ? trimmedName : category);
 
-            getNavigationItems().filter(link => (link.category || '未分类') === oldName)
+            getNavigationItems(links, true).filter(link => (link.category || '未分类') === oldName)
                 .forEach(link => assignSettingsLinkCategory(link, trimmedName));
             if (settingsLinkCategory === oldName) settingsLinkCategory = trimmedName;
             saveCustomCategories([...new Set([...customCategories, trimmedName])]);
@@ -890,7 +870,7 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // 删除分类
     function deleteCategory(name) {
-        const categoryLinks = getNavigationItems().filter(link => (link.category || '未分类') === name);
+        const categoryLinks = getNavigationItems(links, true).filter(link => (link.category || '未分类') === name);
         if (categoryLinks.length > 0) {
             if (!confirm(`分组"${name}"中有 ${categoryLinks.length} 个入口，删除后将移到“未分类”。确定要删除吗？`)) {
                 return;
@@ -914,25 +894,6 @@ document.addEventListener("DOMContentLoaded", function () {
         renderLinksByCategory(links);
         updateCategoryDatalist();
         updateStorageInfo();
-    }
-    
-    // 管理分类按钮
-    if (manageCategoriesBtn) {
-        manageCategoriesBtn.addEventListener('click', openCategoryModal);
-    }
-    
-    // 关闭分类弹窗按钮
-    if (categoryModalCloseBtn) {
-        categoryModalCloseBtn.addEventListener('click', closeCategoryModal);
-    }
-    
-    // 点击分类弹窗背景关闭
-    if (categoryModal) {
-        categoryModal.addEventListener('click', (e) => {
-            if (e.target === categoryModal) {
-                closeCategoryModal();
-            }
-        });
     }
     
     // 添加分类按钮
@@ -1087,7 +1048,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // 更新分类数据列表
     function updateCategoryDatalist() {
         const datalist = document.getElementById('category-list');
-        const categories = getAllCategoryNames(getNavigationItems());
+        const categories = getAllCategoryNames(getNavigationItems(links, true));
         datalist.innerHTML = categories.map(c => `<option value="${escapeHTML(c)}">`).join('');
     }
     window.updateCategoryDatalist = updateCategoryDatalist;
@@ -1432,7 +1393,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.27.0';
+    const currentVersion = '1.28.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {

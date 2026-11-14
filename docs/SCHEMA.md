@@ -97,6 +97,6 @@
 
 ## 可编辑目录入口（1.19.0）
 
-`links[].kind` 区分 `site` / `ai` / `mcp` / `skill`。MCP 与 Skill 的 `copyValue` 保存点击复制的命令或路径，并可与网页地址同时保存。仅复制型入口使用空 `urls` 数组。`catalogKey` 将用户编辑的条目与扫描目录关联，浏览器优先展示编辑版本。`settings.hiddenCatalogKeys` 保存已删除扫描入口的标识。
+`links[].kind` 区分 `site` / `ai` / `mcp` / `skill`。MCP 与 Skill 的 `copyValue` 保存点击复制的命令或路径，并可与网页地址同时保存。仅复制型入口使用空 `urls` 数组。`catalogKey` 将用户编辑的条目与扫描目录关联，浏览器优先展示编辑版本。`enabled: false` 会让入口从抽屉、搜索结果与最近使用中隐藏，但设置中保留并可恢复。`settings.hiddenCatalogKeys` 保存已删除扫描入口的标识。
 
 浏览器通过 `navigationServerBase` 保存最近确认的服务器版本，通过 `navigationDirty` 标记未同步草稿。主题、访问线路和访问记录继续按设备保存。

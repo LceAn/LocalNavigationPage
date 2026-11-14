@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.27.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.28.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -68,6 +68,7 @@
 ### 入口与抽屉
 
 - 紧凑网格磁贴展示图标、名称和地址气泡，悬浮显示完整名称与地址
+- 设置拆分为「快捷方式」与「分组」两个独立标签：快捷方式可编辑、启停；停用项不进入抽屉、搜索结果与最近使用
 - 默认搜索首页，底部无文字小图标在原页面展开全部入口
 - 抽屉支持类型筛选与多关键词搜索（`nas 管理` 可命中「NAS 管理」）
 - 分组支持自定义图标和手动排序，集中在设置中管理
@@ -208,6 +209,7 @@ MCP 详情需要 Node.js 服务的检测能力。服务器配置方式、环境�
 - `kind`：`site` / `ai` / `mcp` / `skill`，决定抽屉中的类型标签
 - `catalogKey`：扫描目录项的关联键；覆盖项作为普通链接保存
 - `copyValue`：MCP / Skill 的命令或路径；此类条目可以没有 `urls`
+- `enabled`：`false` 时在抽屉、搜索结果与最近使用中隐藏，设置中保留并显示启停开关
 
 只允许 `http` 和 `https` 示例地址；数据在规范化与渲染两层都强制协议白名单。
 
@@ -322,7 +324,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-14
-**当前版本：** 1.27.0
+**当前版本：** 1.28.0
 
 ---
 

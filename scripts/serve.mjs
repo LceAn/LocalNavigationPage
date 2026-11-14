@@ -82,6 +82,7 @@ function normalizeLink(input) {
     ...(input.catalogKey !== undefined ? { catalogKey: String(input.catalogKey) } : {}),
     ...(input.remarks !== undefined ? { remarks: String(input.remarks) } : {}),
     ...(input.kind !== undefined ? { kind: String(input.kind) } : {}),
+    ...(input.enabled !== undefined ? { enabled: input.enabled !== false } : {}),
     category: String(input.category || '未分类').trim() || '未分类',
     tag: String(input.tag || '').trim(),
     thumbnail: String(input.thumbnail || '').trim()

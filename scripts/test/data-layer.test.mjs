@@ -82,11 +82,15 @@ test('normalizeLinks:多地址与单地址保留 urls 的标签信息', () => {
   assert.equal(single.urls[0].priority, 3);
 });
 
-test('normalizeLinks:缺 name/category 填默认值', () => {
+test('normalizeLinks:缺 name/category 填默认值，enabled 默认保留', () => {
   const api = fresh();
   const [out] = api.normalizeLinks([{ ID: 1, url: 'http://x.example' }]);
   assert.equal(out.name, '未命名');
   assert.equal(out.category, '未分类');
+  assert.equal(out.enabled, true);
+
+  const [disabled] = api.normalizeLinks([{ ID: 2, url: 'http://y.example', enabled: false }]);
+  assert.equal(disabled.enabled, false);
 });
 
 // ---------- 地址分类 ----------

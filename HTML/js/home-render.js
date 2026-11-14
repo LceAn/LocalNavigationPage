@@ -50,7 +50,7 @@ function renderRecentLinks(allLinks) {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 6)
         .map(([id]) => byId.get(id))
-        .filter(Boolean);
+        .filter(link => link && link.enabled !== false);
     if (items.length === 0) {
         container.hidden = true;
         container.innerHTML = '';
