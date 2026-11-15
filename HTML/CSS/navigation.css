@@ -805,3 +805,117 @@ body.clock-layout-hero.navigation-open #current-time { font-size: 38px; letter-s
   body.clock-layout-hero #current-time { font-size: clamp(56px, 18vw, 96px); }
   body.clock-layout-watermark #current-time { font-size: 30vw; }
 }
+
+/* ================================================================
+   搜索框布局：居中之外的左侧 / 右侧 / 顶部 / 底部 / 巨框
+   ================================================================ */
+body.search-layout-left-rail .search-container-wrapper,
+body.search-layout-right-rail .search-container-wrapper {
+  position: fixed;
+  top: 50%;
+  width: min(320px, 28vw);
+  max-width: none;
+  margin: 0;
+  transform: translateY(-50%);
+  z-index: 6;
+}
+body.search-layout-left-rail .search-container-wrapper { left: clamp(16px, 3vw, 42px); }
+body.search-layout-right-rail .search-container-wrapper { right: clamp(16px, 3vw, 42px); }
+
+body.search-layout-left-rail .search-container,
+body.search-layout-right-rail .search-container {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 12px;
+}
+body.search-layout-left-rail #search-input,
+body.search-layout-right-rail #search-input { width: 100%; }
+body.search-layout-left-rail .search-buttons,
+body.search-layout-right-rail .search-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  padding: 3px;
+}
+body.search-layout-left-rail .search-button,
+body.search-layout-right-rail .search-button {
+  width: 100%;
+  padding: 8px 4px;
+}
+
+body.search-layout-top-bar .search-container-wrapper {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 48px));
+  max-width: none;
+  margin: 0;
+  z-index: 6;
+}
+
+body.search-layout-bottom-bar .search-container-wrapper {
+  position: fixed;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  width: min(680px, calc(100vw - 48px));
+  max-width: none;
+  margin: 0;
+  z-index: 6;
+}
+
+body.search-layout-hero .search-container-wrapper {
+  width: min(960px, 92vw);
+  max-width: 960px;
+  margin: 18px auto 0;
+}
+body.search-layout-hero .search-container { padding: 8px; border-radius: 24px; }
+body.search-layout-hero #search-input { font-size: 19px; padding: 17px 18px; }
+body.search-layout-hero .search-button { padding: 10px 15px; font-size: 13px; }
+
+/* 抽屉已有自己的搜索框，固定布局让位 */
+body.navigation-open.search-layout-left-rail .search-container-wrapper,
+body.navigation-open.search-layout-right-rail .search-container-wrapper,
+body.navigation-open.search-layout-top-bar .search-container-wrapper,
+body.navigation-open.search-layout-bottom-bar .search-container-wrapper,
+body.navigation-open.search-layout-hero .search-container-wrapper { display: none; }
+
+/* 与时钟大布局组合时的避让 */
+body.search-layout-right-rail.clock-layout-right-rail .search-container-wrapper {
+  top: auto;
+  bottom: 32px;
+  transform: none;
+}
+body.search-layout-right-rail.clock-layout-corner .search-container-wrapper {
+  top: 96px;
+  transform: none;
+}
+body.search-layout-bottom-bar.clock-layout-corner .datetime-display { bottom: 170px; }
+
+@media (max-width: 900px) {
+  body.search-layout-left-rail .search-container-wrapper,
+  body.search-layout-right-rail .search-container-wrapper,
+  body.search-layout-top-bar .search-container-wrapper,
+  body.search-layout-bottom-bar .search-container-wrapper {
+    position: static;
+    width: 100%;
+    max-width: 690px;
+    margin: 0 auto;
+    transform: none;
+  }
+  body.search-layout-left-rail .search-container,
+  body.search-layout-right-rail .search-container {
+    flex-direction: row;
+    align-items: center;
+    padding: 4px;
+  }
+  body.search-layout-left-rail .search-buttons,
+  body.search-layout-right-rail .search-buttons {
+    width: auto;
+    flex-wrap: nowrap;
+  }
+  body.search-layout-hero #search-input { font-size: 15px; padding: 11px 12px; }
+}

@@ -1393,7 +1393,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.30.1';
+    const currentVersion = '1.31.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1838,6 +1838,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 case 'bottom': message = '内容已切换为靠下布局'; break;
             }
             showMessage(message);
+        });
+    }
+
+    // 搜索框布局
+    const SEARCH_LAYOUTS = ['default', 'left-rail', 'right-rail', 'top-bar', 'bottom-bar', 'hero'];
+    function applySearchLayout(layout = 'default') {
+        const selected = SEARCH_LAYOUTS.includes(layout) ? layout : 'default';
+        SEARCH_LAYOUTS.forEach(name => document.body.classList.toggle(`search-layout-${name}`, name === selected));
+        return selected;
+    }
+    const searchLayoutSelect = document.getElementById('search-layout-select');
+    if (searchLayoutSelect) {
+        const savedLayout = applySearchLayout(getSetting('searchLayout', 'default'));
+        searchLayoutSelect.value = savedLayout;
+        searchLayoutSelect.addEventListener('change', function() {
+            const layout = applySearchLayout(this.value);
+            setSetting('searchLayout', layout);
+            showMessage('已切换搜索框布局');
         });
     }
 

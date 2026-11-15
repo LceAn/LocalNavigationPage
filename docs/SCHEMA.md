@@ -45,6 +45,7 @@
 | `probeIntervalMs` | number | 状态探测间隔毫秒(0 = 关闭,默认 60000) |
 | `smartRouting` | boolean | 旧配置兼容字段，自动模式已统一按实测延迟选路 |
 | `defaultSearchEngine` | string | 默认搜索引擎名 |
+| `searchLayout` | string | 搜索框布局：`default` / `left-rail` / `right-rail` / `top-bar` / `bottom-bar` / `hero`，按浏览器保存 |
 | `weatherCity` / 单位键 | string | 天气城市与 °C/°F |
 | `displaySettings.clockStyle` | string | 时间字体：`default` / `bold` / `mono` / `outline` / `stacked` / `light`，按浏览器保存 |
 | `displaySettings.clockLayout` | string | 时间布局：`default` / `right-rail` / `hero` / `watermark` / `corner`，按浏览器保存 |

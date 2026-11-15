@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.30.1-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.31.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -87,6 +87,7 @@
 - 多引擎搜索：百度 / Google / 必应开箱即用，可自定义引擎与图标
 - **前缀直达**：搜索框输入 `/g 关键词`、`/bing 词` 直接用指定引擎（匹配引擎名 / URL 主机名 / 自定义前缀）
 - `Ctrl/Cmd + K` 键盘启动器：多关键词过滤，最近使用优先
+- 搜索框布局 6 种：默认居中 / 左侧悬浮 / 右侧悬浮 / 顶部固定 / 底部悬浮 / 全屏大搜索
 - `/` 快速聚焦搜索框；抽屉内方向键在磁贴间导航，Enter 打开
 - `Shift + 点击` 以独立小窗（1100×780）打开链接，适合临时查看管理页
 
@@ -325,7 +326,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-14
-**当前版本：** 1.30.1
+**当前版本：** 1.31.0
 
 ---
 
