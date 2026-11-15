@@ -5,14 +5,23 @@ const WEATHER_COLD_DURATION = 60 * 60 * 1000;
 
 function getWeatherAtmosphereCondition(code, description = '') {
     const value = Number(code);
+    if ([200, 386, 389].includes(value)) return 'thunder';
     if ([143, 248, 260].includes(value)) return 'fog';
     if ([179, 182, 227, 230, 317, 320, 323, 326, 329, 332, 335, 338, 350, 362, 365, 368, 371, 374, 377, 392, 395].includes(value)) return 'snow';
-    if ([176, 185, 200, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311, 314, 353, 356, 359, 386, 389].includes(value)) return 'rain';
-    if ([113, 116, 119, 122].includes(value)) return 'clear';
+    if ([176, 185, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311, 314, 353, 356, 359].includes(value)) return 'rain';
+    if (value === 116) return 'partly-cloudy';
+    if ([119, 122].includes(value)) return 'cloudy';
+    if (value === 113) return 'clear';
+    if (/thunder|storm|雷/i.test(description)) return 'thunder';
     if (/snow|sleet|blizzard|ice pellets|雪|冰雹/i.test(description)) return 'snow';
-    if (/fog|mist|haze|雾|霾/i.test(description)) return 'fog';
-    if (/rain|drizzle|shower|thunder|雨/i.test(description)) return 'rain';
-    return 'clear';
+    if (/rain|drizzle|shower|雨/i.test(description)) return 'rain';
+    if (/haze|smoke|霾|烟/i.test(description)) return 'haze';
+    if (/fog|mist|雾/i.test(description)) return 'fog';
+    if (/wind|gale|风/i.test(description)) return 'wind';
+    if (/cloud|overcast|阴|多云/i.test(description)) return 'cloudy';
+    if (/clear|sunny|晴/i.test(description)) return 'clear';
+    // 未知天气也走云层动画，避免“没有动画”的空状态
+    return 'cloudy';
 }
 
 function advanceColdWeatherHistory(previous, observation, now = Date.now()) {
@@ -94,7 +103,7 @@ function getWeatherCanvasScale(width, height, ratio) {
         const dark = document.body.classList.contains('dark-mode');
         rainContext.clearRect(0, 0, width, height);
         snowContext.clearRect(0, 0, width, height);
-        for (const drop of rain) {
+        if (state.kind === 'rain' || state.kind === 'thunder') for (const drop of rain) {
             drop.y += drop.speed * delta;
             drop.x -= drop.speed * delta * .18;
             if (drop.y > height + 45 || drop.x < -30) { drop.y = -45; drop.x = Math.random() * (width + 120); }
@@ -105,7 +114,7 @@ function getWeatherCanvasScale(width, height, ratio) {
             rainContext.lineTo(drop.x - drop.length * .18, drop.y + drop.length);
             rainContext.stroke();
         }
-        for (const flake of snow) {
+        if (state.kind === 'snow') for (const flake of snow) {
             flake.y += flake.speed * delta;
             flake.x += Math.sin(time / 3000 + flake.phase) * delta * 12;
             if (flake.y > height + 5) { flake.y = -5; flake.x = Math.random() * width; }
@@ -130,7 +139,7 @@ function getWeatherCanvasScale(width, height, ratio) {
             draw(time, lastTime ? Math.min((time - lastTime) / 1000, .08) : 0);
             lastTime = time;
         }
-        if (state.kind === 'rain' || state.kind === 'snow' || performance.now() < fadeUntil) frame = window.requestAnimationFrame(tick);
+        if (['rain', 'snow', 'thunder'].includes(state.kind) || performance.now() < fadeUntil) frame = window.requestAnimationFrame(tick);
     }
 
     function refresh() {
@@ -147,11 +156,11 @@ function getWeatherCanvasScale(width, height, ratio) {
             const expires = state.cold ? Math.min(state.validUntil, history.coldUntil) : state.validUntil;
             expiryTimer = window.setTimeout(refresh, Math.max(1, expires - now));
         }
-        const precipitation = state.kind === 'rain' || state.kind === 'snow';
+        const precipitation = ['rain', 'snow', 'thunder'].includes(state.kind);
         if (precipitation && !rainContext) resize();
         if (precipitation) draw(performance.now(), 0);
         if (!moving || settings.weatherEffects === false) { stop(); return; }
-        if (previousKind === 'rain' || previousKind === 'snow') fadeUntil = performance.now() + 1800;
+        if (['rain', 'snow', 'thunder'].includes(previousKind)) fadeUntil = performance.now() + 1800;
         if ((precipitation || performance.now() < fadeUntil) && !frame) frame = window.requestAnimationFrame(tick);
         if (!precipitation && previousKind === 'none') stop();
     }

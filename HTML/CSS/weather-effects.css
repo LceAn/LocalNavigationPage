@@ -60,3 +60,144 @@ body.liquid-home .settings-content .weather-effects-hint { margin: 0; color: var
     #weather-atmosphere, #weather-atmosphere > * { transition: none; }
     #weather-atmosphere .weather-mist { animation: none; }
 }
+
+/* ================================================================
+   全天气动画：晴 / 多云 / 阴 / 霾 / 风 / 雷暴都有独立动态
+   ================================================================ */
+
+/* 晴天暖光与旋转光芒 */
+#weather-atmosphere .weather-sun {
+    inset: auto;
+    top: -8%;
+    right: -6%;
+    width: 58vmax;
+    height: 58vmax;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgb(255 211 145 / .55), rgb(255 211 145 / .12) 36%, transparent 66%);
+    filter: blur(3px);
+    opacity: 0;
+    transform-origin: 50% 50%;
+    animation: weather-sun-breathe 12s ease-in-out infinite alternate;
+}
+.weather-sun::after {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0 6%, rgb(255 231 183 / .16) 7% 10%, transparent 11% 22%, rgb(255 231 183 / .12) 23% 26%, transparent 27% 44%, rgb(255 231 183 / .15) 45% 48%, transparent 49% 68%, rgb(255 231 183 / .1) 69% 72%, transparent 73% 100%);
+    animation: weather-sun-spin 46s linear infinite;
+}
+#weather-atmosphere[data-weather="clear"] .weather-sun { opacity: .9; }
+#weather-atmosphere[data-weather="partly-cloudy"] .weather-sun { opacity: .55; }
+
+/* 云层：多云 / 阴 / 雨雪 / 雷暴共用，慢速漂移 */
+.weather-clouds {
+    opacity: 0;
+    background: linear-gradient(180deg, rgb(125 145 165 / .34), rgb(140 158 175 / .1) 62%, transparent 100%);
+    mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .18) 30%, #000 76%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .18) 30%, #000 76%);
+}
+.weather-clouds span {
+    position: absolute;
+    display: block;
+    width: 52vmax;
+    height: 17vmax;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 50%, rgb(145 165 185 / .8), rgb(150 170 190 / .3) 55%, transparent 72%);
+    filter: blur(12px);
+    animation: weather-cloud-drift 58s linear infinite alternate;
+}
+.weather-clouds span:nth-child(1) { top: 2%; left: -16%; animation-duration: 54s; }
+.weather-clouds span:nth-child(2) { top: 14%; left: 36%; width: 44vmax; height: 14vmax; animation-duration: 72s; animation-delay: -18s; }
+.weather-clouds span:nth-child(3) { top: 62%; left: -22%; width: 46vmax; height: 15vmax; animation-duration: 66s; animation-delay: -30s; }
+.weather-clouds span:nth-child(4) { top: 70%; left: 42%; width: 56vmax; height: 18vmax; animation-duration: 84s; animation-delay: -8s; }
+.dark-mode .weather-clouds span {
+    background: radial-gradient(ellipse at 50% 50%, rgb(170 198 226 / .34), rgb(150 180 215 / .12) 55%, transparent 72%);
+}
+#weather-atmosphere[data-weather="clear"] .weather-clouds { opacity: .24; }
+#weather-atmosphere[data-weather="partly-cloudy"] .weather-clouds { opacity: .72; }
+#weather-atmosphere[data-weather="cloudy"] .weather-clouds { opacity: .95; }
+#weather-atmosphere[data-weather="rain"] .weather-clouds { opacity: .7; }
+#weather-atmosphere[data-weather="thunder"] .weather-clouds { opacity: .85; }
+#weather-atmosphere[data-weather="snow"] .weather-clouds { opacity: .55; }
+#weather-atmosphere[data-weather="haze"] .weather-clouds { opacity: .28; }
+#weather-atmosphere[data-weather="wind"] .weather-clouds { opacity: .4; }
+
+/* 霾：暖灰横向漂移 */
+#weather-atmosphere .weather-haze {
+    inset: -14%;
+    width: 128%;
+    height: 128%;
+    background: radial-gradient(ellipse at 18% 70%, rgb(235 220 196 / .62), transparent 52%), radial-gradient(ellipse at 82% 28%, rgb(240 230 212 / .5), transparent 50%);
+    filter: blur(30px);
+    opacity: 0;
+    animation: weather-haze-drift 36s ease-in-out infinite alternate;
+}
+.dark-mode .weather-haze {
+    background: radial-gradient(ellipse at 18% 70%, rgb(120 134 148 / .22), transparent 52%), radial-gradient(ellipse at 82% 28%, rgb(130 146 162 / .18), transparent 50%);
+}
+#weather-atmosphere[data-weather="haze"] .weather-haze { opacity: .55; }
+
+/* 风：斜向流光 */
+.weather-wind {
+    background: repeating-linear-gradient(102deg, transparent 0 44px, rgb(255 255 255 / .18) 45px, transparent 46px 108px);
+    background-size: 220px 220px;
+    opacity: 0;
+    animation: weather-wind-move 2.2s linear infinite;
+    mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+}
+.dark-mode .weather-wind {
+    background: repeating-linear-gradient(102deg, transparent 0 44px, rgb(200 220 240 / .12) 45px, transparent 46px 108px);
+}
+#weather-atmosphere[data-weather="wind"] .weather-wind { opacity: .35; }
+
+/* 雷暴：云层 + 雨 + 周期性闪电 */
+.weather-flash { background: #eaf4ff; opacity: 0; }
+#weather-atmosphere[data-weather="thunder"] .weather-rain { opacity: .45; }
+#weather-atmosphere[data-weather="thunder"][data-motion="on"] .weather-flash {
+    animation: weather-flash 8s linear infinite;
+}
+
+/* 减少动态 / 页面隐藏时暂停所有新动画 */
+#weather-atmosphere[data-motion="off"] .weather-sun,
+#weather-atmosphere[data-motion="off"] .weather-sun::after,
+#weather-atmosphere[data-motion="off"] .weather-clouds span,
+#weather-atmosphere[data-motion="off"] .weather-haze,
+#weather-atmosphere[data-motion="off"] .weather-wind,
+#weather-atmosphere[data-motion="off"] .weather-flash { animation-play-state: paused; }
+
+@keyframes weather-sun-breathe {
+    from { transform: scale(.96); }
+    to { transform: scale(1.05); }
+}
+@keyframes weather-sun-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes weather-cloud-drift {
+    from { transform: translate3d(-6%, 1%, 0); }
+    to { transform: translate3d(14%, -1.5%, 0); }
+}
+@keyframes weather-haze-drift {
+    from { transform: translate3d(-3%, 1%, 0) scale(1); }
+    to { transform: translate3d(4%, -2%, 0) scale(1.08); }
+}
+@keyframes weather-wind-move {
+    from { background-position: 0 0; }
+    to { background-position: 220px 0; }
+}
+@keyframes weather-flash {
+    0%, 86%, 100% { opacity: 0; }
+    87% { opacity: .58; }
+    88% { opacity: .06; }
+    89% { opacity: .42; }
+    90% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #weather-atmosphere .weather-sun,
+    #weather-atmosphere .weather-sun::after,
+    #weather-atmosphere .weather-clouds span,
+    #weather-atmosphere .weather-haze,
+    #weather-atmosphere .weather-wind,
+    #weather-atmosphere .weather-flash { animation: none !important; }
+}

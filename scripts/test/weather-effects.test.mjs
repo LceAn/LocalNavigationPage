@@ -28,14 +28,22 @@ function weatherApi(render = false) {
 const {api} = weatherApi();
 const sample = (temperatureC=20,at=Date.now()) => ({city:'shanghai',temperatureC,at,code:113,description:'晴'});
 
-test('天气编码覆盖雨雪雾、雨夹雪与雷阵雨，编码优先于描述', () => {
-  for (const code of [176,200,263,296,308,359,389]) assert.equal(api.getWeatherAtmosphereCondition(code),'rain');
-  for (const code of [179,182,227,320,338,350,377,395]) assert.equal(api.getWeatherAtmosphereCondition(code),'snow');
+test('天气编码覆盖所有动画类型，编码优先于描述', () => {
+  for (const code of [176,263,296,308,359]) assert.equal(api.getWeatherAtmosphereCondition(code),'rain');
+  for (const code of [200,386,389]) assert.equal(api.getWeatherAtmosphereCondition(code),'thunder');
+  for (const code of [179,182,227,320,338,350,377,392,395]) assert.equal(api.getWeatherAtmosphereCondition(code),'snow');
   for (const code of [143,248,260]) assert.equal(api.getWeatherAtmosphereCondition(code),'fog');
+  for (const code of [116]) assert.equal(api.getWeatherAtmosphereCondition(code),'partly-cloudy');
+  for (const code of [119,122]) assert.equal(api.getWeatherAtmosphereCondition(code),'cloudy');
   assert.equal(api.getWeatherAtmosphereCondition(113,'下雨'),'clear');
   for (const text of ['Light snow','雨夹雪','Blizzard']) assert.equal(api.getWeatherAtmosphereCondition(null,text),'snow');
-  for (const text of ['Mist','雾天','Haze']) assert.equal(api.getWeatherAtmosphereCondition(null,text),'fog');
-  for (const text of ['Drizzle','雷阵雨']) assert.equal(api.getWeatherAtmosphereCondition(null,text),'rain');
+  for (const text of ['Mist','雾天']) assert.equal(api.getWeatherAtmosphereCondition(null,text),'fog');
+  assert.equal(api.getWeatherAtmosphereCondition(null,'Haze'),'haze');
+  assert.equal(api.getWeatherAtmosphereCondition(null,'Windy'),'wind');
+  assert.equal(api.getWeatherAtmosphereCondition(null,'Overcast'),'cloudy');
+  assert.equal(api.getWeatherAtmosphereCondition(null,'Sunny'),'clear');
+  for (const text of ['Drizzle']) assert.equal(api.getWeatherAtmosphereCondition(null,text),'rain');
+  assert.equal(api.getWeatherAtmosphereCondition(null,'雷阵雨'),'thunder');
 });
 test('同城市六小时内下降五度触发一小时降温，重复缓存保持截止时间', () => {
   const now=Date.now();

@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.31.1-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.32.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -61,7 +61,7 @@
 - 右上角常驻路线状态与设置；悬停、键盘聚焦或触屏长按展开快捷方式、布局与昼夜模式工具
 - 布局菜单即时预览首页位置与快捷网格密度
 - 设置标题与搜索同栏，侧栏、统计和操作栏采用紧凑布局，手机端保持标题与搜索同排
-- 天气氛围：首个城市的雨雪粒子、雾气与降温冷色边缘随天气变化淡入淡出；15 分钟天气缓存，页面隐藏时暂停绘制，系统减弱动态效果与全局动画开关均生效
+- 全天气氛围：晴（暖光呼吸 / 光芒旋转）、多云与阴（云层漂移）、雨、雷暴（闪电）、雪、雾、霾、风都有独立动画；降温冷色边缘随天气变化，15 分钟天气缓存，页面隐藏时暂停绘制，系统减弱动态效果与全局动画开关均生效
 
 ## 核心功能
 
@@ -279,7 +279,7 @@ docker build --tag local-navigation-page:test .
   - `resource-details.js` — MCP / Skills 详情窗口与工具发现
   - `home-render.js` — 磁贴构建、视图标签、右键菜单
   - `settings-links.js` — 设置中的链接列表、分组侧栏、筛选与拖拽排序
-  - `weather-effects.js` — 天气氛围（雨雪 / 雾 / 降温）
+  - `weather-effects.js` — 全天气氛围（晴 / 云 / 雨 / 雷 / 雪 / 雾 / 霾 / 风 / 降温）
   - `display.js` — 时钟 / 日期 / 天气
   - `search-engines.js` — 搜索引擎管理与执行
   - `launcher.js` — Ctrl+K 键盘启动器
@@ -320,13 +320,13 @@ docker build --tag local-navigation-page:test .
 - [x] 网络环境气泡与延迟选路
 - [x] MCP / Skills 目录与资源详情
 - [x] 搜索首页 + 同页快捷抽屉 + 液态玻璃
-- [x] 天气氛围（雨雪 / 雾 / 降温）
+- [x] 全天气氛围（晴 / 云 / 雨 / 雷 / 雪 / 雾 / 霾 / 风 / 降温）
 - [x] 多语言切换（zh-CN / en-US；起步覆盖主要文案）
 
 ---
 
 **最后更新：** 2026-11-14
-**当前版本：** 1.31.1
+**当前版本：** 1.32.0
 
 ---
 

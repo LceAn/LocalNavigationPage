@@ -1,6 +1,6 @@
 FROM node:22-alpine
 LABEL maintainer="LceAn <lcean@users.noreply.github.com>"
-LABEL version="1.31.1"
+LABEL version="1.32.0"
 WORKDIR /app
 COPY HTML/ ./HTML/
 COPY scripts/serve.mjs scripts/config-store.mjs scripts/catalog-service.mjs scripts/mcp-client.mjs scripts/scan-catalog.mjs ./scripts/
