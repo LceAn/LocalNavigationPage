@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.31.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.31.1-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -36,7 +36,7 @@
 
 - 右上角网络气泡展示当前访问环境，可切换家里、公司、Tailscale 与公网等配置
 - 环境名称、优先线路、检测地址在「设置 → 首页内容 → 网络环境」管理并共享保存
-- 检测地址可选：填写后测该地址，未填时显示当前导航连接的延迟；气泡列表逐项显示
+- 每个环境填写自己的检测地址，气泡逐项显示该线路延迟；未设置的环境不显示延迟，自动模式展示已配置线路中最快的一条
 - 抽屉内「默认线路」支持自动最低延迟 / 局域网优先 / 内网穿透优先 / 公网优先
 - 单链接可固定默认 URL 或跟随全局，星标指示卡片默认打开地址
 
@@ -326,7 +326,7 @@ docker build --tag local-navigation-page:test .
 ---
 
 **最后更新：** 2026-11-14
-**当前版本：** 1.31.0
+**当前版本：** 1.31.1
 
 ---
 

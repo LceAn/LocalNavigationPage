@@ -52,8 +52,8 @@ test('环境延迟逐项显示，手动名称与自动选路状态独立于最�
   assert.equal(api.getNetworkEnvironmentMeasurement(profiles[2]).state, 'unreachable');
   // 未填检测地址时按线路显示，不提示“待配置”
   const unmeasured = api.getNetworkEnvironmentMeasurement({ id: 'x', name: '备用', route: 'remote', probeUrl: '' });
-  assert.equal(unmeasured.state, 'unmeasured');
-  assert.equal(unmeasured.text, '未测速');
+  assert.equal(unmeasured.state, 'unconfigured');
+  assert.equal(unmeasured.text, '未设置检测地址');
 });
 
 test('修改检测 URL 后丢弃原地址延迟，离线与关闭探测不使用旧结果', () => {
