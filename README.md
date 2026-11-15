@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.32.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.32.1-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -114,7 +114,7 @@
 
 - 零依赖、零构建；Node.js 服务器内置 REST API 与共享配置接口
 - `npm run mcp` 启动 MCP Server，AI 助手可直接管理导航链接（详见 [docs/API.md](docs/API.md)）
-- 数据层 / 服务器 / 界面逻辑共 **142 个单元测试**（15 个测试文件，`npm test`）
+- 数据层 / 服务器 / 界面逻辑共 **144 个单元测试**（15 个测试文件，`npm test`）
 - CI 三道关：单元测试 / 配置校验 / Docker 构建
 - Docker 镜像基于 Node.js 22；持久化目录 `/data`
 
@@ -257,7 +257,7 @@ MCP 详情需要 Node.js 服务的检测能力。服务器配置方式、环境�
 需要 Node.js 18+，无需安装第三方包：
 
 ```bash
-npm test               # 142 个单元测试：数据层 / 服务器 / 选路 / 界面逻辑
+npm test               # 144 个单元测试：数据层 / 服务器 / 选路 / 界面逻辑
 npm run validate       # 链接 JSON、资源引用、脚本语法、跨脚本重声明检查
 npm run scan           # 本机端口扫描（生成 gitignore 的 links-local.json）
 npm run catalog        # 生成 MCP / Skills 目录（gitignore）
@@ -325,8 +325,8 @@ docker build --tag local-navigation-page:test .
 
 ---
 
-**最后更新：** 2026-11-14
-**当前版本：** 1.32.0
+**最后更新：** 2026-11-15
+**当前版本：** 1.32.1
 
 ---
 

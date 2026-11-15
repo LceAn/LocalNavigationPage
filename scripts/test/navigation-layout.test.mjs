@@ -96,3 +96,63 @@ test('隐藏组件或缺少动画 API 时，布局切换照常完成', () => {
   assert.equal(fixture.animations.length, 1);
   assert.equal(fixture.drawer.hidden, false);
 });
+
+// 分组管理改成「分组」标签页后，category-modal 已从 HTML 移除。
+// 若初始化仍把 getElementById 的结果直接传给 body.append，null 会被写成文本节点显示在页面底部。
+function initFixture({ withCategoryModal = false } = {}) {
+  const appended = [];
+  const strayText = [];
+  const handlers = {};
+  const linkModal = { id: 'link-modal' };
+  const categoryModal = { id: 'category-modal' };
+  const stub = () => ({ addEventListener() {}, setAttribute() {} });
+  const byId = {
+    'navigation-view': { hidden: true },
+    'open-navigation': stub(),
+    'link-modal': linkModal,
+    'category-modal': withCategoryModal ? categoryModal : null,
+    'navigation-search': stub(),
+    'network-mode': { value: '', addEventListener() {} }
+  };
+  const context = vm.createContext({
+    links: [],
+    getSetting: () => 'auto',
+    setSetting() {},
+    LAST_USED_LINK_URLS_KEY: 'lastUsedLinkUrls',
+    renderLinksByCategory() {},
+    renderRecentLinks() {},
+    document: {
+      body: {
+        append(...nodes) {
+          appended.push(...nodes);
+          // 模拟 DOM 语义：非节点参数会被转换成字符串文本节点
+          nodes.forEach(node => {
+            if (!node || typeof node !== 'object') strayText.push(String(node));
+          });
+        }
+      },
+      getElementById: id => byId[id] ?? null,
+      querySelector: () => stub(),
+      addEventListener: (name, fn) => { handlers[name] = fn; }
+    },
+    matchMedia: () => ({ matches: true })
+  });
+  context.window = context;
+  vm.runInContext(readFileSync(new URL('../../HTML/js/navigation.js', import.meta.url), 'utf8'), context);
+  return { handlers, appended, strayText, linkModal, categoryModal };
+}
+
+test('初始化只把存在的弹窗移到 body，不在页面底部留下 null 文本', () => {
+  const fixture = initFixture();
+  assert.equal(typeof fixture.handlers.DOMContentLoaded, 'function');
+  fixture.handlers.DOMContentLoaded();
+  assert.deepEqual(fixture.appended, [fixture.linkModal]);
+  assert.deepEqual(fixture.strayText, [], 'append(null) 会写出 "null" 文本节点');
+});
+
+test('旧结构中两个弹窗同时存在时，仍然都会被移到 body', () => {
+  const fixture = initFixture({ withCategoryModal: true });
+  fixture.handlers.DOMContentLoaded();
+  assert.deepEqual(fixture.appended, [fixture.linkModal, fixture.categoryModal]);
+  assert.deepEqual(fixture.strayText, []);
+});

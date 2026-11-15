@@ -115,7 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (drawer.hidden) openNavigation();
         else closeNavigation();
     });
-    document.body.append(document.getElementById('link-modal'), document.getElementById('category-modal'));
+    // 编辑弹窗原本嵌在设置面板内，移到 body 末尾以避开父容器的 transform / overflow 裁切。
+    // 分组弹窗已改为「分组」标签页内联管理，可能不存在；只追加真实存在的节点：
+    // append(null) 会把 "null" 转成文本节点，导致页面底部凭空出现一个 null。
+    const overlayNodes = ['link-modal', 'category-modal']
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+    document.body.append(...overlayNodes);
     document.addEventListener('keydown', event => {
         if (event.key === 'Escape' && !event.defaultPrevented && !drawer.hidden && !document.querySelector('.modal-overlay.show, #settings-container.show, .launcher-overlay.show, .route-popover, #resource-detail-dialog[open], #position-dropdown:not([hidden])')) closeNavigation();
     });
