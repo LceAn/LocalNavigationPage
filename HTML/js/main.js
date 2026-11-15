@@ -1393,7 +1393,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.30.0';
+    const currentVersion = '1.30.1';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -3081,6 +3081,12 @@ function toggleShortcutCheatSheet() {
 
 // Service Worker：离线缓存（仅 http/https 生效；file:// 打开时无此 API）
 if ('serviceWorker' in navigator) {
+    // 新版本 SW 接管后自动刷新一次，避免必须手动加 ?v= 才能看到更新
+    let hadController = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController) { hadController = true; return; }
+        window.location.reload();
+    });
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(error => {
             console.info('[lnp] Service Worker 注册失败，离线缓存不可用', error);
