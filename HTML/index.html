@@ -1493,11 +1493,6 @@
                         </div>
                         <div class="section-content">
                             <div id="visit-stats" class="visit-stats"></div>
-                                <div class="visit-stats-actions">
-                                    <button type="button" class="btn-secondary btn-sm" id="clear-visit-stats">
-                                        <i class="ri-delete-bin-line"></i> 清零统计
-                                    </button>
-                                </div>
                         </div>
                     </div>
                     <div class="settings-section" data-section-id="data.import-export">
@@ -1601,11 +1596,46 @@
                                         <small>删除分组名，链接归入「未分类」</small>
                                     </div>
                                 </button>
+                                <button class="data-action-btn danger" id="clear-search-engines">
+                                    <i class="ri-search-eye-line"></i>
+                                    <div class="data-action-text">
+                                        <span>清空搜索引擎</span>
+                                        <small>删除自定义引擎，恢复默认三套</small>
+                                    </div>
+                                </button>
+                                <button class="data-action-btn danger" id="clear-custom-buttons">
+                                    <i class="ri-external-link-line"></i>
+                                    <div class="data-action-text">
+                                        <span>清空自定义按钮</span>
+                                        <small>删除顶栏自定义快捷按钮</small>
+                                    </div>
+                                </button>
+                                <button class="data-action-btn danger" id="clear-network-envs">
+                                    <i class="ri-global-line"></i>
+                                    <div class="data-action-text">
+                                        <span>清空网络环境</span>
+                                        <small>删除自定义网络环境配置</small>
+                                    </div>
+                                </button>
+                                <button class="data-action-btn danger" id="clear-visit-stats">
+                                    <i class="ri-bar-chart-horizontal-line"></i>
+                                    <div class="data-action-text">
+                                        <span>清零访问统计</span>
+                                        <small>清除点击计数与最近使用记录</small>
+                                    </div>
+                                </button>
+                                <button class="data-action-btn danger" id="clear-search-history">
+                                    <i class="ri-history-line"></i>
+                                    <div class="data-action-text">
+                                        <span>清空搜索历史</span>
+                                        <small>清除启动器中的最近搜索词</small>
+                                    </div>
+                                </button>
                                 <button class="data-action-btn danger" id="clear-cache">
                                     <i class="ri-delete-bin-line"></i>
                                     <div class="data-action-text">
-                                        <span>清除缓存</span>
-                                        <small>清除本地缓存数据</small>
+                                        <span>清除全部缓存</span>
+                                        <small>清除本地缓存数据（含探测/天气/AI 模型缓存）</small>
                                     </div>
                                 </button>
                                 <button class="data-action-btn danger" id="reset-all">

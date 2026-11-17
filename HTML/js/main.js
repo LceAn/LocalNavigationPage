@@ -1412,14 +1412,75 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // 清空自定义搜索引擎（恢复默认）
+    const clearSearchEnginesBtn = document.getElementById('clear-search-engines');
+    if (clearSearchEnginesBtn) {
+        clearSearchEnginesBtn.addEventListener('click', () => {
+            if (!confirm('确定要清空全部自定义搜索引擎吗？将恢复为默认的百度/Google/必应。')) return;
+            setSetting('searchEngines', null);
+            setSetting('defaultSearchEngine', '');
+            if (typeof updateSearchButtons === 'function') updateSearchButtons();
+            if (typeof renderSearchEngines === 'function') renderSearchEngines();
+            showMessage('已清空搜索引擎，恢复默认');
+        });
+    }
+
+    // 清空自定义顶栏按钮
+    const clearCustomButtonsBtn = document.getElementById('clear-custom-buttons');
+    if (clearCustomButtonsBtn) {
+        clearCustomButtonsBtn.addEventListener('click', () => {
+            if (!confirm('确定要清空全部自定义顶栏按钮吗？')) return;
+            setSetting('topButtonSettings', { system: getSetting('topButtonSettings', {})?.system || {}, customButtons: [] });
+            if (typeof applyTopButtonSettings === 'function') applyTopButtonSettings();
+            showMessage('已清空自定义按钮');
+        });
+    }
+
+    // 清空网络环境配置
+    const clearNetworkEnvsBtn = document.getElementById('clear-network-envs');
+    if (clearNetworkEnvsBtn) {
+        clearNetworkEnvsBtn.addEventListener('click', () => {
+            if (!confirm('确定要清空全部网络环境配置吗？')) return;
+            setSetting('networkEnvironments', []);
+            setSetting('activeNetworkEnvironment', '');
+            showMessage('已清空网络环境');
+        });
+    }
+
+    // 清零访问统计 + 最近使用
+    const clearVisitStatsBtn = document.getElementById('clear-visit-stats');
+    if (clearVisitStatsBtn) {
+        clearVisitStatsBtn.addEventListener('click', () => {
+            if (!confirm('确定要清零访问统计与最近使用记录吗？')) return;
+            setSetting('linkVisitCounts', {});
+            setSetting('recentLinks', {});
+            setSetting('lastUsedLinkUrls', {});
+            if (typeof renderVisitStats === 'function') renderVisitStats();
+            if (typeof renderLinksByCategory === 'function') renderLinksByCategory(links);
+            showMessage('已清零访问统计');
+        });
+    }
+
+    // 清空搜索历史
+    const clearSearchHistoryBtn = document.getElementById('clear-search-history');
+    if (clearSearchHistoryBtn) {
+        clearSearchHistoryBtn.addEventListener('click', () => {
+            setSetting('searchHistory', []);
+            showMessage('已清空搜索历史');
+        });
+    }
+
     // 清除缓存
     const clearCacheBtn = document.getElementById('clear-cache');
     if (clearCacheBtn) {
         clearCacheBtn.addEventListener('click', () => {
-            if (confirm('确定要清除缓存吗？')) {
-                localStorage.clear();
+            if (confirm('确定要清除全部缓存吗？将清除探测状态、天气缓存、AI 模型缓存等，页面将刷新。')) {
+                // 只清缓存类 key，不清用户数据
+                const cacheKeys = ['linkStatusCache', 'weatherCache', 'versionCheckCache', 'lnp:aiModelCache', 'lnp:catalogCache'];
+                const s = JSON.parse(localStorage.getItem('lnp:settings') || '{}');
+                cacheKeys.forEach(k => delete s[k]);
+                localStorage.setItem('lnp:settings', JSON.stringify(s));
                 showMessage('缓存已清除，即将刷新…');
-                // 清缓存后主题/天气/显示设置全失效，刷新让页面恢复一致状态
                 setTimeout(() => window.location.reload(), 600);
             }
         });
