@@ -176,26 +176,41 @@ function parseArgs(argv) {
     };
 }
 
+// 供 CLI 与导航服务器共用：扫描本机的 MCP 配置与技能目录，返回可直接写入 catalog.json 的文档。
+// 服务器端只允许扫描自身环境变量 / 默认目录，不接受前端传入路径，避免任意路径读取。
+export function collectCatalog({ mcpPath, skillsDir } = {}) {
+    const resolvedMcpPath = resolve(mcpPath || join(home, '.workbuddy', 'mcp.json'));
+    const resolvedSkillsDir = resolve(skillsDir || join(home, '.workbuddy', 'skills'));
+    const mcpServers = readMcpConfig(resolvedMcpPath);
+    const skills = readSkills(resolvedSkillsDir);
+
+    return {
+        mcpPath: resolvedMcpPath,
+        skillsDir: resolvedSkillsDir,
+        mcpServers,
+        skills,
+        counts: { mcpServers: mcpServers.length, skills: skills.length },
+        document: {
+            _meta: {
+                generatedAt: new Date().toISOString(),
+                source: 'scripts/scan-catalog.mjs',
+                mcpConfig: shorten(resolvedMcpPath),
+                skillsDir: shorten(resolvedSkillsDir),
+                counts: { mcpServers: mcpServers.length, skills: skills.length }
+            },
+            mcpServers,
+            skills
+        }
+    };
+}
+
 async function main() {
     const { mcpPath, skillsDir, outPath } = parseArgs(process.argv);
 
     console.log('📚 收集 MCP 与技能...\n');
-    const mcpServers = readMcpConfig(mcpPath);
-    const skills = readSkills(skillsDir);
+    const { mcpServers, skills, document } = collectCatalog({ mcpPath, skillsDir });
 
-    const output = {
-        _meta: {
-            generatedAt: new Date().toISOString(),
-            source: 'scripts/scan-catalog.mjs',
-            mcpConfig: shorten(mcpPath),
-            skillsDir: shorten(skillsDir),
-            counts: { mcpServers: mcpServers.length, skills: skills.length }
-        },
-        mcpServers,
-        skills
-    };
-
-    writeFileSync(outPath, JSON.stringify(output, null, 4) + '\n', 'utf8');
+    writeFileSync(outPath, JSON.stringify(document, null, 4) + '\n', 'utf8');
 
     console.log(`  MCP：${mcpServers.length} 个${mcpServers.length ? `（${mcpServers.map(item => item.name).join(', ')}）` : ''}`);
     console.log(`  技能：${skills.length} 个${skills.length ? `（${skills.slice(0, 6).map(item => item.name).join(', ')}${skills.length > 6 ? '…' : ''}）` : ''}`);

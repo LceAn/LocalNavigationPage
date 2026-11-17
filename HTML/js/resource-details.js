@@ -16,6 +16,8 @@
     let visibleTools = 50;
     let address = '';
     let loading = false;
+    let modelQuery = '';
+    let visibleModels = 60;
 
     function element(tag, className, text) {
         const node = document.createElement(tag);
@@ -79,7 +81,28 @@
         status.dataset.state = state;
         status.append(element('span', 'resource-state-dot'), element('span', '', loading ? '正在检测' : detail.status?.message || '等待检测'));
         connectionPanel.append(status);
-        if (detail.kind === 'mcp') {
+        if (detail.kind === 'ai') {
+            const urls = getSafeLinkUrls(item).filter(url => isSafeUrl(url.address, ['http:', 'https:']));
+            if (urls.length > 1) {
+                const label = element('label', 'resource-info');
+                label.append(element('span', 'resource-label', '检测线路'));
+                const select = element('select', 'resource-select');
+                select.setAttribute('aria-label', 'AI 检测线路');
+                urls.forEach(url => {
+                    const option = element('option', '', `${url.label || getUrlChoiceMeta(url).type} · ${url.address}`);
+                    option.value = url.address;
+                    select.append(option);
+                });
+                select.value = address || urls[0].address;
+                select.addEventListener('change', () => { address = select.value; load(true); });
+                label.append(select);
+                connectionPanel.append(label);
+            }
+            connectionPanel.append(info('服务地址', detail.endpoint || address || urls[0]?.address, true));
+            connectionPanel.append(info('接口类型', { openai: 'OpenAI 兼容 /v1', ollama: 'Ollama 原生 /api/tags' }[detail.api] || '等待检测'));
+            if (detail.models?.length) connectionPanel.append(info('模型数量', String(detail.models.length)));
+            connectionPanel.append(info('API Key', item.aiApiKey ? '已配置（仅用于模型检测）' : '未配置（本地服务通常不需要）'));
+        } else if (detail.kind === 'mcp') {
             const connection = detail.connection || {};
             connectionPanel.append(info('连接方式', { stdio: 'STDIO · 本地进程', http: 'Streamable HTTP', sse: 'SSE · 事件流' }[connection.transport] || item.transport || '等待检测'));
             const urls = getSafeLinkUrls(item).filter(url => isSafeUrl(url.address, ['http:', 'https:']));
@@ -138,10 +161,10 @@
                 connectionPanel.append(sections);
             }
         }
-        connectionPanel.append(info('检测位置', '导航服务器'));
+        connectionPanel.append(info('检测位置', detail.detectionLocation || '导航服务器'));
         const fields = element('div', 'resource-connection-fields');
         [...connectionPanel.children].slice(1).forEach(node => fields.append(node));
-        const toggle = action(detail.kind === 'mcp' ? '连接详情' : '技能信息', () => {
+        const toggle = action(detail.kind === 'mcp' ? '连接详情' : detail.kind === 'ai' ? '服务信息' : '技能信息', () => {
             const expanded = connectionPanel.dataset.expanded !== 'true';
             connectionPanel.dataset.expanded = String(expanded);
             toggle.setAttribute('aria-expanded', String(expanded));
@@ -154,7 +177,9 @@
     function renderTabs() {
         const views = detail.kind === 'mcp'
             ? [['tools', '工具', detail.tools?.length], ['config', '接入配置']]
-            : [['guide', '使用指南'], ['files', '配套文件', detail.files?.filter(file => file.kind === 'file').length]];
+            : detail.kind === 'ai'
+                ? [['models', '模型', detail.models?.length], ['config', '接入配置']]
+                : [['guide', '使用指南'], ['files', '配套文件', detail.files?.filter(file => file.kind === 'file').length]];
         tabs.replaceChildren();
         views.forEach(([key, label, count]) => {
             const button = action(label, () => { activeTab = key; renderTabs(); renderContent(); }, 'resource-tab');
@@ -298,6 +323,33 @@
         return article;
     }
 
+    function renderModelList(list, count) {
+        const query = modelQuery.toLowerCase().trim();
+        const models = (detail.models || []).filter(model => [model.id, model.family, model.parameterSize, model.quantization].join(' ').toLowerCase().includes(query));
+        count.textContent = loading ? '正在读取模型清单' : detail.status?.state !== 'available' ? '模型清单' : query ? `${models.length} / ${detail.models.length} 个模型` : `${models.length} 个已部署模型`;
+        list.replaceChildren();
+        models.slice(0, visibleModels).forEach(model => {
+            const row = element('div', 'resource-model');
+            const head = element('div', 'resource-model-heading');
+            head.append(element('code', '', model.id));
+            head.append(copyButton(model.id, '复制'));
+            row.append(head);
+            const meta = element('div', 'resource-model-meta');
+            const size = formatModelBytes(model.size);
+            if (size) meta.append(element('span', '', size));
+            if (model.parameterSize) meta.append(element('span', '', model.parameterSize));
+            if (model.quantization) meta.append(element('span', '', model.quantization));
+            if (model.family) meta.append(element('span', '', model.family));
+            if (model.ownedBy) meta.append(element('span', '', model.ownedBy));
+            const stamp = model.modifiedAt || (model.createdAt ? new Date(model.createdAt * 1000).toISOString() : '');
+            if (stamp) meta.append(element('span', '', String(stamp).slice(0, 10)));
+            if (meta.children.length) row.append(meta);
+            list.append(row);
+        });
+        if (!models.length) list.append(empty(query ? '没有匹配的模型' : detail.status?.state === 'available' ? '服务当前没有部署模型' : loading ? '正在读取模型清单…' : detail.status?.message || '尚未发现模型', loading ? 'ri-loader-4-line ri-spin' : 'ri-cpu-line'));
+        if (models.length > visibleModels) list.append(action('再显示 60 个', () => { visibleModels += 60; renderModelList(list, count); }));
+    }
+
     function renderContent() {
         content.replaceChildren();
         if (activeTab === 'tools') {
@@ -313,6 +365,34 @@
             toolbar.append(count, search);
             content.append(toolbar, list);
             renderToolList(list, count);
+        } else if (activeTab === 'models') {
+            const toolbar = element('div', 'resource-tool-toolbar');
+            const count = element('span', 'resource-muted');
+            const search = element('input', 'resource-tool-search');
+            search.type = 'search';
+            search.placeholder = '搜索模型';
+            search.setAttribute('aria-label', '搜索模型');
+            search.value = modelQuery;
+            const list = element('div', 'resource-model-list');
+            search.addEventListener('input', () => { modelQuery = search.value; visibleModels = 60; renderModelList(list, count); });
+            toolbar.append(count, search);
+            content.append(toolbar, list);
+            renderModelList(list, count);
+        } else if (activeTab === 'config' && detail.kind === 'ai') {
+            const endpoint = detail.endpoint || address;
+            if (!endpoint) { content.append(empty('尚未确定服务地址')); return; }
+            const config = buildAiClientConfig(endpoint, item.aiApiKey, detail.models?.[0]?.id);
+            const json = JSON.stringify(config, null, 2);
+            const header = element('div', 'resource-section-heading');
+            header.append(element('h3', '', 'OpenAI 客户端配置'), copyButton(json, '复制配置'));
+            const base = endpoint.replace(/\/+$/, '') + '/v1';
+            const curl = `curl ${base}/chat/completions \\\n  -H "Content-Type: application/json" \\\n  -H "Authorization: Bearer $KEY" \\\n  -d '{"model": "${detail.models?.[0]?.id || '<模型名>'}", "messages": [{"role": "user", "content": "你好"}]}'`;
+            content.append(header,
+                element('p', 'resource-muted', 'OpenAI SDK 用 base_url 指向本地服务；api_key 本地服务可任意填，网关类服务替换为自己的 Key。'),
+                element('pre', 'resource-config-code', json),
+                element('h3', '', 'curl 试一试'),
+                copyButton(curl, '复制命令'),
+                element('pre', 'resource-config-code', curl));
         } else if (activeTab === 'config') {
             const configuration = detail.connection?.clientConfig;
             if (!configuration) { content.append(empty('连接配置正在读取')); return; }
@@ -351,7 +431,7 @@
         renderContent();
         refresh.disabled = loading;
         refresh.classList.toggle('is-loading', loading);
-        document.getElementById('resource-status').textContent = loading ? '正在从导航服务器读取' : detail.kind === 'mcp' && detail.status?.state === 'available' ? '工具清单来自本次服务发现' : detail.status?.message || '';
+        document.getElementById('resource-status').textContent = loading ? '正在从导航服务器读取' : detail.kind === 'mcp' && detail.status?.state === 'available' ? '工具清单来自本次服务发现' : detail.kind === 'ai' && detail.status?.state === 'available' ? '模型清单来自本次探测' : detail.status?.message || '';
         const checked = detail.checkedAt ? new Date(detail.checkedAt) : null;
         document.getElementById('resource-checked').textContent = checked && !Number.isNaN(checked.getTime()) ? `${detail.cached ? '缓存检测' : '检测'} ${checked.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : '';
         if (restoreSearch) {
@@ -372,7 +452,7 @@
         try {
             const response = await fetch('api/catalog/inspect', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ catalogKey: item.catalogKey, linkId: item.catalog ? undefined : item.ID, address: address || undefined, refresh: force }),
+                body: JSON.stringify({ catalogKey: item.catalogKey, linkId: item.catalog ? undefined : item.ID, address: address || undefined, refresh: force, ...(detail.kind === 'ai' && item.aiApiKey ? { apiKey: item.aiApiKey } : {}) }),
                 signal: controller.signal
             });
             if (!response.ok) {
@@ -383,10 +463,24 @@
             const result = await response.json();
             if (!result || result.kind !== detail.kind || !result.status) throw new Error('检测服务返回了异常数据');
             if (current !== generation || !dialog.open) return;
-            detail = result;
+            detail = detail.kind === 'ai'
+                ? { ...detail, ...result, models: result.status.state === 'available' ? normalizeAiModels(result.api, result.data) : [] }
+                : result;
         } catch (error) {
             if (current !== generation || !dialog.open) return;
-            detail = { ...detail, tools: [], checkedAt: new Date().toISOString(), status: { state: 'unavailable', message: controller.signal.aborted ? '检测超时，请重新检测' : error.message } };
+            // AI 看板降级：导航服务器不可用（静态部署）或服务器探测失败时，浏览器直连本地服务
+            if (detail.kind === 'ai' && address) {
+                const direct = await fetchAiModelsDirect(address, item.aiApiKey);
+                if (direct) {
+                    detail = { ...detail, ...direct, models: direct.models, endpoint: direct.endpoint, detectionLocation: '浏览器直连', checkedAt: new Date().toISOString(), status: { state: 'available', message: `发现 ${direct.models.length} 个模型（浏览器直连）` } };
+                    clearTimeout(timer);
+                    if (current === generation && dialog.open) { loading = false; render(); }
+                    return;
+                }
+                detail = { ...detail, models: [], checkedAt: new Date().toISOString(), status: { state: 'unavailable', message: controller.signal.aborted ? '检测超时，请重新检测' : '无法读取模型列表：请确认服务已启动；跨域受限时改用 npm run serve 部署可由服务器代为检测' } };
+            } else {
+                detail = { ...detail, tools: [], checkedAt: new Date().toISOString(), status: { state: 'unavailable', message: controller.signal.aborted ? '检测超时，请重新检测' : error.message } };
+            }
         } finally {
             clearTimeout(timer);
             if (current === generation && dialog.open) { loading = false; render(); }
@@ -401,14 +495,16 @@
         const kind = getNavigationItemKind(entry);
         const preferred = getPreferredUrlInfo(entry);
         address = getSafeLinkUrls(entry).length && /^https?:\/\//i.test(preferred?.address || '') ? preferred.address : '';
-        activeTab = kind === 'mcp' ? 'tools' : 'guide';
+        activeTab = kind === 'mcp' ? 'tools' : kind === 'ai' ? 'models' : 'guide';
         toolQuery = '';
         visibleTools = 50;
+        modelQuery = '';
+        visibleModels = 60;
         connectionPanel.dataset.expanded = 'false';
-        detail = { ...entry, kind, tools: [], files: [], status: { state: 'checking' }, connection: kind === 'mcp' ? { transport: entry.transport || (address ? 'http' : 'stdio'), command: entry.command, args: entry.args, endpoint: address } : undefined };
+        detail = { ...entry, kind, tools: [], files: [], models: [], status: { state: 'checking' }, connection: kind === 'mcp' ? { transport: entry.transport || (address ? 'http' : 'stdio'), command: entry.command, args: entry.args, endpoint: address } : undefined };
         document.getElementById('resource-title').textContent = entry.name;
         document.getElementById('resource-description').textContent = entry.remarks || entry.description || '';
-        document.getElementById('resource-kind').textContent = kind === 'mcp' ? 'MCP SERVER' : 'SKILL';
+        document.getElementById('resource-kind').textContent = kind === 'mcp' ? 'MCP SERVER' : kind === 'ai' ? 'AI SERVICE' : 'SKILL';
         const avatar = document.getElementById('resource-avatar');
         avatar.className = 'resource-avatar ' + tileHueClass(entry.name);
         avatar.textContent = String(entry.name || '?').slice(0, 1).toUpperCase();
@@ -417,7 +513,7 @@
         content.scrollTop = 0;
         load();
         polling = setInterval(() => {
-            if (dialog.open && kind === 'mcp' && !document.hidden && !loading) load(true);
+            if (dialog.open && ['mcp', 'ai'].includes(kind) && !document.hidden && !loading) load(true);
         }, 60000);
     };
 

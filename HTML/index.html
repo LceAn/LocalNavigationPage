@@ -14,17 +14,17 @@
     <meta property="og:locale" content="zh_CN">
     <meta property="og:image" content="https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/assets/home-day.png">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="stylesheet" href="CSS/tokens.css?v=1.32.1">
-    <link rel="stylesheet" href="CSS/styles.css?v=1.32.1">
-	<link rel="stylesheet" href="CSS/search_input.css?v=1.32.1">
-	<link rel="stylesheet" href="CSS/settings_box.css?v=1.32.1">
+    <link rel="stylesheet" href="CSS/tokens.css?v=1.38.0">
+    <link rel="stylesheet" href="CSS/styles.css?v=1.38.0">
+	<link rel="stylesheet" href="CSS/search_input.css?v=1.38.0">
+	<link rel="stylesheet" href="CSS/settings_box.css?v=1.38.0">
     <!-- 字体与图标本地化：断网/纯内网环境图标字体不缺失 -->
-    <link rel="stylesheet" href="CSS/fonts.css?v=1.32.1">
-    <link rel="stylesheet" href="CSS/remixicon.css?v=1.32.1">
-    <link rel="stylesheet" href="CSS/navigation.css?v=1.32.1">
-    <link rel="stylesheet" href="CSS/resource-details.css?v=1.32.1">
-    <link rel="stylesheet" href="CSS/toolbar.css?v=1.32.1">
-    <link rel="stylesheet" href="CSS/weather-effects.css?v=1.32.1">
+    <link rel="stylesheet" href="CSS/fonts.css?v=1.38.0">
+    <link rel="stylesheet" href="CSS/remixicon.css?v=1.38.0">
+    <link rel="stylesheet" href="CSS/navigation.css?v=1.38.0">
+    <link rel="stylesheet" href="CSS/resource-details.css?v=1.38.0">
+    <link rel="stylesheet" href="CSS/toolbar.css?v=1.38.0">
+    <link rel="stylesheet" href="CSS/weather-effects.css?v=1.38.0">
     <!-- 缩略图与 favicon 服务：链接卡片首屏就会请求 -->
     <link rel="preconnect" href="https://s0.wp.com">
     <link rel="dns-prefetch" href="https://s0.wp.com">
@@ -32,7 +32,7 @@
     <link rel="dns-prefetch" href="https://www.google.com">
     <meta name="theme-color" content="#5D5FEF">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F172A">
-    <link rel="manifest" href="manifest.webmanifest?v=1.32.1">
+    <link rel="manifest" href="manifest.webmanifest?v=1.38.0">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235D5FEF'/%3E%3Cstop offset='1' stop-color='%23FF7D51'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 68V32h8l16 24V32h8v36h-8L38 44v24z' fill='white'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235D5FEF'/%3E%3Cstop offset='1' stop-color='%23FF7D51'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 68V32h8l16 24V32h8v36h-8L38 44v24z' fill='white'/%3E%3C/svg%3E">
 </head>
@@ -89,7 +89,7 @@
     </div>
 
     <!-- 显示闪现消息 -->
-    <div id="message-container" class="alert alert-success" role="status" aria-live="polite"></div>
+    <div id="message-container" role="status" aria-live="polite"></div>
 
     <!-- 极简模式背景：侧边竖排时钟 + 底部层叠波浪（几枝风格：3 层正弦波，传统低饱和色） -->
     <div id="minimal-clock-bg" class="minimal-clock-bg" hidden>
@@ -282,7 +282,7 @@
                     <i class="ri-home-smile-line"></i>
                     <span class="tab-button-text">
                         <span>首页内容</span>
-                        <small>时间、天气、标题</small>
+                        <small>信息条、时间、天气、选路</small>
                     </span>
                 </button>
                 <button class="tab-button" data-tab="search">
@@ -297,6 +297,13 @@
                     <span class="tab-button-text">
                         <span>数据</span>
                         <small>备份、导入、存储</small>
+                    </span>
+                </button>
+                <button class="tab-button" data-tab="server">
+                    <i class="ri-server-line"></i>
+                    <span class="tab-button-text">
+                        <span>服务</span>
+                        <small>监听、会话、黑名单</small>
                     </span>
                 </button>
                 <button class="tab-button" data-tab="about">
@@ -316,7 +323,12 @@
                 <div class="tab-content active" id="links-tab">
                     <div class="links-manager-toolbar">
                         <div class="links-manager-heading"><h3 id="links-collection-title">所有入口</h3><span id="links-result-count" aria-live="polite"></span></div>
-                        <button class="btn-primary" id="add-link-toolbar-btn" type="button"><i class="ri-add-line" aria-hidden="true"></i><span>添加入口</span></button>
+                        <div class="links-manager-actions">
+                            <button class="btn-secondary" id="catalog-scan-btn" type="button" title="扫描运行导航服务的这台机器上的 MCP 配置与 Skills 目录">
+                                <i class="ri-refresh-line" aria-hidden="true"></i><span>重新收集</span>
+                            </button>
+                            <button class="btn-primary" id="add-link-toolbar-btn" type="button"><i class="ri-add-line" aria-hidden="true"></i><span>添加入口</span></button>
+                        </div>
                     </div>
                     <input type="hidden" id="links-search">
                     <div class="links-workspace">
@@ -361,8 +373,19 @@
                                     </div>
                                     <div class="form-item full-width" id="copy-value-field" hidden>
                                         <label for="edit-copy-value">命令或路径</label>
-                                        <input id="edit-copy-value" type="text" placeholder="可填写 MCP 启动命令或 Skill 路径">
+                                        <div class="input-wrapper">
+                                            <i class="ri-terminal-box-line input-icon"></i>
+                                            <input id="edit-copy-value" type="text" placeholder="可填写 MCP 启动命令或 Skill 路径">
+                                        </div>
                                         <small class="form-hint">点击入口打开资源详情。MCP 命令在服务器的 mcp.json 中登记，Skill 路径指向服务器可读取的技能目录。</small>
+                                    </div>
+                                    <div class="form-item full-width" id="ai-api-key-field" hidden>
+                                        <label for="edit-ai-api-key">API Key（可选，用于模型看板检测）</label>
+                                        <div class="input-wrapper">
+                                            <i class="ri-key-2-line input-icon"></i>
+                                            <input id="edit-ai-api-key" type="password" autocomplete="off" placeholder="本地服务通常留空；One API 等网关需要">
+                                        </div>
+                                        <small class="form-hint">仅在打开模型看板时用于查询模型列表（/v1/models），不用于其他请求；会随配置备份一起保存。</small>
                                     </div>
                                     <div class="form-item full-width">
                                         <label>
@@ -448,6 +471,31 @@
                         <div>
                             <h3>分组</h3>
                             <p>创建、重命名、排序分组并设置图标；快捷方式属于哪个分组在「快捷方式」中编辑</p>
+                        </div>
+                    </div>
+                    <!-- 分组排序（自「布局 → 界面布局」归位到分组页） -->
+                    <div class="settings-section" data-section-id="groups.sort">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-list-settings-line"></i>
+                                <span>分组排序</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-list-settings-line"></i>
+                                        <span>抽屉中的分组顺序</span>
+                                    </div>
+                                    <select id="group-sort-select" class="format-select">
+                                        <option value="name" selected>按名称（拼音）</option>
+                                        <option value="count">按链接数量</option>
+                                        <option value="custom">手动排序（在下方管理分组中调整）</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="settings-section groups-manager">
@@ -599,12 +647,12 @@
                         </div>
                     </div>
 
-                    <!-- favicon 提供商 -->
+                    <!-- 通用偏好：favicon 提供商与界面语言（自「favicon 提供商」扩展，语言不再藏在图标设置里） -->
                     <div class="settings-section" data-section-id="appearance.favicon">
                         <div class="section-title">
                             <div class="section-title-left">
-                                <i class="ri-image-2-line"></i>
-                                <span>favicon 提供商</span>
+                                <i class="ri-settings-4-line"></i>
+                                <span>通用偏好</span>
                             </div>
                             <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
@@ -649,8 +697,7 @@
                                     <span>覆盖样式（输入即生效，随设置导出备份）</span>
                                 </div>
                             </div>
-                            <textarea id="custom-css-input" rows="6"
-                                style="width: 100%; font-family: var(--font-mono); font-size: 12.5px; border-radius: var(--rounded-md); border: 1px solid var(--bg-tertiary); background: var(--bg-secondary); color: var(--text-primary); padding: 10px; resize: vertical;"
+                            <textarea id="custom-css-input" class="code-textarea" rows="6"
                                 placeholder="/* 例：放大磁贴图标 */&#10;.link-card-thumbnail { width: 56px; height: 56px; }" spellcheck="false"></textarea>
                             <div class="option-item">
                                 <div class="option-header">
@@ -658,8 +705,7 @@
                                     <span>自定义 JS（页面加载后执行一次，请勿粘贴不可信代码）</span>
                                 </div>
                             </div>
-                            <textarea id="custom-js-input" rows="6"
-                                style="width: 100%; font-family: var(--font-mono); font-size: 12.5px; border-radius: var(--rounded-md); border: 1px solid var(--bg-tertiary); background: var(--bg-secondary); color: var(--text-primary); padding: 10px; resize: vertical;"
+                            <textarea id="custom-js-input" class="code-textarea" rows="6"
                                 placeholder="/* 例：点击 logo 回到顶部 */&#10;document.querySelector('.page-header')?.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));" spellcheck="false"></textarea>
                         </div>
                     </div>
@@ -677,16 +723,6 @@
                             <div class="layout-options">
                                 <div class="option-item">
                                     <div class="option-header">
-                                        <i class="ri-compact-disc-line"></i>
-                                        <span>紧凑模式</span>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="compact-mode">
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                                <div class="option-item">
-                                    <div class="option-header">
                                         <i class="ri-image-line"></i>
                                         <span>显示缩略图</span>
                                     </div>
@@ -694,17 +730,6 @@
                                         <input type="checkbox" id="show-thumbnails" checked>
                                         <span class="toggle-slider"></span>
                                     </label>
-                                </div>
-                                <div class="option-item">
-                                    <div class="option-header">
-                                        <i class="ri-search-eye-line"></i>
-                                        <span>搜索按钮图标</span>
-                                    </div>
-                                    <select id="search-button-icon-mode" class="format-select">
-                                        <option value="logo-text">图标 + 文字</option>
-                                        <option value="logo">仅图标</option>
-                                        <option value="text">仅文字</option>
-                                    </select>
                                 </div>
                                 <div class="option-item">
                                     <div class="option-header">
@@ -745,7 +770,7 @@
                             <div class="layout-options">
                                 <div class="option-item">
                                     <div class="option-header">
-                                        <i class="ri-align-top"></i>
+                                        <i class="ri-layout-top-2-line"></i>
                                         <span>页面内容位置</span>
                                     </div>
                                     <select id="page-position-select" class="format-select">
@@ -776,10 +801,11 @@
                                     <select id="home-density-select" class="format-select">
                                         <option value="balanced">均衡</option>
                                         <option value="compact">紧凑</option>
+                                        <option value="ultra">极紧凑</option>
                                         <option value="spacious">舒展</option>
                                     </select>
                                 </div>
-                                <div class="option-item">
+                                <div class="option-item option-item-span">
                                     <div class="option-header">
                                         <i class="ri-layout-expand-line"></i>
                                         <span>加载后定位到首个分组</span>
@@ -788,30 +814,6 @@
                                         <input type="checkbox" id="default-expand-first">
                                         <span class="toggle-slider"></span>
                                     </label>
-                                </div>
-                                <div class="option-item">
-                                    <div class="option-header">
-                                        <i class="ri-pulse-line"></i>
-                                        <span>网络延迟与在线状态检测</span>
-                                    </div>
-                                    <select id="probe-interval-select" class="format-select">
-                                        <option value="30000">30 秒</option>
-                                        <option value="60000" selected>1 分钟</option>
-                                        <option value="120000">2 分钟</option>
-                                        <option value="300000">5 分钟</option>
-                                        <option value="0">关闭探测</option>
-                                    </select>
-                                </div>
-                                <div class="option-item">
-                                    <div class="option-header">
-                                        <i class="ri-sort-desc"></i>
-                                        <span>分组排序</span>
-                                    </div>
-                                    <select id="group-sort-select" class="format-select">
-                                        <option value="name" selected>按名称（拼音）</option>
-                                        <option value="count">按链接数量</option>
-                                        <option value="custom">手动排序（在管理分组中调整）</option>
-                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -840,7 +842,7 @@
                                 </div>
                                 <!-- §3.3：子项默认为「禁用态」（可见但灰），开启极简模式后激活，
                                      提升可发现性，避免完全隐藏导致用户不知还有可调项 -->
-                                <div class="option-item minimal-sub-option option-item-gated" data-gate="minimal-mode-toggle">
+                                <div class="option-item minimal-sub-option" data-gate="minimal-mode-toggle">
                                     <div class="option-header">
                                         <i class="ri-time-line"></i>
                                         <span>时钟方向</span>
@@ -851,7 +853,7 @@
                                         <option value="horizontal">横排</option>
                                     </select>
                                 </div>
-                                <div class="option-item minimal-sub-option option-item-gated" data-gate="minimal-mode-toggle">
+                                <div class="option-item minimal-sub-option" data-gate="minimal-mode-toggle">
                                     <div class="option-header">
                                         <i class="ri-layout-grid-line"></i>
                                         <span>时钟位置</span>
@@ -886,16 +888,6 @@
                             <div class="button-settings-grid">
                                 <div class="option-item">
                                     <div class="option-header">
-                                        <i class="ri-time-line"></i>
-                                        <span>显示信息条</span>
-                                    </div>
-                                    <label class="toggle-switch">
-                                        <input type="checkbox" id="show-home-info" checked>
-                                        <span class="toggle-slider"></span>
-                                    </label>
-                                </div>
-                                <div class="option-item">
-                                    <div class="option-header">
                                         <i class="ri-search-line"></i>
                                         <span>显示搜索框</span>
                                     </div>
@@ -906,7 +898,7 @@
                                 </div>
                                 <div class="option-item">
                                     <div class="option-header">
-                                        <i class="ri-time-line"></i>
+                                        <i class="ri-history-line"></i>
                                         <span>显示最近使用</span>
                                     </div>
                                     <label class="toggle-switch">
@@ -954,7 +946,7 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
-                                <div class="option-item">
+                                <div class="option-item option-item-span">
                                     <div class="option-header">
                                         <i class="ri-settings-3-line"></i>
                                         <span>设置按钮</span>
@@ -998,13 +990,32 @@
                         </div>
                     </div>
 
-                    <!-- 时间与日期 -->
-                    <div class="settings-section" data-section-id="homecontent.network">
-                        <div class="section-title section-title-static"><div class="section-title-left"><i class="ri-router-line"></i><span>网络环境</span></div></div>
+                    <!-- 信息条：时间/日期/天气整条的总开关，子项在下面两个区块单独控制 -->
+                    <div class="settings-section" data-section-id="homecontent.infobar">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-layout-top-2-line"></i>
+                                <span>信息条</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
                         <div class="section-content">
-                            <p class="form-hint">为家里、公司、Tailscale 等环境选择优先线路，并给每个环境填写各自的检测地址：气泡里显示的是该线路自己的延迟；未填则该环境不显示延迟。自动模式显示所有已配置线路中最快的一条。检测频率在界面布局中调整。</p>
-                            <div id="network-environment-editor"></div>
-                            <button id="network-environment-add" class="btn-secondary" type="button"><i class="ri-add-line" aria-hidden="true"></i>添加环境</button>
+                            <div class="layout-options">
+                                <div class="option-item option-item-span">
+                                    <div class="option-header">
+                                        <i class="ri-eye-line"></i>
+                                        <span>显示信息条</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="show-home-info" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="settings-note">
+                                <i class="ri-information-line"></i>
+                                <span>信息条是首页中部的「时间 + 日期 + 天气」整条；关闭后整条隐藏，时间、日期、天气可在下面两个区块单独控制。</span>
+                            </div>
                         </div>
                     </div>
                     <div class="settings-section" data-section-id="homecontent.time">
@@ -1019,7 +1030,7 @@
                             <div class="layout-options">
                                     <div class="option-item">
                                         <div class="option-header">
-                                            <i class="ri-text"></i>
+                                            <i class="ri-shapes-line"></i>
                                             <span>时间样式</span>
                                         </div>
                                         <select id="clock-style-select" class="format-select">
@@ -1029,6 +1040,12 @@
                                             <option value="outline">空心描边</option>
                                             <option value="stacked">竖排数字</option>
                                             <option value="light">细体宽间距</option>
+                                            <option value="flip">翻页卡片</option>
+                                            <option value="duotone">双色时分</option>
+                                            <option value="gradient">主题渐变</option>
+                                            <option value="glow">霓虹光晕</option>
+                                            <option value="retro">复古立体</option>
+                                            <option value="serif">优雅衬线</option>
                                         </select>
                                     </div>
                                     <div class="option-item">
@@ -1123,6 +1140,16 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-temperature-line"></i>
+                                        <span>温度单位</span>
+                                    </div>
+                                    <select id="weather-unit-select" class="format-select">
+                                        <option value="C">摄氏度 (°C)</option>
+                                        <option value="F">华氏度 (°F)</option>
+                                    </select>
+                                </div>
                                 <div class="option-item option-item-stacked">
                                     <div class="option-header">
                                         <i class="ri-map-pin-line"></i>
@@ -1134,7 +1161,7 @@
                                     </div>
                                     <small class="form-hint">使用英文城市名称，多个城市用逗号分隔</small>
                                 </div>
-                                <div class="option-item weather-effects-option">
+                                <div class="option-item weather-effects-option option-item-span">
                                     <div class="weather-effects-copy">
                                         <div class="option-header">
                                             <i class="ri-rainy-line" aria-hidden="true"></i>
@@ -1147,26 +1174,16 @@
                                         <span class="toggle-slider"></span>
                                     </label>
                                 </div>
-                                <div class="option-item">
-                                    <div class="option-header">
-                                        <i class="ri-temperature-line"></i>
-                                        <span>温度单位</span>
-                                    </div>
-                                    <select id="weather-unit-select" class="format-select">
-                                        <option value="C">摄氏度 (°C)</option>
-                                        <option value="F">华氏度 (°F)</option>
-                                    </select>
-                                </div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- 网站设置 -->
+                    <!-- 标题 -->
                     <div class="settings-section" data-section-id="homecontent.site">
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-edit-line"></i>
-                                <span>网站设置</span>
+                                <span>标题</span>
                             </div>
                             <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
@@ -1181,9 +1198,9 @@
                                     <input type="text" id="site-title-input" placeholder="我的导航">
                                 </div>
                             </div>
-                            <div class="option-item">
+                            <div class="option-item option-item-span">
                                 <div class="option-header">
-                                    <i class="ri-heading"></i>
+                                    <i class="ri-article-line"></i>
                                     <span>在首页显示标题</span>
                                 </div>
                                 <label class="toggle-switch">
@@ -1195,9 +1212,40 @@
                         </div>
                     </div>
 
-                    <!-- 内容显示（已迁移到「外观」标签页：这些是视觉外观设置，归外观更合理） -->
-
-                    <!-- 首页工具栏（已迁入「布局 → 首页组件」分区，§2.1） -->
+                    <!-- 网络与选路：环境配置与可达性检测频率（自「布局 → 界面布局」并入） -->
+                    <div class="settings-section" data-section-id="homecontent.network">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-router-line"></i>
+                                <span>网络与选路</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <p class="form-hint">为家里、公司、Tailscale 等环境选择优先线路，并给每个环境填写各自的检测地址：气泡里显示的是该线路自己的延迟；未填则该环境不显示延迟。自动模式显示所有已配置线路中最快的一条。</p>
+                            <div id="network-environment-editor"></div>
+                            <button id="network-environment-add" class="btn-secondary" type="button"><i class="ri-add-line" aria-hidden="true"></i>添加环境</button>
+                            <div class="layout-options">
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-pulse-line"></i>
+                                        <span>探测频率（网络延迟与在线状态检测）</span>
+                                    </div>
+                                    <select id="probe-interval-select" class="format-select">
+                                        <option value="30000">30 秒</option>
+                                        <option value="60000" selected>1 分钟</option>
+                                        <option value="120000">2 分钟</option>
+                                        <option value="300000">5 分钟</option>
+                                        <option value="0">关闭探测</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="settings-note">
+                                <i class="ri-information-line"></i>
+                                <span>检测频率对所有入口生效；线路色统一为内网绿、隧道紫、公网蓝。</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 搜索引擎管理标签页 -->
@@ -1233,7 +1281,7 @@
                         <div class="section-title">
                             <div class="section-title-left">
                                 <i class="ri-settings-2-line"></i>
-                                <span>默认与测试</span>
+                                <span>默认与显示</span>
                             </div>
                             <i class="ri-arrow-down-s-line section-collapse-icon"></i>
                         </div>
@@ -1246,6 +1294,17 @@
                                     </div>
                                     <select id="default-search-engine" class="format-select">
                                         <!-- 动态填充 -->
+                                    </select>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-search-eye-line"></i>
+                                        <span>搜索按钮图标</span>
+                                    </div>
+                                    <select id="search-button-icon-mode" class="format-select">
+                                        <option value="logo-text">图标 + 文字</option>
+                                        <option value="logo">仅图标</option>
+                                        <option value="text">仅文字</option>
                                     </select>
                                 </div>
                                 <div class="option-item option-item-stacked">
@@ -1452,13 +1511,17 @@
                             <div class="data-actions">
                                 <button class="data-action-btn" id="export-data">
                                     <i class="ri-download-cloud-2-line"></i>
-                                    <span>导出完整配置</span>
-                                    <small>备份链接、分组、外观和所有设置</small>
+                                    <div class="data-action-text">
+                                        <span>导出完整配置</span>
+                                        <small>备份链接、分组、外观和所有设置</small>
+                                    </div>
                                 </button>
                                 <button class="data-action-btn" id="import-data">
                                     <i class="ri-upload-cloud-2-line"></i>
-                                    <span>导入完整配置</span>
-                                    <small>恢复备份文件里的链接和设置</small>
+                                    <div class="data-action-text">
+                                        <span>导入完整配置</span>
+                                        <small>恢复备份文件里的链接和设置</small>
+                                    </div>
                                 </button>
                                 <input type="file" id="import-file" accept=".json" style="display: none;">
                             </div>
@@ -1472,22 +1535,47 @@
                             </div>
                         </div>
                         <div class="section-content">
-                            <div class="data-action-row">
+                            <div class="data-actions">
                                 <button id="import-bookmarks-btn" class="data-action-btn">
-
                                     <i class="ri-bookmark-line" aria-hidden="true"></i>
                                     <div class="data-action-text">
                                         <span>从浏览器书签导入</span>
                                         <small>导入 .html 书签文件或 .csv（自动归类到分组）</small>
                                     </div>
                                 </button>
-                                    <button class="data-action-btn" id="export-bookmarks-btn" >
-                                        <i class="ri-bookmark-line"></i>
+                                <button class="data-action-btn" id="export-bookmarks-btn">
+                                    <i class="ri-bookmark-line" aria-hidden="true"></i>
+                                    <div class="data-action-text">
                                         <span>导出为浏览器书签</span>
                                         <small>按分组生成 HTML，可直接导入 Chrome / Edge / Firefox</small>
-                                    </button>
+                                    </div>
+                                </button>
                                 <input type="file" id="import-bookmarks-file" accept=".html,.htm,.csv" style="display: none;">
                             </div>
+                        </div>
+                    </div>
+                    <!-- 本机服务扫描：npm run scan 的设置面板入口，服务器执行扫描、勾选导入 -->
+                    <div class="settings-section" data-section-id="data.scan">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-radar-line"></i>
+                                <span>本机服务扫描</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <p class="form-hint">在导航服务器上自动发现监听端口（netstat / Docker / 进程名三层识别），按「本地 / 局域网 / Tailscale」生成多地址入口，勾选后导入。需要在运行服务的设备上执行。</p>
+                            <div class="scan-panel-actions">
+                                <button class="btn-primary" id="scan-local-btn" type="button">
+                                    <i class="ri-radar-line" aria-hidden="true"></i>
+                                    <span>扫描本机服务</span>
+                                </button>
+                                <label class="toggle-switch scan-probe-toggle" title="HTTP 探测页面标题，服务名更准确，耗时约半分钟">
+                                    <input type="checkbox" id="scan-probe-toggle">
+                                    <span class="toggle-slider"></span>
+                                    <span class="scan-probe-label">探测服务名（稍慢）</span>
+                                </label>
+                            </div>
+                            <div id="scan-results" class="scan-results" aria-live="polite"></div>
                         </div>
                     </div>
                     <div class="settings-section" data-section-id="data.safety">
@@ -1501,13 +1589,17 @@
                             <div class="data-actions">
                                 <button class="data-action-btn danger" id="clear-cache">
                                     <i class="ri-delete-bin-line"></i>
-                                    <span>清除缓存</span>
-                                    <small>清除本地缓存数据</small>
+                                    <div class="data-action-text">
+                                        <span>清除缓存</span>
+                                        <small>清除本地缓存数据</small>
+                                    </div>
                                 </button>
                                 <button class="data-action-btn danger" id="reset-all">
                                     <i class="ri-refresh-line"></i>
-                                    <span>重置所有</span>
-                                    <small>恢复默认设置和数据</small>
+                                    <div class="data-action-text">
+                                        <span>重置所有</span>
+                                        <small>恢复默认设置和数据</small>
+                                    </div>
                                 </button>
                             </div>
                         </div>
@@ -1516,7 +1608,7 @@
                         <div class="section-title section-title-static">
                             <div class="section-title-left">
                                 <i class="ri-storage-line"></i>
-                                <span>存储信息</span>
+                                <span>存储与同步</span>
                             </div>
                         </div>
                         <div class="section-content">
@@ -1534,16 +1626,6 @@
                                     <span class="storage-value" id="storage-last-update">-</span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="settings-section" data-section-id="data.persistence">
-                        <div class="section-title section-title-static">
-                            <div class="section-title-left">
-                                <i class="ri-save-3-line"></i>
-                                <span>保存机制</span>
-                            </div>
-                        </div>
-                        <div class="section-content">
                             <div class="settings-persist-note">
                                 <i class="ri-information-line"></i>
                                 <div>
@@ -1554,48 +1636,149 @@
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- 服务管理标签页 -->
+                <div class="tab-content" id="server-tab">
+                    <div class="tab-header">
+                        <i class="ri-server-line"></i>
+                        <div>
+                            <h3>服务</h3>
+                            <p>导航服务器的监听地址、在线会话与 IP 黑名单；需要在运行服务的设备上操作</p>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="server.listen">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-broadcast-line"></i>
+                                <span>监听地址</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <p class="form-hint">服务器在以下网卡地址上可达；点击地址在新标签页打开。屏蔽接口可改用 SERVE_HOST 绑定。</p>
+                            <div id="server-listening" class="server-address-list"></div>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="server.sessions">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-user-voice-line"></i>
+                                <span>在线会话</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <p class="form-hint">最近 90 秒内有请求的客户端视为在线；可断开连接或加入黑名单（本机会话与回环地址受保护）。</p>
+                            <div id="server-sessions" class="server-session-list"></div>
+                        </div>
+                    </div>
+                    <div class="settings-section" data-section-id="server.blacklist">
+                        <div class="section-title section-title-static">
+                            <div class="section-title-left">
+                                <i class="ri-forbid-line"></i>
+                                <span>IP 黑名单</span>
+                            </div>
+                        </div>
+                        <div class="section-content">
+                            <div class="server-blacklist-add">
+                                <div class="input-wrapper">
+                                    <i class="ri-ip-address-line input-icon"></i>
+                                    <input type="text" id="server-blacklist-input" placeholder="输入 IP 地址，如 192.168.1.50" spellcheck="false">
+                                </div>
+                                <button class="btn-primary" id="server-blacklist-add" type="button"><i class="ri-forbid-line" aria-hidden="true"></i><span>拉黑</span></button>
+                            </div>
+                            <div id="server-blacklist-list" class="server-blacklist-list"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 关于标签页 -->
                 <div class="tab-content" id="about-tab">
                     <div class="tab-header">
                         <i class="ri-information-line"></i>
                         <div>
                             <h3>关于</h3>
-                            <p>查看版本、功能说明和项目入口</p>
+                            <p>版本、功能亮点、快捷键与工程信息</p>
                         </div>
                     </div>
                     <div class="about-content">
-                        <div class="about-logo">
-                            <i class="ri-compass-3-line"></i>
-                            <h2>导航页</h2>
-                            <span class="about-version">Version <span id="current-version">1.5.0</span></span>
-                            <div id="version-check-status" style="margin-top: 10px; font-size: 13px; color: var(--text-secondary);">
-                                <span class="version-checking"><i class="ri-loader-4-line ri-spin"></i> 检查更新中...</span>
+                        <!-- Hero：渐变图标 + 标语 + 版本与更新状态 -->
+                        <div class="about-hero">
+                            <div class="about-hero-icon"><i class="ri-compass-3-line" aria-hidden="true"></i></div>
+                            <h2>本地导航页</h2>
+                            <p class="about-tagline">本地与内网的资源入口 · 零依赖 · 零构建 · 断网可用</p>
+                            <div class="about-version-row">
+                                <span class="about-version">v<span id="current-version">1.38.0</span></span>
+                                <span id="version-check-status" class="about-update-status">
+                                    <span class="version-checking"><i class="ri-loader-4-line ri-spin"></i> 检查更新中...</span>
+                                </span>
                             </div>
                         </div>
-                        <p class="about-description">
-                            一个简洁、高效的本地导航页面，帮助您快速访问常用网站。
-                        </p>
-                        <div class="about-features">
-                            <div class="feature-item">
-                                <i class="ri-palette-line"></i>
-                                <span>昼夜模式切换</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="ri-search-line"></i>
-                                <span>多引擎搜索</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="ri-folder-line"></i>
-                                <span>分组管理</span>
-                            </div>
-                            <div class="feature-item">
-                                <i class="ri-device-line"></i>
-                                <span>响应式设计</span>
+
+                        <!-- 功能亮点 -->
+                        <div class="about-section">
+                            <h4 class="about-section-title"><i class="ri-lightbulb-flash-line" aria-hidden="true"></i>功能亮点</h4>
+                            <div class="about-features">
+                                <div class="feature-item">
+                                    <i class="ri-layout-grid-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>磁贴抽屉导航</span>
+                                        <small>同页抽屉收纳网站、AI、MCP 与 Skills</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-route-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>多线路智能选路</span>
+                                        <small>本地 / 局域网 / Tailscale 自动择优</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-cpu-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>AI 模型看板</span>
+                                        <small>自动发现本地大模型与接入配置</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-terminal-box-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>MCP / Skills 详情</span>
+                                        <small>工具发现、Schema 与使用指南</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-radar-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>一键扫描本机服务</span>
+                                        <small>端口识别 + 多地址导入</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-cloud-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>服务器多端同步</span>
+                                        <small>草稿保存 + 三方合并冲突处理</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-sun-foggy-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>全天气氛围</span>
+                                        <small>晴云雨雷雪雾全动画与主题定制</small>
+                                    </div>
+                                </div>
+                                <div class="feature-item">
+                                    <i class="ri-wifi-off-line" aria-hidden="true"></i>
+                                    <div class="feature-item-text">
+                                        <span>PWA 离线可用</span>
+                                        <small>字体图标全本地化，断网页面完整</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="about-shortcuts">
-                            <h4 class="about-shortcuts-title"><i class="ri-keyboard-line"></i> 键盘快捷键</h4>
+
+                        <!-- 键盘快捷键 -->
+                        <div class="about-section">
+                            <h4 class="about-section-title"><i class="ri-keyboard-line" aria-hidden="true"></i>键盘快捷键</h4>
                             <ul class="shortcut-list">
                                 <li>
                                     <span class="shortcut-desc">快速启动器</span>
@@ -1606,18 +1789,45 @@
                                     <span class="shortcut-keys"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>,</kbd></span>
                                 </li>
                                 <li>
+                                    <span class="shortcut-desc">聚焦搜索框</span>
+                                    <span class="shortcut-keys"><kbd>/</kbd></span>
+                                </li>
+                                <li>
+                                    <span class="shortcut-desc">磁贴间导航 / 打开</span>
+                                    <span class="shortcut-keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> + <kbd>Enter</kbd></span>
+                                </li>
+                                <li>
+                                    <span class="shortcut-desc">小窗打开（1100×780）</span>
+                                    <span class="shortcut-keys"><kbd>Shift</kbd> + 点击</span>
+                                </li>
+                                <li>
                                     <span class="shortcut-desc">关闭弹窗 / 设置</span>
                                     <span class="shortcut-keys"><kbd>Esc</kbd></span>
                                 </li>
                             </ul>
+                            <p class="about-shortcut-hint"><i class="ri-search-2-line" aria-hidden="true"></i>搜索框输入 <code>/g 关键词</code>、<code>/bing 词</code> 可用指定引擎直达；前缀可在搜索引擎设置中自定义。</p>
                         </div>
+
+                        <!-- 工程与隐私 -->
+                        <div class="about-section">
+                            <h4 class="about-section-title"><i class="ri-shield-check-line" aria-hidden="true"></i>工程与隐私</h4>
+                            <div class="about-badges">
+                                <span class="about-badge"><i class="ri-box-3-line" aria-hidden="true"></i>零依赖 · 零构建</span>
+                                <span class="about-badge"><i class="ri-flask-line" aria-hidden="true"></i>172 项单元测试</span>
+                                <span class="about-badge"><i class="ri-download-cloud-2-line" aria-hidden="true"></i>PWA 离线缓存</span>
+                                <span class="about-badge"><i class="ri-lock-line" aria-hidden="true"></i>http(s) 协议白名单</span>
+                                <span class="about-badge"><i class="ri-eye-off-line" aria-hidden="true"></i>robots 禁止索引</span>
+                                <span class="about-badge"><i class="ri-open-source-line" aria-hidden="true"></i>Apache-2.0 开源</span>
+                            </div>
+                        </div>
+
                         <div class="about-links">
                             <a href="https://github.com/LceAn/LocalNavigationPage" target="_blank" rel="noopener noreferrer" class="about-link">
-                                <i class="ri-github-line"></i>
+                                <i class="ri-github-line" aria-hidden="true"></i>
                                 <span>GitHub 仓库</span>
                             </a>
                             <a href="https://github.com/LceAn/LocalNavigationPage/issues" target="_blank" rel="noopener noreferrer" class="about-link">
-                                <i class="ri-bug-line"></i>
+                                <i class="ri-bug-line" aria-hidden="true"></i>
                                 <span>问题反馈</span>
                             </a>
                         </div>
@@ -1657,21 +1867,24 @@
     <footer class="resource-footer"><span id="resource-status" role="status" aria-live="polite"></span><span id="resource-checked"></span></footer>
 </dialog>
 
-<script src="js/storage.js?v=1.32.1" defer></script>
-<script src="js/links-data.js?v=1.32.1" defer></script>
-<script src="js/network-environments.js?v=1.32.1" defer></script>
-<script src="js/navigation.js?v=1.32.1" defer></script>
-<script src="js/server-sync.js?v=1.32.1" defer></script>
-<script src="js/catalog.js?v=1.32.1" defer></script>
-<script src="js/resource-details.js?v=1.32.1" defer></script>
-<script src="js/home-render.js?v=1.32.1" defer></script>
-<script src="js/settings-links.js?v=1.32.1" defer></script>
-<script src="js/weather-effects.js?v=1.32.1" defer></script>
-<script src="js/display.js?v=1.32.1" defer></script>
-<script src="js/search-engines.js?v=1.32.1" defer></script>
-<script src="js/launcher.js?v=1.32.1" defer></script>
-<script src="js/main.js?v=1.32.1" defer></script>
-<script src="js/toolbar.js?v=1.32.1" defer></script>
-<script src="js/darkMode.js?v=1.32.1" defer></script>
+<script src="js/storage.js?v=1.38.0" defer></script>
+<script src="js/links-data.js?v=1.38.0" defer></script>
+<script src="js/ai-models.js?v=1.38.0" defer></script>
+<script src="js/scan-panel.js?v=1.38.0" defer></script>
+<script src="js/server-panel.js?v=1.38.0" defer></script>
+<script src="js/network-environments.js?v=1.38.0" defer></script>
+<script src="js/navigation.js?v=1.38.0" defer></script>
+<script src="js/server-sync.js?v=1.38.0" defer></script>
+<script src="js/catalog.js?v=1.38.0" defer></script>
+<script src="js/resource-details.js?v=1.38.0" defer></script>
+<script src="js/home-render.js?v=1.38.0" defer></script>
+<script src="js/settings-links.js?v=1.38.0" defer></script>
+<script src="js/weather-effects.js?v=1.38.0" defer></script>
+<script src="js/display.js?v=1.38.0" defer></script>
+<script src="js/search-engines.js?v=1.38.0" defer></script>
+<script src="js/launcher.js?v=1.38.0" defer></script>
+<script src="js/main.js?v=1.38.0" defer></script>
+<script src="js/toolbar.js?v=1.38.0" defer></script>
+<script src="js/darkMode.js?v=1.38.0" defer></script>
 </body>
 </html>

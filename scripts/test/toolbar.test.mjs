@@ -177,6 +177,27 @@ test('密度变更同步设置并打开快捷网格预览，Escape 关闭菜单'
     assert.equal(fixture.document.body.classList.contains('navigation-open'), true);
 });
 
+test('工具栏下拉可切换极紧凑密度并回读设置', () => {
+    const fixture = toolbarFixture();
+    fixture.emit(fixture.position, 'click');
+    const menu = fixture.document.getElementById('position-dropdown');
+    const choice = menu.querySelectorAll('.dropdown-item').find(button => button.dataset.density === 'ultra');
+    assert.ok(choice, '工具栏密度菜单应包含极紧凑项');
+    fixture.emit(menu, 'click', { target: choice });
+    assert.equal(fixture.api.loadHomeLayoutSettings().density, 'ultra');
+    assert.equal(fixture.density.value, 'ultra');
+    assert.equal(fixture.document.body.classList.contains('home-density-ultra'), true);
+});
+
+test('旧「紧凑模式」开关用户自动迁移为极紧凑密度', () => {
+    const fixture = toolbarFixture();
+    fixture.settings.set('compactMode', true);
+    assert.equal(fixture.api.loadHomeLayoutSettings().density, 'ultra');
+    // 已有明确密度设置时不迁移：compactMode 只是遗留痕迹
+    fixture.settings.set('homeLayoutSettings', { density: 'balanced' });
+    assert.equal(fixture.api.loadHomeLayoutSettings().density, 'balanced');
+});
+
 test('极简模式选择首页位置时通过原设置入口退出并预览布局', () => {
     const fixture = toolbarFixture();
     fixture.document.body.classList.add('minimal-mode');

@@ -73,3 +73,50 @@ test('日期支持中文星期和 ISO 格式', () => {
   assert.equal(api.formatDate(new Date(2026,10,13),'iso'), '2026-11-13');
   assert.match(api.formatDate(new Date(2026,10,13),'cn-week'), /星期五/);
 });
+
+// —— 时间样式：目录、下拉选项与 CSS 规则三方一致 ——
+function clockApi() {
+  let settings = {showWeather:false,weatherEffects:false};
+  const classLog = [];
+  const timeElement = { style:{}, textContent:'', classList:{ toggle(name,on){ classLog.push([name, Boolean(on)]); } } };
+  const nodes = {
+    'current-time': timeElement,
+    'current-date': {style:{},textContent:'',classList:{toggle(){}}},
+    'weather-info': {style:{},classList:{toggle(){}}},
+    'weather-text': {style:{},textContent:''}
+  };
+  const document = {getElementById:id=>nodes[id]||null, createElement:()=>({style:{},classList:{toggle(){}}}), addEventListener(){}};
+  const window = {addEventListener(){}, showMessage(){}, setInterval(){}, applyWeatherAtmosphere(){}};
+  const getSetting = (key,fallback)=> key==='displaySettings' ? settings : fallback;
+  const api = new Function('window','document','navigator','localStorage','getSetting','setSetting','fetch','escapeHTML', source+'\nreturn {applyClockStyle,CLOCK_STYLES,timeDisplayCache};')(window,document,{onLine:true},{getItem:()=>null,setItem(){}},getSetting,()=>{},()=>{},String);
+  return {api,classLog};
+}
+
+test('CLOCK_STYLES 与设置下拉选项、CSS 规则保持一致', () => {
+  const match = source.match(/const CLOCK_STYLES = \[([^\]]+)\]/);
+  assert.ok(match, 'display.js 应声明 CLOCK_STYLES 数组');
+  const styles = match[1].split(',').map(item => item.trim().replace(/^['"]|['"]$/g, ''));
+  assert.ok(styles.length >= 12, '时间样式应不少于 12 种');
+  const html = readFileSync(new URL('../../HTML/index.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../../HTML/CSS/navigation.css', import.meta.url), 'utf8');
+  const selectBlock = html.match(/<select id="clock-style-select"[\s\S]*?<\/select>/);
+  assert.ok(selectBlock, 'index.html 应包含 clock-style-select');
+  const optionValues = [...selectBlock[0].matchAll(/<option value="([^"]+)">/g)].map(item => item[1]);
+  assert.deepEqual(optionValues, styles, '下拉选项应与 CLOCK_STYLES 完全一致（含顺序）');
+  for (const style of styles) {
+    if (style === 'default') continue; // default 即基础外观，无专属规则
+    assert.match(css, new RegExp(`clock-style-${style}[\\s{,:]`), `navigation.css 缺少时间样式规则: ${style}`);
+  }
+});
+
+test('applyClockStyle 选中类唯一，未知样式回退 default', () => {
+  const {api,classLog} = clockApi();
+  classLog.length = 0; // 丢弃模块初始化（initDisplaySettings → default）阶段的记录
+  api.applyClockStyle('flip');
+  const onNames = classLog.filter(([,on]) => on).map(([name]) => name);
+  assert.deepEqual(onNames, ['clock-style-flip']);
+  assert.equal(classLog.filter(([,on]) => !on).length, api.CLOCK_STYLES.length - 1);
+  classLog.length = 0;
+  api.applyClockStyle('no-such-style');
+  assert.deepEqual(classLog.filter(([,on]) => on).map(([name]) => name), ['clock-style-default']);
+});

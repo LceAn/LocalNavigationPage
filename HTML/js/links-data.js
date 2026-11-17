@@ -582,9 +582,15 @@ function applyContentPosition(position = getSetting('contentPosition', 'default'
 
 function loadHomeLayoutSettings() {
     const saved = getSetting(HOME_LAYOUT_SETTINGS_KEY, {}) || {};
-    const density = ['balanced', 'compact', 'spacious'].includes(saved?.density)
-        ? saved.density
-        : defaultHomeLayoutSettings.density;
+    let density;
+    if (['balanced', 'compact', 'ultra', 'spacious'].includes(saved?.density)) {
+        density = saved.density;
+    } else if (saved?.density === undefined && getSetting('compactMode', false) === true) {
+        // 旧「紧凑模式」开关（1.34.0 起并入密度档位）：开启过的用户自动落入「极紧凑」
+        density = 'ultra';
+    } else {
+        density = defaultHomeLayoutSettings.density;
+    }
     return { density };
 }
 
@@ -601,7 +607,7 @@ function applyHomeCategoryDisplayMode(settings = loadHomeLayoutSettings()) {
     if (!body) return;
 
     const density = settings.density || defaultHomeLayoutSettings.density;
-    body.classList.remove('home-density-balanced', 'home-density-compact', 'home-density-spacious');
+    body.classList.remove('home-density-balanced', 'home-density-compact', 'home-density-ultra', 'home-density-spacious');
     body.classList.add(`home-density-${density}`);
     body.classList.remove('home-categories-open');
 

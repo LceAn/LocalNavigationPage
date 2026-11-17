@@ -161,7 +161,7 @@ function updateTimeDisplay(force = false) {
     }
 }
 
-const CLOCK_STYLES = ['default', 'bold', 'mono', 'outline', 'stacked', 'light'];
+const CLOCK_STYLES = ['default', 'bold', 'mono', 'outline', 'stacked', 'light', 'flip', 'duotone', 'gradient', 'glow', 'retro', 'serif'];
 const CLOCK_LAYOUTS = ['default', 'right-rail', 'hero', 'watermark', 'corner'];
 
 function applyClockStyle(style = 'default') {

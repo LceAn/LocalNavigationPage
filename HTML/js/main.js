@@ -596,6 +596,10 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-kind').value = 'site';
         document.getElementById('edit-copy-value').value = '';
         document.getElementById('copy-value-field').hidden = true;
+        const aiKeyFieldAdd = document.getElementById('ai-api-key-field');
+        if (aiKeyFieldAdd) aiKeyFieldAdd.hidden = true;
+        const aiKeyInputAdd = document.getElementById('edit-ai-api-key');
+        if (aiKeyInputAdd) aiKeyInputAdd.value = '';
         // 清空表单
         document.getElementById('edit-name').value = '';
         document.getElementById('edit-category').value = settingsLinkCategory;
@@ -627,6 +631,12 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('edit-kind').value = link.kind || 'site';
         document.getElementById('edit-copy-value').value = link.copyValue || '';
         document.getElementById('copy-value-field').hidden = !['mcp', 'skill'].includes(link.kind);
+        const aiKeyInput = document.getElementById('edit-ai-api-key');
+        if (aiKeyInput) {
+            aiKeyInput.value = link.aiApiKey || '';
+            const aiKeyField = document.getElementById('ai-api-key-field');
+            if (aiKeyField) aiKeyField.hidden = (link.kind || 'site') !== 'ai';
+        }
         // 填充表单
         document.getElementById('edit-name').value = link.name;
         document.getElementById('edit-category').value = link.category;
@@ -921,6 +931,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.getElementById('edit-kind').addEventListener('change', event => {
         document.getElementById('copy-value-field').hidden = !['mcp', 'skill'].includes(event.target.value);
+        const aiKeyField = document.getElementById('ai-api-key-field');
+        if (aiKeyField) aiKeyField.hidden = event.target.value !== 'ai';
     });
     saveButton.addEventListener('click', () => {
         const kind = document.getElementById('edit-kind').value;
@@ -974,6 +986,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 links[linkIndex].tag = tag;
                 links[linkIndex].remarks = remarks;
                 links[linkIndex].thumbnail = thumbnail || (firstUrl ? defaultThumbnailFor(firstUrl) : '');
+                const aiApiKey = (document.getElementById('edit-ai-api-key')?.value || '').trim();
+                if (kind === 'ai' && aiApiKey) links[linkIndex].aiApiKey = aiApiKey;
+                else delete links[linkIndex].aiApiKey;
             }
             showMessage('已更新链接');
         } else {
@@ -990,6 +1005,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 remarks: remarks,
                 thumbnail: thumbnail || (firstUrl ? defaultThumbnailFor(firstUrl) : '')
             };
+            const aiApiKeyNew = (document.getElementById('edit-ai-api-key')?.value || '').trim();
+            if (kind === 'ai' && aiApiKeyNew) newLink.aiApiKey = aiApiKeyNew;
             newLink.urls = validUrls;
             links.push(newLink);
             showMessage('已添加链接');
@@ -1393,7 +1410,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.32.1';
+    const currentVersion = '1.38.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1725,28 +1742,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 布局选项功能
-    const compactModeToggle = document.getElementById('compact-mode');
+    // 旧「紧凑模式」开关已于 1.38.0 并入「首页显示密度 → 极紧凑」（见 links-data.js loadHomeLayoutSettings 迁移）
     const showThumbnailsToggle = document.getElementById('show-thumbnails');
     const enableAnimationsToggle = document.getElementById('enable-animations');
-
-    function applyCompactMode(enabled) {
-        document.body.classList.toggle('compact-mode', Boolean(enabled));
-    }
 
     function applyAnimationSetting(enabled) {
         document.body.classList.toggle('animations-off', !enabled);
         document.body.style.setProperty('--transition-fast', enabled ? '0.15s' : '0s');
         document.body.style.setProperty('--transition-normal', enabled ? '0.25s' : '0s');
-    }
-
-    if (compactModeToggle) {
-        compactModeToggle.checked = getSetting('compactMode', false) === true;
-        applyCompactMode(compactModeToggle.checked);
-        compactModeToggle.addEventListener('change', function() {
-            applyCompactMode(this.checked);
-            setSetting('compactMode', this.checked);
-            showMessage(this.checked ? '已启用紧凑模式' : '已禁用紧凑模式');
-        });
     }
 
     // 显示缩略图功能
@@ -2047,6 +2050,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const densityMessages = {
                 balanced: '首页已切换为均衡密度',
                 compact: '首页已切换为紧凑密度',
+                ultra: '首页已切换为极紧凑密度',
                 spacious: '首页已切换为舒展密度'
             };
             showMessage(densityMessages[this.value] || '已更新首页密度');

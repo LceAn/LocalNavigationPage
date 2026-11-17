@@ -139,7 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
         { text: '标准布局', icon: 'ri-align-center', action: 'default' },
         { text: '靠下布局', icon: 'ri-arrow-down-line', action: 'bottom' },
         { label: '快捷网格密度' },
-        { text: '紧凑', icon: 'ri-contract-left-right-line', density: 'compact' },
+        { text: '极紧凑', icon: 'ri-contract-left-right-line', density: 'ultra' },
+        { text: '紧凑', icon: 'ri-contract-up-down-line', density: 'compact' },
         { text: '均衡', icon: 'ri-dashboard-line', density: 'balanced' },
         { text: '舒展', icon: 'ri-expand-left-right-line', density: 'spacious' }
     ];

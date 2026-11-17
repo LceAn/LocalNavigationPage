@@ -4,7 +4,7 @@
 [![CSS](https://img.shields.io/badge/CSS-3-563d7c)]()
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6-f7df1e)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
-[![Version](https://img.shields.io/badge/Version-1.32.1-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.38.0-blue)]()
 [![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?logo=docker)]()
 
 纯 HTML、CSS 和 JavaScript 实现的本地 / 内网导航页，零依赖、零构建。默认是搜索首页，底部箭头在原页面展开快捷抽屉；网站、AI、MCP 与 Skills 用统一磁贴收纳。Node.js / Docker 部署支持服务器共享配置与多端同步，纯静态部署也能运行（配置保存在浏览器）。
@@ -96,7 +96,7 @@
 - 日 / 夜模式，刷新不闪白
 - **主题色选择器**：8 组预设主色一键切换全站配色（日 / 夜自动适配明度）
 - 自定义 CSS 与自定义 JS：设置中输入即生效，随备份导出
-- 时间显示：6 种字体样式 + 4 种页面级布局（右侧竖排大钟 / 顶部巨幕 / 全屏水印 / 右下角大字），设置中即时切换
+- 时间显示：12 种字体样式 + 4 种页面级布局（右侧竖排大钟 / 顶部巨幕 / 全屏水印 / 右下角大字），设置中即时切换
 - 三档显示密度（均衡 / 紧凑 / 舒展）、玻璃质感、页面位置布局
 - PWA：可安装、Service Worker 离线缓存（数据网络优先、静态资源缓存优先 + 后台更新）
 - 打印样式：`Ctrl+P` 输出平面清单
@@ -114,7 +114,7 @@
 
 - 零依赖、零构建；Node.js 服务器内置 REST API 与共享配置接口
 - `npm run mcp` 启动 MCP Server，AI 助手可直接管理导航链接（详见 [docs/API.md](docs/API.md)）
-- 数据层 / 服务器 / 界面逻辑共 **144 个单元测试**（15 个测试文件，`npm test`）
+- 数据层 / 服务器 / 界面逻辑共 **172 个单元测试**（17 个测试文件，`npm test`）
 - CI 三道关：单元测试 / 配置校验 / Docker 构建
 - Docker 镜像基于 Node.js 22；持久化目录 `/data`
 
@@ -158,20 +158,26 @@ python3 -m http.server 8080
 ### 一键扫描本机服务
 
 ```bash
-npm run scan                          # 扫描并生成 links-local.json
-npm run scan -- --probe               # HTTP 标题探测：服务名更准确（并行，约 20s）
-npm run scan -- --merge               # 直接合并进 links.json（只增不改不删）
-npm run scan -- --host 192.168.1.100  # 生成局域网 IP 地址（手机也能访问）
+npm run scan                          # 扫描并生成 links-local.json（多地址；或设置 → 数据 → 本机服务扫描）
+npm run scan -- --probe               # HTTP 标题探测：服务名更准确，自动识别 https
+npm run scan -- --merge               # 直接合并进 links.json（只增不改不删，地址重叠跳过）
+npm run scan -- --local-only          # 只生成 127.0.0.1 地址
+npm run scan -- --host 192.168.1.100  # 手动指定唯一主机（单地址模式）
 npm run scan -- --list                # 只预览表格，不写文件
 ```
 
 扫描自动发现监听端口 → 按端口号 / 进程名智能分类（Web / 开发 / 媒体 / 监控…）→ 生成可导入的 JSON。
 
+- **默认多地址**：每个服务生成 `本地 (127.0.0.1)` + 自动探测到的 `局域网` / `Tailscale` 网卡地址，导入后直接享受多线路智能选路；仅回环绑定的服务只生成本机地址；WSL 等虚拟网卡地址自动排除
 - SSH、MySQL、Redis 这类非 HTTP 端口不会生成链接（浏览器打不开），扫描结束会汇总提示
 - 输出文件 `HTML/data/links-local.json` 已在 `.gitignore` / `.dockerignore` 中，不会进仓库或镜像
 - 导入是**覆盖式**的：设置 → 数据 → 导入会替换现有全部链接（导入前会自动备份当前配置）
 
 ### 收录 MCP / Skills
+
+网页端：**设置 → 快捷方式 → 重新收集**。点击后由导航服务器重新扫描**它所在机器**的 `~/.workbuddy/mcp.json` 与 `~/.workbuddy/skills`（可用 `LNP_MCP_CONFIG` / `LNP_SKILLS_DIR` 指定），写入目录后抽屉、搜索与设置列表立即刷新。扫描为空时保留原有目录，避免 Docker 等没有 `~/.workbuddy` 的环境被误点清空。
+
+命令行：
 
 ```bash
 npm run catalog        # 读取 ~/.workbuddy/mcp.json + ~/.workbuddy/skills
@@ -257,7 +263,7 @@ MCP 详情需要 Node.js 服务的检测能力。服务器配置方式、环境�
 需要 Node.js 18+，无需安装第三方包：
 
 ```bash
-npm test               # 144 个单元测试：数据层 / 服务器 / 选路 / 界面逻辑
+npm test               # 172 个单元测试：数据层 / 服务器 / 选路 / 界面逻辑
 npm run validate       # 链接 JSON、资源引用、脚本语法、跨脚本重声明检查
 npm run scan           # 本机端口扫描（生成 gitignore 的 links-local.json）
 npm run catalog        # 生成 MCP / Skills 目录（gitignore）
@@ -325,8 +331,8 @@ docker build --tag local-navigation-page:test .
 
 ---
 
-**最后更新：** 2026-11-15
-**当前版本：** 1.32.1
+**最后更新：** 2026-11-16
+**当前版本：** 1.38.0
 
 ---
 

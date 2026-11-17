@@ -210,8 +210,10 @@ body.liquid-home .modal-content { border-radius: 24px; background-color: color-m
 body.liquid-home .modal-header h3 { font-weight: 550; }
 body.liquid-home .btn-primary { background: var(--primary-color); box-shadow: 0 4px 12px rgb(var(--primary-rgb) / .14); border-radius: 12px; }
 body.home-density-compact #navigation-view .catalog-resource { min-height: 80px; }
+body.home-density-ultra #navigation-view .catalog-resource { min-height: 72px; }
 body.home-density-spacious #navigation-view .catalog-resource { min-height: 112px; }
 body.home-density-compact #navigation-view { --shortcut-height: 94px; --shortcut-main-height: 54px; --shortcut-card-padding: 10px 12px 6px; --shortcut-routes-padding: 2px 10px 8px; }
+body.home-density-ultra #navigation-view { --shortcut-height: 84px; --shortcut-main-height: 48px; --shortcut-card-padding: 8px 10px 4px; --shortcut-routes-padding: 1px 8px 6px; }
 body.home-density-spacious #navigation-view { --shortcut-height: 148px; --shortcut-main-height: 98px; --shortcut-card-padding: 20px 18px 12px; --shortcut-routes-padding: 5px 16px 16px; }
 @media (max-width: 768px) {
     .liquid-home > .container { padding: 34svh 16px 80px; }
@@ -281,8 +283,13 @@ body.liquid-home .weather-detail { text-align: left; z-index: 60; background: co
 .environment-footer { display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-line); }
 .environment-footer button { font: inherit; font-size: 11px; border: 0; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 4px 6px; }
 .environment-footer button:disabled { opacity: .5; cursor: wait; }
-.environment-editor-row { display: grid; grid-template-columns: minmax(80px, .65fr) minmax(125px, 1fr) minmax(160px, 1.6fr) 30px; gap: 8px; align-items: center; margin-bottom: 9px; }
+.environment-editor-row { display: grid; grid-template-columns: minmax(80px, .65fr) minmax(125px, 1fr) minmax(160px, 1.6fr) 34px; gap: 8px; align-items: center; margin-bottom: 9px; }
 .environment-editor-row input, .environment-editor-row select { min-width: 0; width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid var(--glass-line); border-radius: 10px; color: var(--text-primary); background: var(--glass-card); font: inherit; font-size: 12px; }
+/* 行尾删除按钮：全局 .icon-button 38px + margin 12px、liquid 变体 34px，都会撑破 grid 轨道；
+   选择器带 body.liquid-home 提升优先级压过两处基础样式 */
+body.liquid-home .environment-editor-row > .icon-button { width: 32px; height: 32px; margin-left: 0; box-sizing: border-box; box-shadow: none; background: transparent; border: 1px solid var(--glass-line); border-radius: 9px; }
+body.liquid-home .environment-editor-row > .icon-button i { font-size: 15px; }
+body.liquid-home .environment-editor-row > .icon-button:hover { background: color-mix(in srgb, #c37b73 12%, transparent); border-color: color-mix(in srgb, #c37b73 30%, transparent); color: #b45d55; }
 #network-environment-error:empty { display: none; }
 
 /* 设置只保留标题栏和内容区两层，搜索收进标题栏。 */
@@ -325,7 +332,7 @@ body.liquid-home .option-item { padding: 12px; }
     body.liquid-home .settings-tabs .tab-button i { display: none; }
     body.liquid-home #settings-box > .settings-content { padding: 16px; flex: 1; }
     body.liquid-home #settings-search-count { display: none; }
-    .environment-editor-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 28px; padding-bottom: 10px; border-bottom: 1px solid var(--glass-line); }
+    .environment-editor-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 32px; padding-bottom: 10px; border-bottom: 1px solid var(--glass-line); }
     .environment-editor-row .environment-probe { grid-column: 1 / 3; grid-row: 2; }
     .environment-editor-row > button { grid-column: 3; grid-row: 1 / 3; }
 }
@@ -356,7 +363,6 @@ body.liquid-home.home-shadow-deep { --glass-shadow: 0 28px 70px -22px rgb(35 58 
 body.liquid-home:not(.home-glass-enabled) .search-container,
 body.liquid-home:not(.home-glass-enabled) .navigation-shell,
 body.liquid-home:not(.home-glass-enabled) .top-right-buttons { background: var(--bg-secondary); backdrop-filter: none; -webkit-backdrop-filter: none; }
-body.liquid-home.compact-mode #navigation-view .link-card { min-height: 80px; padding-top: 13px; padding-bottom: 13px; }
 
 body.liquid-home .settings-content .form-hint { font-size: 11px; line-height: 1.6; text-align: left; margin: 0 0 12px; }
 body.liquid-home .settings-tabs .tab-button.active { color: var(--primary-color); background: var(--primary-light); border-color: color-mix(in srgb, var(--primary-color) 18%, transparent); }
@@ -368,6 +374,12 @@ body.liquid-home #links-tab .links-manager-toolbar { display: flex; align-items:
 .links-manager-heading h3 { margin: 0; font-size: 17px; font-weight: 550; overflow-wrap: anywhere; }
 #links-result-count { flex-shrink: 0; color: var(--text-tertiary); font-size: 11px; }
 body.liquid-home #links-tab #add-link-toolbar-btn { flex: 0 0 auto; width: auto; min-width: 0; padding: 8px 12px; border-radius: 10px; gap: 5px; font-size: 12px; white-space: nowrap; box-shadow: none; }
+.links-manager-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+body.liquid-home #links-tab #catalog-scan-btn { flex: 0 0 auto; width: auto; min-width: 0; padding: 8px 12px; border-radius: 10px; gap: 5px; font-size: 12px; white-space: nowrap; }
+body.liquid-home #links-tab #catalog-scan-btn:hover:not(:disabled) { transform: none; }
+#catalog-scan-btn:disabled { opacity: .6; cursor: default; }
+#catalog-scan-btn.is-loading i { animation: catalog-scan-spin .9s linear infinite; }
+@keyframes catalog-scan-spin { to { transform: rotate(360deg); } }
 .links-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
 .links-group-rail { min-width: 0; position: sticky; top: 0; }
 #settings-group-filters { display: flex; flex-direction: column; gap: 4px; max-height: 48svh; overflow-y: auto; }
@@ -592,6 +604,12 @@ body.liquid-home.navigation-open .search-button.icon-failed .search-button-text 
 @keyframes route-checking { 50% { opacity: .35; } }
 #navigation-view .route-settings-button { position: absolute; top: 10px; right: 9px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; }
 #navigation-view .route-settings-button:hover, #navigation-view .route-settings-button[aria-expanded="true"] { color: var(--primary-color); background: var(--primary-light); }
+
+/* AI 卡片右上角的模型看板按钮：位于路线按钮左侧；探测到模型后带数量徽标 */
+#navigation-view .ai-board-button { position: absolute; top: 10px; right: 9px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; }
+#navigation-view .has-route-options .ai-board-button { right: 40px; }
+#navigation-view .ai-board-button:hover { color: var(--primary-color); background: var(--primary-light); }
+#navigation-view .ai-board-count { position: absolute; top: -5px; right: -7px; min-width: 15px; padding: 1px 4px; border-radius: 8px; background: var(--primary-color); color: #fff; font-size: 9px; font-weight: 600; line-height: 1.2; text-align: center; }
 .route-popover { position: fixed; z-index: 1200; width: min(350px, calc(100% - 24px)); max-height: min(70svh, 540px); box-sizing: border-box; overflow-y: auto; padding: 14px; border: 1px solid var(--glass-edge); border-radius: 20px; background: color-mix(in srgb, var(--glass-surface) 60%, var(--bg-secondary) 40%); box-shadow: var(--glass-shadow); backdrop-filter: blur(24px); text-align: left; color: var(--text-primary); scrollbar-width: thin; }
 .route-popover-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 0 2px 10px; }
 .route-popover-heading strong { display: block; font-size: 13px; font-weight: 550; }
@@ -674,6 +692,107 @@ body.liquid-home.navigation-open #current-time.clock-style-stacked { font-size: 
 body.liquid-home .datetime-display:has(#current-time.clock-style-stacked) {
   flex-direction: column;
   gap: 6px;
+}
+
+/* 翻页卡片：时/分/秒各成深色圆角卡片，中轴接缝模拟机场翻页钟（深色卡片两套主题通用） */
+body.liquid-home #current-time.clock-style-flip {
+  display: inline-flex;
+  align-items: stretch;
+  gap: .14em;
+  font-weight: 500;
+  letter-spacing: -.01em;
+}
+body.liquid-home #current-time.clock-style-flip .clock-colon { display: none; }
+body.liquid-home #current-time.clock-style-flip .clock-hours,
+body.liquid-home #current-time.clock-style-flip .clock-minutes,
+body.liquid-home #current-time.clock-style-flip .clock-seconds {
+  position: relative;
+  padding: .12em .16em .16em;
+  border-radius: .18em;
+  background: linear-gradient(180deg, rgb(40 52 74 / .95), rgb(15 22 38 / .95));
+  color: #eef2f8;
+  line-height: 1.05;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), 0 4px 10px -6px rgb(9 14 26 / .55);
+}
+body.liquid-home #current-time.clock-style-flip .clock-hours::after,
+body.liquid-home #current-time.clock-style-flip .clock-minutes::after,
+body.liquid-home #current-time.clock-style-flip .clock-seconds::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: rgb(8 12 22 / .6);
+  box-shadow: 0 1px 0 rgb(255 255 255 / .08);
+}
+body.liquid-home #current-time.clock-style-flip .clock-period { margin-left: .22em; color: var(--text-tertiary); }
+body.liquid-home.dark-mode #current-time.clock-style-flip .clock-hours,
+body.liquid-home.dark-mode #current-time.clock-style-flip .clock-minutes,
+body.liquid-home.dark-mode #current-time.clock-style-flip .clock-seconds {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .1), 0 4px 10px -6px rgb(0 0 0 / .7);
+}
+
+/* 双色时分：小时走主题色，分钟正文色，秒与 AM/PM 退到辅助层级 */
+body.liquid-home #current-time.clock-style-duotone {
+  font-weight: 560;
+  letter-spacing: -.045em;
+}
+body.liquid-home #current-time.clock-style-duotone .clock-hours { color: var(--primary-color); }
+body.liquid-home #current-time.clock-style-duotone > .clock-colon { color: var(--primary-color); opacity: .5; }
+body.liquid-home #current-time.clock-style-duotone .clock-seconds { color: var(--text-tertiary); font-weight: 480; }
+
+/* 主题渐变：主题色 → 强调色斜向填充，秒数整体降不透明度 */
+body.liquid-home #current-time.clock-style-gradient {
+  background: linear-gradient(115deg, var(--primary-color) 18%, color-mix(in oklch, var(--primary-color) 55%, var(--accent-color)) 52%, var(--accent-color) 88%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  font-weight: 560;
+  letter-spacing: -.04em;
+}
+body.liquid-home #current-time.clock-style-gradient .clock-seconds { opacity: .62; }
+/* 水印布局会覆盖 color，渐变在水印下改回同款淡色纯文本，避免整面实心渐变 */
+body.clock-layout-watermark #current-time.clock-style-gradient {
+  background: none;
+  color: color-mix(in oklch, var(--text-primary) 7%, transparent);
+  -webkit-text-fill-color: color-mix(in oklch, var(--text-primary) 7%, transparent);
+}
+
+/* 霓虹光晕：主题色双层光晕，深色模式下底色更亮、光更强 */
+body.liquid-home #current-time.clock-style-glow {
+  color: color-mix(in oklch, var(--text-primary) 72%, var(--primary-color));
+  text-shadow: 0 0 .3em rgb(var(--primary-rgb) / .5), 0 0 1em rgb(var(--primary-rgb) / .26);
+  font-weight: 480;
+  letter-spacing: -.035em;
+}
+body.liquid-home.dark-mode #current-time.clock-style-glow {
+  color: color-mix(in oklch, var(--text-primary) 58%, var(--primary-color));
+  text-shadow: 0 0 .3em rgb(var(--primary-rgb) / .66), 0 0 1.25em rgb(var(--primary-rgb) / .4);
+}
+
+/* 复古立体：粗字重 + 两级硬偏移主题色阴影 */
+body.liquid-home #current-time.clock-style-retro {
+  font-weight: 780;
+  letter-spacing: -.05em;
+  text-shadow: .05em .05em 0 rgb(var(--primary-rgb) / .42), .1em .1em 0 rgb(var(--primary-rgb) / .16);
+}
+body.liquid-home.dark-mode #current-time.clock-style-retro {
+  text-shadow: .05em .05em 0 rgb(var(--primary-rgb) / .58), .1em .1em 0 rgb(var(--primary-rgb) / .24);
+}
+
+/* 优雅衬线：衬线数字 + 斜体 AM/PM 的经典钟表感 */
+body.liquid-home #current-time.clock-style-serif {
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Songti SC', Georgia, 'Times New Roman', serif;
+  font-weight: 600;
+  letter-spacing: .012em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+body.liquid-home #current-time.clock-style-serif .clock-period {
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: .1em;
 }
 
 /* ================================================================

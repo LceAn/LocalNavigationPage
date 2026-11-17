@@ -138,6 +138,12 @@ Docker 镜像从 1.18.0 起运行 Node.js 服务，包含 REST API 与共享配�
 
 `GET /api/catalog` 读取持久化目录中的 `catalog.json`，文件缺失时返回公开示例，响应格式包含 `mcpServers` 和 `skills`。编辑扫描入口后，覆盖项作为普通 `links` 记录保存，`catalogKey` 关联原扫描条目。
 
+### 网页重新收集（1.36.1）
+
+`POST /api/catalog/scan` 让导航服务器重新扫描**它所在机器**的 MCP 配置与 Skills 目录，原子写入持久化目录的 `catalog.json`。扫描路径只来自服务器环境变量 `LNP_MCP_CONFIG` / `LNP_SKILLS_DIR` 或默认 `~/.workbuddy`，不接受请求体传入路径。
+
+返回 `{generatedAt, counts:{mcpServers, skills}, written, skipped, reason, source:{mcpConfig, skillsDir}}`。扫描结果为空且已有 `catalog.json` 时返回 `skipped: true, reason: "empty"` 并保留原文件；无已有文件时写入空目录。写入使用临时文件重命名，走配置写入队列；跨源写入返回 403。
+
 普通链接支持 `kind` 为 `site` / `ai` / `mcp` / `skill`。MCP 和 Skill 可使用 `copyValue` 保存命令或路径，此时 `urls` 可为空数组。`POST /api/links`、`PUT /api/links/:id` 和共享配置接口均支持该格式。
 
 

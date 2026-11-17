@@ -1,6 +1,7 @@
 /* catalog.js — MCP / 技能目录
  * 数据来自 HTML/data/catalog.json（私有，gitignore）或 catalog.json.default（公开示例）。
- * 详情通过导航服务器读取实时工具和技能文件。扫描用 `npm run catalog`。 */
+ * 详情通过导航服务器读取实时工具和技能文件。
+ * 网页「重新收集」调用 POST api/catalog/scan；纯静态部署仍可用 `npm run catalog`。 */
 (function () {
 
 
@@ -71,9 +72,7 @@
         return normalizeCatalog(null);
     }
 
-    window.catalogEntries = [];
-    document.addEventListener('DOMContentLoaded', async () => {
-        const data = await fetchCatalog();
+    function applyCatalog(data) {
         window.catalogInspectionTimeoutMs = Number(data.meta.inspectionTimeoutMs) || 20000;
         window.catalogEntries = [
             ...data.mcpServers.map((server, index) => ({
@@ -89,8 +88,70 @@
                 urls: skill.urls?.length ? skill.urls : (skill.url && isSafeUrl(skill.url, ['http:', 'https:']) ? [{ address: skill.url, label: '文档', priority: 1 }] : [])
             }))
         ];
-        renderLinksByCategory(links);
-        renderLinksInSettingsIfVisible(links);
+    }
+
+    async function loadCatalog() {
+        const data = await fetchCatalog();
+        applyCatalog(data);
+        return data;
+    }
+
+    function rerenderCatalogViews() {
+        if (typeof renderLinksByCategory === 'function') renderLinksByCategory(links);
+        if (typeof renderLinksInSettingsIfVisible === 'function') renderLinksInSettingsIfVisible(links);
         window.updateCategoryDatalist?.();
+    }
+
+    window.refreshCatalog = async () => {
+        const data = await loadCatalog();
+        rerenderCatalogViews();
+        return data;
+    };
+
+    // 让导航服务器重新扫描它所在机器的 MCP 配置与 Skills 目录。
+    // 纯静态部署没有这个接口，会以 404 失败并提示改用 npm run catalog。
+    window.scanCatalog = async () => {
+        const response = await fetch('api/catalog/scan', { method: 'POST' });
+        if (!response.ok) {
+            let message = `HTTP ${response.status}`;
+            try {
+                const body = await response.json();
+                if (body?.error) message = body.error;
+            } catch { /* 静态服务器返回的不是 JSON */ }
+            throw new Error(message);
+        }
+        const result = await response.json();
+        await window.refreshCatalog();
+        return result;
+    };
+
+    function bindCatalogScanButton() {
+        const button = document.getElementById('catalog-scan-btn');
+        if (!button || button.dataset.bound === 'true') return;
+        button.dataset.bound = 'true';
+        button.addEventListener('click', async () => {
+            if (button.disabled) return;
+            button.disabled = true;
+            button.classList.add('is-loading');
+            try {
+                const result = await window.scanCatalog();
+                const { mcpServers = 0, skills = 0 } = result.counts || {};
+                window.showMessage?.(result.skipped
+                    ? '没有发现 MCP 或 Skills，已保留原有目录'
+                    : `已收集 ${mcpServers} 个 MCP、${skills} 个 Skills`);
+            } catch (error) {
+                window.showMessage?.(`收集失败：${error.message}。网页收集需要运行导航服务器（npm start）`);
+            } finally {
+                button.disabled = false;
+                button.classList.remove('is-loading');
+            }
+        });
+    }
+
+    window.catalogEntries = [];
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadCatalog();
+        rerenderCatalogViews();
+        bindCatalogScanButton();
     });
 })();

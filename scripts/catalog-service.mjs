@@ -1,9 +1,9 @@
-import { readFile, stat, readdir, realpath } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, readdir, realpath, writeFile } from 'node:fs/promises';
 import { resolve, join, dirname, basename } from 'node:path';
 import { homedir } from 'node:os';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { inspectMcp, McpConnectionError } from './mcp-client.mjs';
-import { maskArg, maskArgs, parseSkillMarkdown } from './scan-catalog.mjs';
+import { collectCatalog, maskArg, maskArgs, parseSkillMarkdown } from './scan-catalog.mjs';
 
 const SENSITIVE = /token|secret|password|passwd|api[-_]?key|auth|credential/i;
 
@@ -78,6 +78,16 @@ function resourceKind(entry) {
   return /mcp/i.test(entry.category || '') ? 'mcp' : /skills?|技能/i.test(entry.category || '') ? 'skill' : 'site';
 }
 
+// AI 模型看板（1.36.0）：探测 OpenAI 兼容 /v1/models 与 Ollama /api/tags。
+// 返回原始响应 + api 类型，模型列表规范化统一由前端 normalizeAiModels 完成（与浏览器直连共用同一实现）。
+function joinEndpoint(address, path) {
+  const url = new URL(address);
+  // 地址本身以 /v1 结尾时（One API 等网关习惯），OpenAI 端点只补 /models
+  if (path === '/v1/models' && /\/v1\/?$/.test(url.pathname)) url.pathname = url.pathname.replace(/\/+$/, '') + '/models';
+  else url.pathname = url.pathname.replace(/\/+$/, '') + path;
+  return url.href;
+}
+
 export function createCatalogService({ dataRoot, defaultCatalogPath, mcpConfigPath = process.env.LNP_MCP_CONFIG, skillsDir = process.env.LNP_SKILLS_DIR, timeoutMs = Number(process.env.LNP_MCP_TIMEOUT_MS) || 20000 }) {
   const inspectionTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 20000;
   const cached = new Map();
@@ -93,11 +103,46 @@ export function createCatalogService({ dataRoot, defaultCatalogPath, mcpConfigPa
       else active -= 1;
     }
   }
+  const catalogPath = join(dataRoot, 'catalog.json');
+  let scanTask = null;
   async function readCatalog() {
     let catalog;
-    try { catalog = await jsonFile(join(dataRoot, 'catalog.json')); }
+    try { catalog = await jsonFile(catalogPath); }
     catch (error) { if (error.code !== 'ENOENT') throw error; catalog = await jsonFile(defaultCatalogPath); }
     return { ...catalog, _meta: { ...catalog._meta, inspectionTimeoutMs } };
+  }
+  // 网页端「重新收集」：扫描导航服务器所在机器的 MCP 配置与技能目录。
+  // 只使用服务器自身的环境变量/默认路径，不接受前端传路径；空结果不覆盖已有目录，
+  // 避免 Docker 等没有 ~/.workbuddy 的环境被误点后清空条目。
+  async function scanCatalog() {
+    if (scanTask) return scanTask;
+    scanTask = (async () => {
+      const { document, counts } = collectCatalog({
+        mcpPath: mcpConfigPath ? expandPath(mcpConfigPath) : undefined,
+        skillsDir: skillsDir ? expandPath(skillsDir) : undefined
+      });
+      const empty = counts.mcpServers === 0 && counts.skills === 0;
+      let hasExisting = false;
+      if (empty) {
+        try { hasExisting = (await stat(catalogPath)).isFile(); } catch { hasExisting = false; }
+      }
+      const skipped = empty && hasExisting;
+      if (!skipped) {
+        await mkdir(dirname(catalogPath), { recursive: true });
+        const temporary = catalogPath + '.' + randomUUID() + '.tmp';
+        await writeFile(temporary, JSON.stringify(document, null, 4) + '\n', 'utf8');
+        await rename(temporary, catalogPath);
+      }
+      return {
+        generatedAt: document._meta.generatedAt,
+        counts,
+        written: !skipped,
+        skipped,
+        reason: skipped ? 'empty' : '',
+        source: { mcpConfig: document._meta.mcpConfig, skillsDir: document._meta.skillsDir }
+      };
+    })().finally(() => { scanTask = null; });
+    return scanTask;
   }
   async function resolveEntry(query) {
     const catalog = await readCatalog();
@@ -110,7 +155,7 @@ export function createCatalogService({ dataRoot, defaultCatalogPath, mcpConfigPa
     const override = saved || document.links?.find(item => item.catalogKey === key);
     if (!override && !original) throw new McpConnectionError('目录条目已更新，请刷新页面', 'not_found');
     const entry = { ...original, ...override, kind: override?.kind || (sourceMcp ? 'mcp' : sourceSkill ? 'skill' : resourceKind(override)), catalogKey: key };
-    if (!['mcp', 'skill'].includes(entry.kind)) throw new McpConnectionError('该条目使用网页访问方式', 'invalid_resource');
+    if (!['mcp', 'skill', 'ai'].includes(entry.kind)) throw new McpConnectionError('该条目使用网页访问方式', 'invalid_resource');
     return { entry, original, catalog };
   }
   async function runtimeConfig(catalog) {
@@ -209,11 +254,44 @@ export function createCatalogService({ dataRoot, defaultCatalogPath, mcpConfigPa
       return { ...result, status: { state: 'missing', code: error.code || 'read', message: error.code === 'ENOENT' ? '服务器尚未找到 SKILL.md' : error instanceof McpConnectionError ? error.message : '技能文件读取失败' } };
     }
   }
+  async function inspectAi(entry, query) {
+    const addresses = [entry.url, ...(entry.urls || []).map(item => item.address)].filter(item => /^https?:\/\//i.test(item));
+    const result = { kind: 'ai', name: entry.name, description: entry.remarks || entry.description || '',
+      api: '', endpoint: '', data: null, detectionLocation: '导航服务器', checkedAt: new Date().toISOString() };
+    if (entry.enabled === false) return { ...result, status: { state: 'disabled', message: '服务已停用' } };
+    const selected = query.address || addresses[0];
+    if (!selected) return { ...result, status: { state: 'unconfigured', message: '请为 AI 入口配置 HTTP(S) 服务地址' } };
+    if (query.address && !addresses.includes(query.address)) throw new McpConnectionError('访问地址已更新，请重新选择', 'invalid_address');
+    const headers = { Accept: 'application/json' };
+    if (query.apiKey) headers.Authorization = 'Bearer ' + query.apiKey;
+    const attempts = [['/v1/models', 'openai', body => Array.isArray(body?.data)], ['/api/tags', 'ollama', body => Array.isArray(body?.models)]];
+    let lastError = '连接失败';
+    for (const [path, api, shape] of attempts) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), Math.min(inspectionTimeoutMs, 8000));
+      try {
+        const response = await fetch(joinEndpoint(selected, path), { headers: { ...headers }, signal: controller.signal });
+        clearTimeout(timer);
+        if (!response.ok) { lastError = `HTTP ${response.status}`; continue; }
+        const body = await response.json();
+        if (!shape(body)) { lastError = '响应结构不匹配'; continue; }
+        const models = body.data?.length ?? body.models?.length ?? 0;
+        return { ...result, api, endpoint: selected, data: body, status: { state: 'available', message: `发现 ${models} 个模型` } };
+      } catch (error) {
+        clearTimeout(timer);
+        lastError = error?.name === 'AbortError' ? '探测超时' : '连接失败';
+      }
+    }
+    return { ...result, status: { state: 'unavailable', message: `无法读取模型列表：${lastError}。确认服务已启动且地址正确` } };
+  }
   return {
     readCatalog,
+    scanCatalog,
     async inspect(query) {
       const { entry, original, catalog } = await resolveEntry(query);
-      return entry.kind === 'mcp' ? inspectServer(entry, original, catalog, query) : inspectSkill(entry);
+      if (entry.kind === 'mcp') return inspectServer(entry, original, catalog, query);
+      if (entry.kind === 'ai') return inspectAi(entry, query);
+      return inspectSkill(entry);
     }
   };
 }

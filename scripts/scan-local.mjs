@@ -5,9 +5,10 @@
 //
 // 用法：
 //   npm run scan                    扫描并生成 HTML/data/links-local.json
-//   npm run scan -- --probe         HTTP 探测页面标题（更准确，稍慢）
-//   npm run scan -- --merge         合并进 HTML/data/links.json（只增不改不删）
-//   npm run scan -- --host <ip>     生成局域网地址（默认 127.0.0.1）
+//   npm run scan -- --probe         HTTP 探测页面标题（更准确，稍慢；自动识别 https）
+//   npm run scan -- --merge         合并进 HTML/data/links.json（只增不改不删，任意地址重叠跳过）
+//   npm run scan -- --host <ip>     手动指定唯一主机（单地址模式，默认自动多地址）
+//   npm run scan -- --local-only    只生成 127.0.0.1 地址（关闭局域网/Tailscale 地址）
 //   npm run scan -- --out <path>    自定义输出路径
 //   npm run scan -- --list          只打印表格，不写文件
 //   npm run scan -- --json          纯 JSON 输出到 stdout（管道友好）
@@ -21,6 +22,7 @@
 
 import { execSync } from 'node:child_process';
 import { writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { networkInterfaces } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,12 +39,14 @@ const JSON_OUT = has('--json');
 const PROBE = has('--probe');
 const MERGE = has('--merge');
 const LIST_ONLY = has('--list');
+const LOCAL_ONLY = has('--local-only');
+const HOST_OVERRIDE = val('--host'); // 指定后回退单地址模式（脚本化兼容）
 const NO_COLOR = has('--no-color') || process.env.NO_COLOR || !process.stdout.isTTY;
 const EXCLUDE = (val('--exclude') || '').split(',').map(x => parseInt(x, 10)).filter(Number.isInteger);
 const LIMIT = parseInt(val('--limit'), 10) || Infinity;
-const PROBE_CONCURRENCY = Math.max(1, parseInt(val('--probe-concurrency'), 10) || 8);
+const PROBE_CONCURRENCY = Math.max(1, parseInt(val('--probe-concurrency'), 10) || 16);
 const PROBE_TIMEOUT = Math.max(500, parseInt(val('--probe-timeout'), 10) || 2500);
-const HOST = val('--host') || '127.0.0.1';
+const HOST = HOST_OVERRIDE || '127.0.0.1';
 const OUT = val('--out') ? resolve(val('--out')) : join(root, 'HTML', 'data', 'links-local.json');
 const LINKS_JSON = join(root, 'HTML', 'data', 'links.json');
 
@@ -226,14 +230,112 @@ function collectPorts() {
     return ports;
 }
 
-function getProcessName(pid) {
-    if (!pid) return '';
-    if (process.platform === 'win32') {
-        const out = sh(`tasklist /FI "PID eq ${pid}" /FO CSV /NH`, 3000);
-        const name = out.split(',')[0]?.replace(/"/g, '').trim();
-        return name && !name.includes('INFO') ? name : '';
+// ---- 进程表批量解析（一次系统调用拿到全部 pid→名称，替代逐 pid 查询） ----
+
+// 解析 `tasklist /FO CSV /NH` 输出：`"nginx.exe","1234","Console",...` → Map(pid → name)
+// CSV 引号内的逗号（进程名本身含逗号）需要逐字符状态机处理，不能简单 split(',')
+function parseProcessTable(output) {
+    const map = new Map();
+    for (const line of String(output || '').split('\n')) {
+        if (!line.includes('"')) continue;
+        const cols = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+            if (ch === '"') { inQ = !inQ; continue; }
+            if (ch === ',' && !inQ) { cols.push(cur); cur = ''; continue; }
+            cur += ch;
+        }
+        cols.push(cur);
+        const name = (cols[0] || '').trim();
+        const pid = parseInt(cols[1], 10);
+        if (name && Number.isInteger(pid) && pid > 0) map.set(pid, name);
     }
-    return sh(`ps -p ${pid} -o comm=`, 3000).trim();
+    return map;
+}
+
+// 一次性进程表：Windows 用 tasklist CSV，*nix 用 ps；失败回退空表（进程名仅用于兜底识别）
+function buildProcessMap() {
+    if (process.platform === 'win32') {
+        return parseProcessTable(sh('tasklist /FO CSV /NH', 10000));
+    }
+    const out = sh('ps -eo pid=,comm=', 10000);
+    const map = new Map();
+    for (const line of out.split('\n')) {
+        const m = line.trim().match(/^(\d+)\s+(.+)$/);
+        if (m) map.set(parseInt(m[1], 10), m[2].trim());
+    }
+    return map;
+}
+
+// ---- 网络地址分析：多地址生成（本地 / 局域网 / Tailscale） ----
+
+const LOOPBACK_BINDINGS = new Set(['127.0.0.1', '[::1]']);
+// 绑定地址全部是回环 → 服务只在本机可访问，不该生成局域网地址
+function isLoopbackOnlyBinding(addrs) {
+    const list = [...(addrs || [])].filter(Boolean);
+    return list.length > 0 && list.every(a => LOOPBACK_BINDINGS.has(a));
+}
+
+function ipv4Class(ip, ifaceName = '') {
+    const parts = ip.split('.').map(Number);
+    if (parts.length !== 4 || parts.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+    if (parts[0] === 169 && parts[1] === 254) return 'link-local';       // 未连接/自动分配
+    if (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) return 'cgnat'; // Tailscale 段
+    if (/tailscale/i.test(ifaceName)) return 'cgnat';                    // 接口名兜底
+    if (parts[0] === 10 || parts[0] === 192 && parts[1] === 168 ||
+        parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return 'lan';
+    return null;                                                          // 公网/虚拟网等不自动生成
+}
+
+// 虚拟网卡特征：WSL / Hyper-V / VMware / VirtualBox / 容器 —— 这些地址对外不可达，不该生成
+const VIRTUAL_IFACE = /vethernet|wsl|vmware|virtualbox|hyper-?v|loopback|docker|veth|zerotier|tap|bridge/i;
+
+// 从 os.networkInterfaces() 结果挑选可生成的地址：局域网优先于 Tailscale，合计最多 2 个。
+// 虚拟网卡（WSL 等）默认排除；若机器只有虚拟网卡则保留一个，避免空手而归。
+function pickLanAddresses(ifaces) {
+    const lan = [], virtual = [], ts = [];
+    for (const [ifaceName, addrs] of Object.entries(ifaces || {})) {
+        for (const a of addrs || []) {
+            if (a.internal || a.family !== 'IPv4') continue;
+            const kind = ipv4Class(a.address, ifaceName);
+            if (kind === 'lan') {
+                (VIRTUAL_IFACE.test(ifaceName) ? virtual : lan).push({ address: a.address, label: '局域网' });
+            } else if (kind === 'cgnat') {
+                ts.push({ address: a.address, label: 'Tailscale' });
+            }
+        }
+    }
+    const dedup = list => {
+        const seen = new Set();
+        return list.filter(x => (seen.has(x.address) ? false : (seen.add(x.address), true)));
+    };
+    const realLan = dedup(lan);
+    const lanPick = realLan.length ? realLan : dedup(virtual).slice(0, 1);
+    return [...lanPick.slice(0, 2), ...dedup(ts).slice(0, 1)].slice(0, 2);
+}
+
+// 构建多地址 urls：本地恒为 priority 1；--host 覆盖时退化为单地址；loopback-only 不加局域网
+function buildServiceUrls({ port, scheme = 'http', addrs = new Set(), lanAddresses = [], hostOverride = null, loopbackOnly = false }) {
+    const schemeFor = p => (scheme === 'https' || p === 443 || p === 8443 || p === 9443 ? 'https' : 'http');
+    if (hostOverride) {
+        return [{ address: `${schemeFor(port)}://${hostOverride}:${port}`, label: '默认', priority: 1 }];
+    }
+    const urls = [{ address: `${schemeFor(port)}://127.0.0.1:${port}`, label: '本地', priority: 1 }];
+    if (loopbackOnly) return urls;
+    for (const lan of lanAddresses) {
+        urls.push({ address: `${schemeFor(port)}://${lan.address}:${port}`, label: lan.label, priority: urls.length + 1 });
+    }
+    return urls;
+}
+
+// 展开一个链接条目的全部地址（单 url 字段 + urls 数组），用于 --merge 任意地址去重
+function linkAddresses(link) {
+    const out = [];
+    if (link?.url) out.push(link.url);
+    for (const u of link?.urls || []) {
+        if (u?.address) out.push(u.address);
+    }
+    return out;
 }
 
 function getDockerMap() {
@@ -271,28 +373,51 @@ function getDockerMap() {
     return map;
 }
 
-async function probeHttp(port, timeoutMs = PROBE_TIMEOUT) {
-    // TLS 端口优先 https（自签证书跳过校验——目标是拿标题，不是建信任）
-    const tls = port === 443 || port === 8443 || port === 9443;
-    const schemes = tls ? ['https', 'http'] : ['http'];
-    for (const scheme of schemes) {
+async function probeHttp(port, timeoutMs = PROBE_TIMEOUT, target = '127.0.0.1') {
+    // TLS 嫌疑端口先 https；其余先 http，连接失败再试 https（覆盖任意端口上的自签 TLS 服务）
+    const tlsSuspect = port === 443 || port === 8443 || port === 9443;
+    const schemes = tlsSuspect ? ['https', 'http'] : ['http', 'https'];
+    for (const [attempt, scheme] of schemes.entries()) {
+        // 超时必须覆盖到响应体读取：SSE / 长连接服务永远不发完整 body，
+        // res.text() 会无限等待——先关 timer 再读 body 是旧版卡死 60s 的根因。
+        // 第二次尝试（协议回退）减半超时：本地 TLS 握手 <100ms，1.2s 已足够慷慨
+        const attemptTimeout = attempt === 0 ? timeoutMs : Math.min(timeoutMs, 1500);
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), attemptTimeout);
         try {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-            const res = await fetch(scheme + '://127.0.0.1:' + port + '/', {
+            const res = await fetch(scheme + '://' + target + ':' + port + '/', {
                 signal: ctrl.signal,
-                redirect: 'follow',
-                // 仅探测用途：自签证书也接受
-                ...(scheme === 'https' ? {} : {})
+                redirect: 'follow'
+                // 仅探测用途：自签证书也接受（进程启动时已放宽本 CLI 的 TLS 校验）
             });
-            clearTimeout(timer);
             const server = res.headers.get('server') || '';
-            const html = (await res.text()).slice(0, 20000);
+            // 只读前 20KB（拿 <title> 足够），够了立即断开，不等长响应结束
+            const reader = res.body?.getReader();
+            let received = 0; const chunks = [];
+            while (reader && received < 20000) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                received += value.length;
+            }
+            reader?.cancel().catch(() => {});
+            clearTimeout(timer);
+            const html = Buffer.concat(chunks.map(c => Buffer.from(c))).toString('utf8');
             const title = html.match(/<title[^>]*>([^<]{1,100})<\/title>/i)?.[1]?.trim() || '';
-            return { title, server };
-        } catch { /* 下一个 scheme */ }
+            return { title, server, scheme };
+        } catch {
+            clearTimeout(timer);
+            /* 下一个 scheme */
+        }
     }
     return null;
+}
+
+// 探测目标按实际绑定选择：仅 [::1] 绑定的服务探测 127.0.0.1 必失败
+function probeTargetFor(addrs) {
+    const list = [...(addrs || [])];
+    if (list.includes('[::1]')) return '[::1]';
+    return '127.0.0.1';
 }
 
 // ================= 识别管线 =================
@@ -330,45 +455,61 @@ function identify(svc, dockerMap, probeInfo) {
     return { name: `服务 :${svc.port}`, category: '其他服务', source: 'unknown' };
 }
 
-const NON_HTTP_PORTS = new Set([22, 53, 3306, 5432, 6379, 27017, 5900, 5901, 5672, 9092, 1883, 6881, 22000, 9042, 3389]);
+// 非浏览器可打开的端口：基础集 + 从知识库推导纯协议类（数据库/消息队列/远程访问）。
+// 注意「文件同步」「下载」类不整类排除——8384/9091 等是 Web UI；协议类中也有例外
+// （15672 RabbitMQ 管理面板、9200/8086 是 HTTP API），统一走例外白名单。
+const NON_HTTP_CATEGORIES = new Set(['数据库', '消息队列', '远程访问']);
+const NON_HTTP_EXCEPTIONS = new Set([15672, 9200, 8086]);
+const NON_HTTP_PORTS = (() => {
+    const base = new Set([22, 53, 5901, 6881, 22000]);
+    for (const [port, [, category]] of KNOWN_PORTS) {
+        if (NON_HTTP_CATEGORIES.has(category) && !NON_HTTP_EXCEPTIONS.has(port)) base.add(port);
+    }
+    return base;
+})();
 
-// ================= 主流程 =================
-async function main() {
-    log(`${C.b}🔍 本地服务自动发现${C.x}`);
-    log(`${C.dim}   主机: ${HOST}  模式: ${PROBE ? '扫描+探测' : '扫描'}${MERGE ? ' + 合并' : ''}${C.x}\n`);
+// ================= 扫描核心（CLI 与导航服务器 /api/scan 共用） =================
+
+// options: { probe, probeConcurrency, probeTimeout, exclude, limit, localOnly, hostOverride, onProgress }
+// 返回 { lanAddresses, services }；services 已按分组排序并应用 exclude/limit
+async function scanLocalServices(options = {}) {
+    const probe = options.probe === true;
+    const probeConcurrency = Math.max(1, options.probeConcurrency || 16);
+    const probeTimeout = Math.max(500, options.probeTimeout || 2500);
+    const exclude = (options.exclude || []).filter(Number.isInteger);
+    const limit = Number.isFinite(options.limit) ? options.limit : Infinity;
+    const hostOverride = options.hostOverride || null;
 
     const ports = collectPorts();
-    log(`${C.dim}  · 监听端口 ${ports.size} 个（已排除系统端口）${C.x}`);
-
     const dockerMap = getDockerMap();
-    if (dockerMap.size) log(`${C.dim}  · Docker 容器 ${dockerMap.size} 个发布端口${C.x}`);
+    const processMap = buildProcessMap();
+    const services = [...ports.values()].map(p => ({ ...p, processName: processMap.get(p.pid) || '' }));
 
-    const services = [...ports.values()].map(p => ({ ...p, processName: getProcessName(p.pid) }));
+    const lanAddresses = (!hostOverride && !options.localOnly) ? pickLanAddresses(networkInterfaces()) : [];
 
-    let probed = 0;
-    if (PROBE) {
-        const candidates = services.filter(s => !NON_HTTP_PORTS.has(s.port) && !dockerMap.has(String(s.port)));
-        log(`${C.dim}  · HTTP 探测 ${candidates.length} 个候选…${C.x}`);
-        // 并行探测（8 并发），速度提升约 8 倍
-        const BATCH = PROBE_CONCURRENCY;
-        for (let i = 0; i < candidates.length; i += BATCH) {
-            const batch = candidates.slice(i, i + BATCH);
-            const results = await Promise.all(batch.map(s => probeHttp(s.port)));
-            results.forEach((info, j) => {
-                if (info) { batch[j].probe = info; probed++; }
-            });
-            process.stdout.write('\r    已探测 ' + Math.min(i + BATCH, candidates.length) + ' / ' + candidates.length);
+    if (probe) {
+        const candidates = services.filter(s =>
+            !NON_HTTP_PORTS.has(s.port) && !dockerMap.has(s.port) && !exclude.includes(s.port));
+        for (let i = 0; i < candidates.length; i += probeConcurrency) {
+            const batch = candidates.slice(i, i + probeConcurrency);
+            const results = await Promise.all(batch.map(s => probeHttp(s.port, probeTimeout, probeTargetFor(s.addrs))));
+            results.forEach((info, j) => { if (info) batch[j].probe = info; });
+            options.onProgress?.(Math.min(i + probeConcurrency, candidates.length), candidates.length);
         }
-        process.stdout.write('\n');
-        log(`${C.dim}  · 探测成功 ${probed} 个${C.x}\n`);
     }
 
     const identified = services.map(s => {
         const id = identify(s, dockerMap, s.probe);
-        const scheme = s.port === 443 || s.port === 8443 ? 'https' : 'http';
-        const hostPart = id.localOnly ? '127.0.0.1' : HOST;
+        const urls = buildServiceUrls({
+            port: s.port,
+            scheme: s.probe?.scheme,
+            addrs: s.addrs,
+            lanAddresses,
+            hostOverride,
+            loopbackOnly: Boolean(id.localOnly) || isLoopbackOnlyBinding(s.addrs)
+        });
         return {
-            url: `${scheme}://${hostPart}:${s.port}`,
+            urls,
             port: s.port,
             name: id.name,
             category: id.category,
@@ -377,14 +518,41 @@ async function main() {
         };
     });
 
-    // --exclude 端口黑名单;--limit 截断
-    const filteredList = EXCLUDE.length
-        ? identified.filter(svc => !EXCLUDE.includes(svc.port))
-        : identified;
-    const finalList = Number.isFinite(LIMIT) ? filteredList.slice(0, LIMIT) : filteredList;
-    if (filteredList.length !== identified.length) {
-        log(`${C.dim}  · --exclude 排除 ${identified.length - filteredList.length} 个${C.x}`);
+    const filteredList = exclude.length ? identified.filter(svc => !exclude.includes(svc.port)) : identified;
+    const finalList = Number.isFinite(limit) ? filteredList.slice(0, limit) : filteredList;
+    finalList.sort((a, b) => a.category.localeCompare(b.category, 'zh-CN') || a.port - b.port);
+    return { lanAddresses, services: finalList };
+}
+
+// ================= 主流程 =================
+async function main() {
+    log(`${C.b}🔍 本地服务自动发现${C.x}`);
+    const modeParts = [PROBE ? '扫描+探测' : '扫描'];
+    if (MERGE) modeParts.push('合并');
+    if (HOST_OVERRIDE) modeParts.push(`单主机 ${HOST_OVERRIDE}`);
+    else if (LOCAL_ONLY) modeParts.push('仅本机地址');
+    else modeParts.push('多地址');
+    log(`${C.dim}   模式: ${modeParts.join(' + ')}${C.x}\n`);
+
+    const scanStart = Date.now();
+    const { lanAddresses, services: finalList } = await scanLocalServices({
+        probe: PROBE,
+        probeConcurrency: PROBE_CONCURRENCY,
+        probeTimeout: PROBE_TIMEOUT,
+        exclude: EXCLUDE,
+        limit: LIMIT,
+        localOnly: LOCAL_ONLY,
+        hostOverride: HOST_OVERRIDE,
+        onProgress(done, total) {
+            process.stdout.write('\r    已探测 ' + done + ' / ' + total);
+        }
+    });
+    if (PROBE) process.stdout.write('\n');
+    log(`${C.dim}  · 扫描完成，耗时 ${((Date.now() - scanStart) / 1000).toFixed(1)}s${C.x}`);
+    if (lanAddresses.length) {
+        log(`${C.dim}  · 网卡地址 ${lanAddresses.map(a => `${a.label} ${a.address}`).join('，')}${C.x}`);
     }
+    const identified = finalList;
 
     finalList.sort((a, b) => a.category.localeCompare(b.category, 'zh-CN') || a.port - b.port);
     const byCategory = {};
@@ -398,14 +566,18 @@ async function main() {
             lastCat = svc.category;
         }
         const src = { docker: `${C.g}docker${C.x}`, 'port-db': `${C.b}已知${C.x}`, 'http-title': `${C.y}探测${C.x}`, process: `${C.dim}进程${C.x}`, range: `${C.dim}推断${C.x}`, unknown: `${C.dim}未知${C.x}` }[svc.source];
-        const flag = svc.url.includes('127.0.0.1') && HOST !== '127.0.0.1' ? `${C.r} 仅本机${C.x}` : '';
-        log(`    ${String(svc.port).padEnd(6)} ${svc.name.padEnd(28)} ${src}${flag}`);
+        const labels = [...new Set(svc.urls.map(u => u.label))].join('·');
+        const onlyLocal = !HOST_OVERRIDE && svc.urls.length === 1 && svc.urls[0].address.includes('127.0.0.1');
+        const flag = onlyLocal ? ` ${C.r}仅本机${C.x}` : '';
+        const schemeBadge = svc.urls[0].address.startsWith('https://') ? `${C.b}[https]${C.x}` : '';
+        log(`    ${String(svc.port).padEnd(6)} ${svc.name.padEnd(28)} ${schemeBadge}${src} ${C.dim}${labels}${C.x}${flag}`);
     }
 
     const links = finalList.map((svc, i) => ({
         ID: i + 1,
         name: svc.name,
-        url: svc.url,
+        kind: 'site',
+        urls: svc.urls,
         category: svc.category,
         tag: svc.tag,
         thumbnail: ''
@@ -416,11 +588,20 @@ async function main() {
         return;
     }
 
-    const payload = { _meta: { scannedAt: new Date().toISOString(), host: HOST, total: links.length, tool: 'scan-local.mjs' }, links };
+    const payload = {
+        _meta: {
+            scannedAt: new Date().toISOString(),
+            host: HOST_OVERRIDE || '127.0.0.1',
+            lanAddresses,
+            total: links.length,
+            tool: 'scan-local.mjs'
+        },
+        links
+    };
 
     if (JSON_OUT) {
         // 管道友好：纯 JSON 到 stdout,无表格无颜色
-        console.log(JSON.stringify({ scannedAt: new Date().toISOString(), host: HOST, links }, null, 2));
+        console.log(JSON.stringify({ scannedAt: payload._meta.scannedAt, host: payload._meta.host, lanAddresses, links }, null, 2));
         return;
     }
     if (MERGE) {
@@ -428,19 +609,21 @@ async function main() {
         if (existsSync(LINKS_JSON)) {
             try { existing = JSON.parse(readFileSync(LINKS_JSON, 'utf8')); } catch { /* 保留空 */ }
         }
-        const existingUrls = new Set((existing.links || []).map(l => l.url || l.urls?.[0]?.address).filter(Boolean));
+        // 任意地址重叠即视为已存在（兼容旧单 url 条目与新多地址条目）
+        const existingAddrs = new Set((existing.links || []).flatMap(l => linkAddresses(l)));
         let nextId = (existing.links || []).reduce((mx, l) => Math.max(mx, l.ID || 0), 0) + 1;
         let added = 0;
         for (const l of links) {
-            if (existingUrls.has(l.url)) continue;
+            const overlap = linkAddresses(l).some(a => existingAddrs.has(a));
+            if (overlap) continue;
             existing.links ||= [];
             existing.links.push({ ...l, ID: nextId++ });
-            existingUrls.add(l.url);
+            linkAddresses(l).forEach(a => existingAddrs.add(a));
             added++;
         }
         writeFileSync(LINKS_JSON, JSON.stringify(existing, null, 4) + '\n');
         log(`\n${C.g}✅ 已合并进 ${C.x}${LINKS_JSON}`);
-        log(`${C.g}   新增 ${added} 个、保留原有 ${(existing.links || []).length - added} 个（只增不改不删）${C.x}`);
+        log(`${C.g}   新增 ${added} 个、保留原有 ${(existing.links || []).length - added} 个（只增不改不删，地址重叠跳过）${C.x}`);
     } else {
         writeFileSync(OUT, JSON.stringify(payload, null, 4) + '\n');
         log(`\n${C.g}✅ 已生成 ${C.x}${OUT}`);
@@ -451,11 +634,11 @@ async function main() {
     if (existsSync(LINKS_JSON) && !MERGE) {
         try {
             const existing = JSON.parse(readFileSync(LINKS_JSON, 'utf8'));
-            const urls = new Set((existing.links || []).map(l => l.url || l.urls?.[0]?.address).filter(Boolean));
-            const fresh = links.filter(l => !urls.has(l.url));
+            const urls = new Set((existing.links || []).flatMap(l => linkAddresses(l)));
+            const fresh = links.filter(l => !linkAddresses(l).some(a => urls.has(a)));
             if (fresh.length) {
-                log(`\n${C.y}💡 相比当前 links.json 有 ${fresh.length} 个新地址：${C.x}`);
-                fresh.slice(0, 8).forEach(f => log(`   + ${f.url}  ${C.dim}${f.name}${C.x}`));
+                log(`\n${C.y}💡 相比当前 links.json 有 ${fresh.length} 个新服务：${C.x}`);
+                fresh.slice(0, 8).forEach(f => log(`   + ${f.urls[0].address}  ${C.dim}${f.name}${C.x}`));
                 if (fresh.length > 8) log(`   … 还有 ${fresh.length - 8} 个`);
             }
         } catch { /* 忽略 */ }
@@ -468,4 +651,9 @@ async function main() {
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) main().catch(e => { console.error(`${C.r}扫描失败: ${e.message}${C.x}`); process.exit(1); });
 
-export { identify, isSystemPort, friendlyContainerName, titleRule, KNOWN_PORTS };
+export {
+    identify, isSystemPort, friendlyContainerName, titleRule, KNOWN_PORTS,
+    parseProcessTable, pickLanAddresses, isLoopbackOnlyBinding,
+    buildServiceUrls, linkAddresses, probeTargetFor, NON_HTTP_PORTS,
+    scanLocalServices
+};

@@ -30,3 +30,6 @@ HTML/data/catalog.json
 temp/
 output/
 node_modules/
+
+# 运行时 IP 黑名单
+HTML/data/blocked-ips.json

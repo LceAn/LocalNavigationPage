@@ -836,19 +836,6 @@ body.home-categories-open #link-container {
   visibility: visible;
   pointer-events: auto;
 }
-
-/* 紧凑模式下的链接列表 */
-body.compact-mode .category-container .link-list {
-  max-height: 280px;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-body.compact-mode .category-container.expanded .link-list {
-  max-height: 350px;
-}
-
 /* 自定义滚动条样式 - Webkit浏览器 */
 .category-container .link-list::-webkit-scrollbar {
   width: 5px;
@@ -2428,14 +2415,6 @@ body.home-density-spacious .category-container.collapsed {
   overflow: visible;
   background: transparent;
 }
-
-body.compact-mode .category-container .link-list {
-  max-height: none;
-  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
-  gap: 8px;
-  padding: 2px 4px 12px;
-}
-
 /* --- 链接卡片：干净磁贴 --- */
 .link-card {
   background: var(--bg-card);
@@ -2541,13 +2520,6 @@ body.home-glass-enabled .category-container,
   gap: 6px;
   padding: 0 12px 12px;
 }
-
-body.compact-mode .category-container .link-list {
-  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
-  gap: 4px;
-  padding: 0 8px 10px;
-}
-
 /* --- 链接卡 → 竖向图标磁贴 --- */
 .link-card {
   flex-direction: column;
@@ -2819,12 +2791,6 @@ body.compact-mode .category-container .link-list {
   right: 5px;
   margin: 0;
   transform: scale(0.9);
-}
-
-body.compact-mode .category-container .link-list {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 8px;
-  padding: 0 10px 10px;
 }
 
 /* 布局 v5 微调:窄磁贴时标签独占第二行,名称不与标签挤;占位图标加深 */

@@ -319,6 +319,33 @@ function createHomeLinkElement(link, preferredType = '') {
         shell.append(options);
     }
 
+    // AI 入口：右上角「模型看板」按钮（点击卡片本体仍打开聊天界面）
+    if (getNavigationItemKind(link) === 'ai') {
+        const board = document.createElement('button');
+        board.type = 'button';
+        board.className = 'ai-board-button';
+        board.title = '模型看板';
+        board.setAttribute('aria-label', `${link.name}，查看模型看板`);
+        board.setAttribute('aria-haspopup', 'dialog');
+        board.innerHTML = '<i class="ri-cpu-line" aria-hidden="true"></i>';
+        board.addEventListener('click', event => {
+            event.stopPropagation();
+            openResourceDetails(link, board);
+        });
+        shell.append(board);
+        // 轻量探测模型数量（浏览器直连 + 60s 缓存），命中后显示徽标
+        if (typeof probeAiModelCount === 'function') {
+            probeAiModelCount(link).then(count => {
+                if (!count || !board.isConnected) return;
+                board.title = `模型看板 · ${count} 个模型`;
+                const badge = document.createElement('span');
+                badge.className = 'ai-board-count';
+                badge.textContent = String(count);
+                board.append(badge);
+            });
+        }
+    }
+
     const routes = document.createElement('div');
     routes.className = 'route-chips';
     routes.setAttribute('aria-label', `${link.name} 的访问地址`);
