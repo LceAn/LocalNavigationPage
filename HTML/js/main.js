@@ -1379,6 +1379,39 @@ document.addEventListener("DOMContentLoaded", function () {
         return out;
     }
 
+    // 清空全部链接（保留设置与分组名）
+    const clearLinksBtn = document.getElementById('clear-links');
+    if (clearLinksBtn) {
+        clearLinksBtn.addEventListener('click', () => {
+            if (!confirm(`确定要清空全部 ${links.length} 条链接吗？分组名和外观设置将保留。此操作不可恢复！`)) return;
+            links = [];
+            persistLinks();
+            restartStatusMonitor();
+            renderLinksByCategory(links);
+            renderLinksInSettingsIfVisible(links);
+            updateCategoryDatalist();
+            updateStorageInfo();
+            showMessage('已清空全部链接');
+        });
+    }
+
+    // 清空全部分组（删除分组名，链接归入「未分类」）
+    const clearGroupsBtn = document.getElementById('clear-groups');
+    if (clearGroupsBtn) {
+        clearGroupsBtn.addEventListener('click', () => {
+            if (!confirm('确定要清空全部分组吗？所有链接将归入「未分类」，链接本身不会删除。')) return;
+            saveCustomCategories([]);
+            links = links.map(l => ({ ...l, category: '未分类' }));
+            persistLinks();
+            restartStatusMonitor();
+            renderLinksByCategory(links);
+            renderLinksInSettingsIfVisible(links);
+            updateCategoryDatalist();
+            updateStorageInfo();
+            showMessage('已清空全部分组');
+        });
+    }
+
     // 清除缓存
     const clearCacheBtn = document.getElementById('clear-cache');
     if (clearCacheBtn) {
