@@ -9,7 +9,7 @@
  *
  * 发版时同步修改 CACHE_VERSION，激活时会自动清理旧缓存。
  */
-const CACHE_VERSION = "lnp-v1.47.0";
+const CACHE_VERSION = 'lnp-v1.47.0';
 const APP_SHELL = [
     './',
     './index.html',
