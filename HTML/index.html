@@ -14,17 +14,17 @@
     <meta property="og:locale" content="zh_CN">
     <meta property="og:image" content="https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/assets/home-day.png">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="stylesheet" href="CSS/tokens.css?v=1.44.0">
-    <link rel="stylesheet" href="CSS/styles.css?v=1.44.0">
-	<link rel="stylesheet" href="CSS/search_input.css?v=1.44.0">
-	<link rel="stylesheet" href="CSS/settings_box.css?v=1.44.0">
+    <link rel="stylesheet" href="CSS/tokens.css?v=1.47.0">
+    <link rel="stylesheet" href="CSS/styles.css?v=1.47.0">
+	<link rel="stylesheet" href="CSS/search_input.css?v=1.47.0">
+	<link rel="stylesheet" href="CSS/settings_box.css?v=1.47.0">
     <!-- 字体与图标本地化：断网/纯内网环境图标字体不缺失 -->
-    <link rel="stylesheet" href="CSS/fonts.css?v=1.44.0">
-    <link rel="stylesheet" href="CSS/remixicon.css?v=1.44.0">
-    <link rel="stylesheet" href="CSS/navigation.css?v=1.44.0">
-    <link rel="stylesheet" href="CSS/resource-details.css?v=1.44.0">
-    <link rel="stylesheet" href="CSS/toolbar.css?v=1.44.0">
-    <link rel="stylesheet" href="CSS/weather-effects.css?v=1.44.0">
+    <link rel="stylesheet" href="CSS/fonts.css?v=1.47.0">
+    <link rel="stylesheet" href="CSS/remixicon.css?v=1.47.0">
+    <link rel="stylesheet" href="CSS/navigation.css?v=1.47.0">
+    <link rel="stylesheet" href="CSS/resource-details.css?v=1.47.0">
+    <link rel="stylesheet" href="CSS/toolbar.css?v=1.47.0">
+    <link rel="stylesheet" href="CSS/weather-effects.css?v=1.47.0">
     <!-- 缩略图与 favicon 服务：链接卡片首屏就会请求 -->
     <link rel="preconnect" href="https://s0.wp.com">
     <link rel="dns-prefetch" href="https://s0.wp.com">
@@ -32,13 +32,16 @@
     <link rel="dns-prefetch" href="https://www.google.com">
     <meta name="theme-color" content="#5D5FEF">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0F172A">
-    <link rel="manifest" href="manifest.webmanifest?v=1.44.0">
+    <link rel="manifest" href="manifest.webmanifest?v=1.47.0">
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235D5FEF'/%3E%3Cstop offset='1' stop-color='%23FF7D51'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 68V32h8l16 24V32h8v36h-8L38 44v24z' fill='white'/%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235D5FEF'/%3E%3Cstop offset='1' stop-color='%23FF7D51'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='url(%23g)'/%3E%3Cpath d='M30 68V32h8l16 24V32h8v36h-8L38 44v24z' fill='white'/%3E%3C/svg%3E">
 </head>
 
 <body class="liquid-home">
-    <div id="weather-atmosphere" data-weather="none" data-cold="false" aria-hidden="true">
+    <div id="weather-atmosphere" data-weather="none" data-cold="false" data-daypart="day" aria-hidden="true">
+        <div class="weather-night"></div>
+        <div class="weather-stars"></div>
+        <div class="weather-moon"></div>
         <div class="weather-sun"></div>
         <div class="weather-clouds"><span></span><span></span><span></span><span></span></div>
         <canvas class="weather-rain"></canvas>
@@ -294,6 +297,10 @@
                     <button class="tab-button" role="tab" data-tab="advanced">
                         <i class="ri-equalizer-line" aria-hidden="true"></i>
                         <span class="tab-button-text"><span>通用与代码</span></span>
+                    </button>
+                    <button class="tab-button" role="tab" data-tab="shortcuts">
+                        <i class="ri-cursor-line" aria-hidden="true"></i>
+                        <span class="tab-button-text"><span>交互与快捷键</span></span>
                     </button>
                     </div>
                 </div>
@@ -808,7 +815,7 @@
                         <i class="ri-layout-grid-line"></i>
                         <div>
                             <h3>页面布局</h3>
-                            <p>内容位置、搜索框排布、首页密度与极简模式</p>
+                            <p>内容位置、搜索框样式与排布、首页密度与极简模式</p>
                         </div>
                     </div>
 
@@ -846,6 +853,19 @@
                                         <option value="top-bar">顶部固定</option>
                                         <option value="bottom-bar">底部悬浮</option>
                                         <option value="hero">全屏大搜索</option>
+                                    </select>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-paint-brush-line"></i>
+                                        <span>搜索框样式</span>
+                                    </div>
+                                    <select id="search-box-style" class="format-select">
+                                        <option value="glass">玻璃胶囊</option>
+                                        <option value="solid">纯色卡片</option>
+                                        <option value="outline">描边轻量</option>
+                                        <option value="minimal">下划线极简</option>
+                                        <option value="square">方角紧凑</option>
                                     </select>
                                 </div>
                                 <div class="option-item">
@@ -1073,6 +1093,62 @@
                     </div>
                 </div>
                 </div><!-- /layout-tab -->
+
+                <!-- 交互与快捷键 -->
+                <div class="tab-content" id="shortcuts-tab">
+                    <div class="tab-header">
+                        <i class="ri-cursor-line"></i>
+                        <div>
+                            <h3>交互与快捷键</h3>
+                            <p>空白区域点击手势，以及所有键盘快捷键的自定义</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" data-section-id="interaction.blank">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-cursor-line"></i>
+                                <span>空白区域点击</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="layout-options">
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-cursor-line"></i>
+                                        <span>单击空白</span>
+                                    </div>
+                                    <select id="blank-click-action" class="format-select"></select>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-focus-3-line"></i>
+                                        <span>双击空白</span>
+                                    </div>
+                                    <select id="blank-dblclick-action" class="format-select"></select>
+                                </div>
+                            </div>
+                            <p class="form-hint">默认单击空白展开或收起快捷方式。若配置了双击动作，单击会等待约 0.26 秒来判断是否为双击。</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section" data-section-id="interaction.keys">
+                        <div class="section-title">
+                            <div class="section-title-left">
+                                <i class="ri-keyboard-line"></i>
+                                <span>键盘快捷键</span>
+                            </div>
+                            <i class="ri-arrow-down-s-line section-collapse-icon"></i>
+                        </div>
+                        <div class="section-content">
+                            <div class="shortcut-rows" id="shortcut-rows">
+                                <!-- 动态填充 -->
+                            </div>
+                            <p class="form-hint">点「修改」后直接按下组合键；Backspace 清除，Esc 取消。字母和数字需要配合 Ctrl / ⌘ 或 Alt，浏览器占用的组合（如 Ctrl+R）会被拒绝。</p>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- 首页内容标签页 -->
                 <div class="tab-content" id="homecontent-tab">
@@ -1316,6 +1392,16 @@
                                 </div>
                                 <div class="option-item">
                                     <div class="option-header">
+                                        <i class="ri-moon-clear-line"></i>
+                                        <span>昼夜感知</span>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="weather-day-night-toggle" aria-label="昼夜感知" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="option-item">
+                                    <div class="option-header">
                                         <i class="ri-contrast-drop-line"></i>
                                         <span>粒子强度</span>
                                     </div>
@@ -1325,7 +1411,7 @@
                                         <button type="button" role="radio" data-value="strong" aria-checked="false">强烈</button>
                                     </div>
                                 </div>
-                                <div class="option-item">
+                                <div class="option-item option-item-span">
                                     <div class="option-header">
                                         <i class="ri-pulse-line"></i>
                                         <span>动画速度</span>
@@ -1339,7 +1425,7 @@
                             </div>
                             <div class="settings-note">
                                 <i class="ri-information-line"></i>
-                                <span>强度控制雨雪粒子的数量与浓度，速度影响下落与漂移的快慢。系统开启「减少动态效果」时全部暂停。</span>
+                                <span>强度控制雨雪粒子的数量与浓度，速度影响下落与漂移的快慢。开启「昼夜感知」后，06:30–18:30 之外晴天改为月亮与星空；系统开启「减少动态效果」时全部暂停。</span>
                             </div>
                         </div>
                     </div>
@@ -1592,6 +1678,17 @@
                                         <option value="text">仅文字</option>
                                     </select>
                                 </div>
+                                <div class="option-item">
+                                    <div class="option-header">
+                                        <i class="ri-layout-right-2-line"></i>
+                                        <span>引擎按钮显示</span>
+                                    </div>
+                                    <select id="search-engine-display" class="format-select">
+                                        <option value="all">全部显示</option>
+                                        <option value="single">只显示当前（点击展开）</option>
+                                        <option value="hidden">隐藏（回车用默认）</option>
+                                    </select>
+                                </div>
                                 <div class="option-item option-item-stacked">
                                     <div class="option-header">
                                         <i class="ri-test-tube-line"></i>
@@ -1608,6 +1705,8 @@
                                     <small class="form-hint" id="search-engine-test-url">将使用默认引擎打开新标签页</small>
                                 </div>
                             </div>
+                            <p class="form-hint">「只显示当前」时，点右侧引擎名展开完整列表；「隐藏」时搜索框里回车直接用默认引擎，输入 <code>/引擎名 关键词</code> 仍可临时指定。</p>
+                            <p class="form-hint">「搜索按钮图标」只对「全部显示」生效。</p>
                         </div>
                     </div>
                     <div class="settings-section" data-section-id="search.help">
@@ -2094,7 +2193,7 @@
                             <h2>本地导航页</h2>
                             <p class="about-tagline">本地与内网的资源入口 · 零依赖 · 零构建 · 断网可用</p>
                             <div class="about-version-row">
-                                <span class="about-version">v<span id="current-version">1.43.2</span></span>
+                                <span class="about-version">v<span id="current-version">1.46.0</span></span>
                                 <span id="version-check-status" class="about-update-status">
                                     <span class="version-checking"><i class="ri-loader-4-line ri-spin"></i> 检查更新中...</span>
                                 </span>
@@ -2164,36 +2263,14 @@
                             </div>
                         </div>
 
-                        <!-- 键盘快捷键 -->
+                        <!-- 键盘与交互（入口） -->
                         <div class="about-section">
-                            <h4 class="about-section-title"><i class="ri-keyboard-line" aria-hidden="true"></i>键盘快捷键</h4>
-                            <ul class="shortcut-list">
-                                <li>
-                                    <span class="shortcut-desc">快速启动器</span>
-                                    <span class="shortcut-keys"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>K</kbd></span>
-                                </li>
-                                <li>
-                                    <span class="shortcut-desc">打开设置</span>
-                                    <span class="shortcut-keys"><kbd>⌘</kbd>/<kbd>Ctrl</kbd> + <kbd>,</kbd></span>
-                                </li>
-                                <li>
-                                    <span class="shortcut-desc">聚焦搜索框</span>
-                                    <span class="shortcut-keys"><kbd>/</kbd></span>
-                                </li>
-                                <li>
-                                    <span class="shortcut-desc">磁贴间导航 / 打开</span>
-                                    <span class="shortcut-keys"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> + <kbd>Enter</kbd></span>
-                                </li>
-                                <li>
-                                    <span class="shortcut-desc">小窗打开（1100×780）</span>
-                                    <span class="shortcut-keys"><kbd>Shift</kbd> + 点击</span>
-                                </li>
-                                <li>
-                                    <span class="shortcut-desc">关闭弹窗 / 设置</span>
-                                    <span class="shortcut-keys"><kbd>Esc</kbd></span>
-                                </li>
-                            </ul>
-                            <p class="about-shortcut-hint"><i class="ri-search-2-line" aria-hidden="true"></i>搜索框输入 <code>/g 关键词</code>、<code>/bing 词</code> 可用指定引擎直达；前缀可在搜索引擎设置中自定义。</p>
+                            <h4 class="about-section-title"><i class="ri-keyboard-line" aria-hidden="true"></i>键盘与交互</h4>
+                            <p class="about-shortcut-hint">快捷键、空白点击与单击 / 双击手势都支持自定义；完整的键位表已从「关于」移到独立设置页。</p>
+                            <button type="button" class="btn-secondary about-shortcut-link" id="about-open-shortcuts">
+                                <i class="ri-cursor-line" aria-hidden="true"></i>
+                                <span>打开交互与快捷键</span>
+                            </button>
                         </div>
 
                         <!-- 工程与隐私 -->
@@ -2255,26 +2332,27 @@
     <footer class="resource-footer"><span id="resource-status" role="status" aria-live="polite"></span><span id="resource-checked"></span></footer>
 </dialog>
 
-<script src="js/storage.js?v=1.44.0" defer></script>
-<script src="js/links-data.js?v=1.44.0" defer></script>
-<script src="js/ai-models.js?v=1.44.0" defer></script>
-<script src="js/scan-panel.js?v=1.44.0" defer></script>
-<script src="js/server-panel.js?v=1.44.0" defer></script>
-<script src="js/network-environments.js?v=1.44.0" defer></script>
-<script src="js/navigation.js?v=1.44.0" defer></script>
-<script src="js/server-sync.js?v=1.44.0" defer></script>
-<script src="js/catalog.js?v=1.44.0" defer></script>
-<script src="js/resource-details.js?v=1.44.0" defer></script>
-<script src="js/home-render.js?v=1.44.0" defer></script>
-<script src="js/settings-links.js?v=1.44.0" defer></script>
-<script src="js/weather-effects.js?v=1.44.0" defer></script>
-<script src="js/display.js?v=1.44.0" defer></script>
-<script src="js/search-engines.js?v=1.44.0" defer></script>
-<script src="js/launcher.js?v=1.44.0" defer></script>
-<script src="js/main.js?v=1.44.0" defer></script>
-<script src="js/ambient-particles.js?v=1.44.0" defer></script>
-<script src="js/atmosphere-settings.js?v=1.44.0" defer></script>
-<script src="js/toolbar.js?v=1.44.0" defer></script>
-<script src="js/darkMode.js?v=1.44.0" defer></script>
+<script src="js/storage.js?v=1.47.0" defer></script>
+<script src="js/links-data.js?v=1.47.0" defer></script>
+<script src="js/ai-models.js?v=1.47.0" defer></script>
+<script src="js/scan-panel.js?v=1.47.0" defer></script>
+<script src="js/server-panel.js?v=1.47.0" defer></script>
+<script src="js/network-environments.js?v=1.47.0" defer></script>
+<script src="js/navigation.js?v=1.47.0" defer></script>
+<script src="js/server-sync.js?v=1.47.0" defer></script>
+<script src="js/catalog.js?v=1.47.0" defer></script>
+<script src="js/resource-details.js?v=1.47.0" defer></script>
+<script src="js/home-render.js?v=1.47.0" defer></script>
+<script src="js/settings-links.js?v=1.47.0" defer></script>
+<script src="js/weather-effects.js?v=1.47.0" defer></script>
+<script src="js/display.js?v=1.47.0" defer></script>
+<script src="js/search-engines.js?v=1.47.0" defer></script>
+<script src="js/launcher.js?v=1.47.0" defer></script>
+<script src="js/main.js?v=1.47.0" defer></script>
+<script src="js/interaction-settings.js?v=1.47.0" defer></script>
+<script src="js/ambient-particles.js?v=1.47.0" defer></script>
+<script src="js/atmosphere-settings.js?v=1.47.0" defer></script>
+<script src="js/toolbar.js?v=1.47.0" defer></script>
+<script src="js/darkMode.js?v=1.47.0" defer></script>
 </body>
 </html>
