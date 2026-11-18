@@ -1,6 +1,6 @@
 {
   "name": "local-navigation-page",
-  "version": "1.44.0",
+  "version": "1.47.0",
   "private": true,
   "scripts": {
     "validate": "node scripts/validate.mjs",
@@ -8,6 +8,10 @@
     "test": "node --test scripts/test/*.test.mjs",
     "scan": "node scripts/scan-local.mjs",
     "mcp": "node scripts/mcp-server.mjs",
-    "catalog": "node scripts/scan-catalog.mjs"
+    "catalog": "node scripts/scan-catalog.mjs",
+    "manage": "node scripts/manage.mjs",
+    "manage:install": "node scripts/manage.mjs install",
+    "manage:uninstall": "node scripts/manage.mjs uninstall",
+    "manage:status": "node scripts/manage.mjs status"
   }
 }

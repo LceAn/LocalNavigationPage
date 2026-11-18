@@ -1,6 +1,6 @@
 # 本地导航页 Local Navigation Page
 
-[![Version](https://img.shields.io/badge/Version-1.44.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.46.0-blue)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
 [![Tests](https://img.shields.io/badge/Tests-172-brightgreen)]()
 [![Dependencies](https://img.shields.io/badge/Dependencies-0-success)]()
@@ -43,6 +43,39 @@ npm run serve
 ```bash
 npm run scan -- --deep        # 发现服务 + AI 模型 + MCP 端点
 npm run scan -- --merge       # 合并进导航页
+```
+
+### 一键安装（免 Docker）
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/install.ps1 | iex
+```
+
+自动检测操作系统、检查 Node.js、注册系统服务（systemd / launchd / 开机自启）。支持指定端口和离线安装。
+
+**离线安装**（内网环境）:
+```bash
+# 在有网的机器上下载项目打包,拷贝到目标机器后:
+bash install.sh   # 自动检测当前目录的离线包
+```
+
+### 服务生命周期管理
+
+```bash
+node scripts/manage.mjs install     # 安装为系统服务
+node scripts/manage.mjs status      # 查看运行状态
+node scripts/manage.mjs start      # 启动
+node scripts/manage.mjs stop       # 停止
+node scripts/manage.mjs restart    # 重启
+node scripts/manage.mjs update     # 更新 + 重启
+node scripts/manage.mjs logs       # 查看日志
+node scripts/manage.mjs uninstall  # 卸载（保留数据）
 ```
 
 ### Docker
@@ -121,7 +154,7 @@ curl -X POST http://127.0.0.1:8080/api/links \
 - 紧凑网格磁贴(图标 + 名称 + 标签),悬浮显示完整信息
 - 拖拽排序;分组支持名称/数量/手动三种排序模式
 - 右键菜单(复制地址/小窗打开/按线路直达/编辑)
-- 键盘操作:`Ctrl+K` 启动器、`/` 聚焦搜索、方向键导航磁贴
+- 键盘操作:`Ctrl+K` 启动器、`/` 聚焦搜索、方向键导航磁贴;所有键位均可自定义(录制/清除/还原)
 - 内网/公网视觉区分(色环 + 徽标)
 - 在线状态探测(可配频率,悬停显示延迟)
 
@@ -131,6 +164,7 @@ curl -X POST http://127.0.0.1:8080/api/links \
 <summary><b>搜索</b></summary>
 
 - 多引擎(百度/Google/必应开箱即用,完全自定义)
+- 引擎按钮三种形态:全部显示 / 只显示当前(点击展开)/ 隐藏(回车用默认)
 - `/前缀 关键词` 直达(`/g 词` → Google)
 - 启动器跨链接、分组、标签、URL、搜索历史统一搜索
 
@@ -140,9 +174,10 @@ curl -X POST http://127.0.0.1:8080/api/links \
 <summary><b>外观</b></summary>
 
 - 日/夜模式,8 组预设主题色,自定义 CSS & JS
-- 6 种时钟布局、6 种搜索框样式、3 档密度
+- 6 种时钟布局、6 种搜索框布局 + 5 种外观(玻璃/纯色/描边/下划线/方角)、3 档密度
 - 天气动画(雨/雪/云,强度与实际天气匹配)
 - PWA 可安装,完全离线(字体与图标全本地化)
+- 空白区域手势:默认单击展开/收起快捷方式,单击与双击动作均可配置
 
 </details>
 

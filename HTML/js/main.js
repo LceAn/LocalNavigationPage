@@ -509,37 +509,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    document.addEventListener('keydown', event => {
-        // Cmd/Ctrl + , 打开设置
-        if ((event.ctrlKey || event.metaKey) && event.key === ',') {
-            event.preventDefault();
-            openSettingsPanel();
-            return;
-        }
-        // Cmd/Ctrl + K 唤起键盘启动器
-        if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
-            event.preventDefault();
-            openLauncher();
-            return;
-        }
-        // "?" 快捷键速查面板（输入类元素内不抢键）
-        if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            const tag = (document.activeElement?.tagName || '').toLowerCase();
-            if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-                event.preventDefault();
-                toggleShortcutCheatSheet();
-                return;
-            }
-        }
-        // "/" 快速聚焦搜索框（输入类元素内不抢键）
-        if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey) {
-            const tag = (document.activeElement?.tagName || '').toLowerCase();
-            if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-                event.preventDefault();
-                document.getElementById('search-input')?.focus();
-            }
-        }
-    });
+    // 全局快捷键统一由 interaction-settings.js 分发（可在设置里自定义键位）。
+    // 这里不再硬编码 Cmd/Ctrl+K、Cmd/Ctrl+,、?、/，避免与自定义键位重复触发。
 
 
 
@@ -1581,7 +1552,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.44.0';
+    const currentVersion = '1.47.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
@@ -1978,6 +1949,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // 引擎按钮展示方式（全部 / 只显示当前 / 隐藏）
+    const searchEngineDisplaySelect = document.getElementById('search-engine-display');
+    if (searchEngineDisplaySelect) {
+        searchEngineDisplaySelect.value = getSearchEngineDisplay();
+        searchEngineDisplaySelect.addEventListener('change', function() {
+            setSetting('searchEngineDisplay', this.value);
+            updateSearchButtons();
+            const labels = { all: '全部显示', single: '只显示当前引擎', hidden: '隐藏按钮' };
+            showMessage('搜索引擎按钮：' + (labels[this.value] || ''));
+        });
+    }
+
     if (enableAnimationsToggle) {
         enableAnimationsToggle.checked = getSetting('enableAnimations', true) !== false;
         applyAnimationSetting(enableAnimationsToggle.checked);
@@ -2030,6 +2013,26 @@ document.addEventListener("DOMContentLoaded", function () {
             const layout = applySearchLayout(this.value);
             setSetting('searchLayout', layout);
             showMessage('已切换搜索框布局');
+        });
+    }
+
+    // 搜索框视觉样式
+    const SEARCH_BOX_STYLES = ['glass', 'solid', 'outline', 'minimal', 'square'];
+    function applySearchBoxStyle(style = 'glass') {
+        const selected = SEARCH_BOX_STYLES.includes(style) ? style : 'glass';
+        SEARCH_BOX_STYLES.forEach(name => document.body.classList.toggle(`search-style-${name}`, name === selected));
+        return selected;
+    }
+    window.applySearchBoxStyle = applySearchBoxStyle;
+    const searchBoxStyleSelect = document.getElementById('search-box-style');
+    if (searchBoxStyleSelect) {
+        const savedStyle = applySearchBoxStyle(getSetting('searchBoxStyle', 'glass'));
+        searchBoxStyleSelect.value = savedStyle;
+        searchBoxStyleSelect.addEventListener('change', function() {
+            const style = applySearchBoxStyle(this.value);
+            setSetting('searchBoxStyle', style);
+            const labels = { glass: '玻璃胶囊', solid: '纯色卡片', outline: '描边轻量', minimal: '下划线极简', square: '方角紧凑' };
+            showMessage('搜索框样式：' + (labels[style] || ''));
         });
     }
 
@@ -3192,11 +3195,9 @@ function toggleShortcutCheatSheet() {
         panel.remove();
         return;
     }
+    const dynamicRows = typeof window.getShortcutCheatRows === 'function' ? window.getShortcutCheatRows() : [];
     const rows = [
-        ['Ctrl / ⌘ + K', '键盘启动器：全局搜索链接'],
-        ['Ctrl / ⌘ + ,', '打开设置'],
-        ['/', '聚焦搜索框'],
-        ['?', '本速查面板'],
+        ...dynamicRows,
         ['Esc', '关闭设置 / 弹窗 / 启动器 / 面板'],
         ['Shift + 点击磁贴', '以小窗打开链接'],
         ['右键磁贴', '复制地址 / 小窗 / 编辑 / 按路径直达'],

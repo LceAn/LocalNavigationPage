@@ -1,6 +1,6 @@
 # Local Navigation Page
 
-[![Version](https://img.shields.io/badge/Version-1.44.0-blue)]()
+[![Version](https://img.shields.io/badge/Version-1.46.0-blue)]()
 [![License](https://img.shields.io/badge/License-Apache--2.0-green)]()
 [![Tests](https://img.shields.io/badge/Tests-172-brightgreen)]()
 [![Dependencies](https://img.shields.io/badge/Dependencies-0-success)]()
@@ -44,6 +44,39 @@ Open `http://127.0.0.1:8080`. Done.
 ```bash
 npm run scan -- --deep        # discovers services + AI models + MCP endpoints
 npm run scan -- --merge       # merge results into your links
+```
+
+### One-Click Install (no Docker)
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/LceAn/LocalNavigationPage/main/install.ps1 | iex
+```
+
+Auto-detects OS, checks Node.js, installs as a system service (systemd / launchd / startup item), configures auto-start. Supports `--port` and offline mode.
+
+**Offline install** (air-gapped environments):
+```bash
+# Download on a connected machine, then:
+bash install.sh   # auto-detects lnp.tar.gz in current directory
+```
+
+### Service Lifecycle Management
+
+```bash
+node scripts/manage.mjs install     # Install as system service
+node scripts/manage.mjs status      # Show running state, port, PID
+node scripts/manage.mjs start      # Start
+node scripts/manage.mjs stop       # Stop
+node scripts/manage.mjs restart    # Restart
+node scripts/manage.mjs update     # git pull + restart
+node scripts/manage.mjs logs       # View recent logs
+node scripts/manage.mjs uninstall  # Remove service (keeps data)
 ```
 
 ### Docker
@@ -123,7 +156,7 @@ See [docs/API.md](docs/API.md) for the full reference.
 - Compact grid tiles with icons, names, and tags
 - Drag-to-reorder; groups sort by name / count / manual order
 - Right-click context menu (copy address, popup window, per-route jump)
-- Keyboard: `Ctrl+K` launcher, `/` focus search, arrows between tiles
+- Keyboard: `Ctrl+K` launcher, `/` focus search, arrows between tiles — every binding is customizable (record, clear, reset)
 - LAN / WAN visual distinction (color-coded ring + badge)
 - Online status probing with configurable interval and latency
 
@@ -133,6 +166,7 @@ See [docs/API.md](docs/API.md) for the full reference.
 <summary><b>Search</b></summary>
 
 - Multi-engine, fully customizable with prefix routing (`/g term` → Google)
+- Engine buttons: show all, current-only (click to expand), or hidden (Enter uses the default engine)
 - Launcher searches links, categories, tags, URLs, and search history
 
 </details>
@@ -141,9 +175,10 @@ See [docs/API.md](docs/API.md) for the full reference.
 <summary><b>Appearance</b></summary>
 
 - Day/night, 8 theme colors, custom CSS & JS injection
-- 6 clock layouts, 6 search box styles, 3 density levels
+- 6 clock layouts, 6 search box layouts + 5 visual styles (glass / solid / outline / underline / square), 3 density levels
 - Animated weather (rain/snow/clouds, intensity-matched)
 - PWA installable, fully offline (self-hosted fonts & icons)
+- Blank-area gestures: single click toggles the shortcut drawer by default; single/double click actions are configurable
 
 </details>
 
