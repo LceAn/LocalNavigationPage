@@ -170,8 +170,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const tabContents = document.querySelectorAll('.tab-content');
 
     // 一次性赋予 tablist 语义（role / aria-selected / aria-controls）
-    const tabsWrapper = document.querySelector('.settings-tabs');
-    if (tabsWrapper) tabsWrapper.setAttribute('role', 'tablist');
+    // 两级导航：每个 .tab-group-items 是一个独立 tablist，分组标题不属于 tablist
+    const tabGroups = document.querySelectorAll('.tab-group');
+    document.querySelectorAll('.tab-group-items').forEach(list => {
+        list.setAttribute('role', 'tablist');
+        const name = list.closest('.tab-group')?.querySelector('.tab-group-name')?.textContent?.trim();
+        if (name) list.setAttribute('aria-label', name);
+    });
     tabButtons.forEach(btn => {
         btn.setAttribute('role', 'tab');
         const tab = btn.getAttribute('data-tab');
@@ -184,6 +189,73 @@ document.addEventListener("DOMContentLoaded", function () {
         const tabName = (content.id || '').replace('-tab', '');
         if (tabName) content.setAttribute('aria-labelledby', `tab-${tabName}`);
     });
+
+    // ---- 一级分组：折叠状态持久化 + 当前分组高亮 ----
+    const SETTINGS_GROUP_KEY = 'lnp:settings-groups';
+
+    function readGroupCollapse() {
+        try {
+            return JSON.parse(localStorage.getItem(SETTINGS_GROUP_KEY) || '{}') || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function setGroupCollapsed(group, collapsed) {
+        if (!group) return;
+        group.classList.toggle('collapsed', Boolean(collapsed));
+        const toggle = group.querySelector('.tab-group-toggle');
+        if (toggle) toggle.setAttribute('aria-expanded', String(!collapsed));
+        try {
+            const state = readGroupCollapse();
+            state[group.dataset.group] = collapsed ? 1 : 0;
+            localStorage.setItem(SETTINGS_GROUP_KEY, JSON.stringify(state));
+        } catch (e) { /* 隐私模式下忽略 */ }
+    }
+
+    function markActiveGroup(tabName) {
+        const btn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+        const group = btn?.closest('.tab-group') || null;
+        tabGroups.forEach(g => g.classList.toggle('is-active', g === group));
+        if (group && group.classList.contains('collapsed')) setGroupCollapsed(group, false);
+        return { btn, group };
+    }
+
+    // 恢复上次的折叠状态
+    (function restoreGroupCollapse() {
+        const state = readGroupCollapse();
+        tabGroups.forEach(group => {
+            if (state[group.dataset.group]) {
+                group.classList.add('collapsed');
+                group.querySelector('.tab-group-toggle')?.setAttribute('aria-expanded', 'false');
+            }
+        });
+    })();
+
+    tabGroups.forEach(group => {
+        const toggle = group.querySelector('.tab-group-toggle');
+        if (!toggle) return;
+        toggle.addEventListener('click', () => {
+            // 窄屏下分组是「切换分类」而不是折叠：直接进入该组第一个页面
+            if (window.matchMedia('(max-width: 719px)').matches) {
+                const firstTab = group.querySelector('.tab-button');
+                if (firstTab && !group.classList.contains('is-active')) {
+                    activateSettingsTab(firstTab.getAttribute('data-tab'));
+                }
+                return;
+            }
+            const collapsing = !group.classList.contains('collapsed');
+            // 收起当前分组时至少保留一个展开，避免侧栏空掉
+            const anyOpen = [...tabGroups].some(g => g !== group && !g.classList.contains('collapsed'));
+            if (collapsing && !anyOpen) {
+                setGroupCollapsed(group, false);
+                return;
+            }
+            setGroupCollapsed(group, collapsing);
+        });
+    });
+
+    markActiveGroup(getActiveSettingsTabName());
 
     const settingsSearchbar = document.querySelector('.settings-searchbar');
     const settingsSearchInput = document.getElementById('settings-search-input');
@@ -278,6 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const btn = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
                 if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
                 firstHitTab.classList.add('active');
+                markActiveGroup(tabName);
             }
         }
 
@@ -320,6 +393,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (matchingBtn) { matchingBtn.classList.add('active'); matchingBtn.setAttribute('aria-selected', 'true'); }
         const targetContent = document.getElementById(`${targetTab}-tab`);
         if (targetContent) targetContent.classList.add('active');
+
+        // 二级页面：同步一级分组高亮，折叠状态下自动展开，并让按钮滚入视野
+        const { btn: activeBtn } = markActiveGroup(targetTab);
+        if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center' });
 
         // 如果切换到链接管理标签页，重新渲染链接
         if (targetTab === 'links') {
@@ -1504,7 +1581,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // 版本检测功能
-    const currentVersion = '1.38.0';
+    const currentVersion = '1.44.0';
     document.getElementById('current-version').textContent = currentVersion;
     
     function renderVersionStatus(latestVersion) {
