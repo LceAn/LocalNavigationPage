@@ -276,6 +276,21 @@ function createHomeLinkElement(link, preferredType = '') {
     linkCard.append(thumbnail, content);
 
     function openPreferredUrl(event) {
+        // 卡片内的任何控件（更多按钮、小按钮、）都不应该顺带触发「打开地址」
+        if (event.target.closest?.('button, [role="button"], [data-no-open]')) return;
+        // 右上角 48px 角落是「更多」的热区：按钮只有 30px，点偏 1–2px 会落到卡片上，
+        // 于是表现为「点三个点却打开了地址」。这里把整块角落都拦下来开菜单。
+        if (safeUrls.length && event.detail !== 0 && typeof event.clientX === 'number') {
+            const rect = linkCard.getBoundingClientRect();
+            if (event.clientX >= rect.right - 48 && event.clientY <= rect.top + 48) {
+                const more = shell.querySelector('.route-settings-button');
+                if (more) {
+                    event.preventDefault();
+                    openRoutePopover(link, more);
+                    return;
+                }
+            }
+        }
         preferredUrlInfo = safeUrls.find(url => preferredType && getUrlChoiceMeta(url).type === preferredType) || getPreferredUrlInfo(link, safeUrls);
         if (['mcp', 'skill'].includes(getNavigationItemKind(link))) {
             event.preventDefault();
@@ -312,7 +327,14 @@ function createHomeLinkElement(link, preferredType = '') {
         options.setAttribute('aria-expanded', 'false');
         options.setAttribute('aria-controls', 'route-popover');
         options.innerHTML = '<i class="ri-more-line" aria-hidden="true"></i>';
+        options.addEventListener('pointerdown', event => event.stopPropagation());
         options.addEventListener('click', event => {
+            event.stopPropagation();
+            openRoutePopover(link, options);
+        });
+        // 右键也走同一个菜单，避免弹出浏览器原生菜单
+        options.addEventListener('contextmenu', event => {
+            event.preventDefault();
             event.stopPropagation();
             openRoutePopover(link, options);
         });
@@ -498,22 +520,21 @@ function openRoutePopover(link, anchor) {
     routePopover.append(heading, choices, footer);
     document.body.append(routePopover);
     refreshLinkStatusDots();
-    const bounds = anchor.getBoundingClientRect();
+    // 以卡片的左上角为锚点：菜单从卡片位置展开，而不是按按钮右边缘往左铺开
+    // （350px 宽的菜单右对齐到 30px 的按钮上，会一路盖住卡片并溢到抽屉外）
+    const card = anchor.closest('.shortcut-card') || anchor;
+    const bounds = card.getBoundingClientRect();
     const popup = routePopover.getBoundingClientRect();
     const viewportWidth = document.documentElement.clientWidth;
     const viewportHeight = document.documentElement.clientHeight;
-    let left = Math.max(12, Math.min(bounds.right - popup.width, viewportWidth - popup.width - 12));
-    let top = bounds.bottom + 8;
-    if (top + popup.height > viewportHeight - 12) {
-        if (bounds.top - popup.height - 8 >= 12) top = bounds.top - popup.height - 8;
-        else {
-            top = Math.max(12, Math.min(bounds.top, viewportHeight - popup.height - 12));
-            if (bounds.right + popup.width + 8 <= viewportWidth - 12) left = bounds.right + 8;
-            else if (bounds.left - popup.width - 8 >= 12) left = bounds.left - popup.width - 8;
-        }
-    }
+    let left = bounds.left;
+    let top = bounds.top;
+    // 视口收边：宁可略微偏移，也不让菜单跑出屏幕
+    left = Math.max(12, Math.min(left, viewportWidth - popup.width - 12));
+    top = Math.max(12, Math.min(top, viewportHeight - popup.height - 12));
     routePopover.style.left = left + 'px';
     routePopover.style.top = top + 'px';
+    routePopover.dataset.anchor = 'card';
     anchor.setAttribute('aria-expanded', 'true');
     choices.querySelector('[aria-checked="true"]').focus({ preventScroll: true });
 }

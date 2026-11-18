@@ -8,6 +8,9 @@
     contain: strict;
     transition: opacity 1.8s ease;
 }
+#weather-atmosphere {
+    opacity: var(--fx-opacity, 1);
+}
 #weather-atmosphere > * {
     position: absolute;
     inset: 0;
@@ -16,12 +19,15 @@
     opacity: 0;
     transition: opacity 1.8s ease;
 }
+/* 中间留白保护时钟与搜索框，但别把粒子挡得太狠，否则小雨几乎看不见 */
 #weather-atmosphere canvas {
-    mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .25) 25%, #000 75%);
-    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .25) 25%, #000 75%);
+    mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .38) 20%, #000 62%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0%, rgb(0 0 0 / .38) 20%, #000 62%);
 }
-#weather-atmosphere[data-weather="rain"] .weather-rain { opacity: .65; }
-#weather-atmosphere[data-weather="snow"] .weather-snow { opacity: .8; }
+/* 强度已经作用在粒子数量与透明度上，这里不要再按档位二次压暗，
+   否则「轻」会被叠乘到几乎看不见 */
+#weather-atmosphere[data-weather="rain"] .weather-rain { opacity: .92; }
+#weather-atmosphere[data-weather="snow"] .weather-snow { opacity: .92; }
 #weather-atmosphere .weather-mist {
     inset: -15%;
     width: 130%;
@@ -156,7 +162,7 @@ body.liquid-home .settings-content .weather-effects-hint { margin: 0; color: var
 .weather-flash { background: #eaf4ff; opacity: 0; }
 #weather-atmosphere[data-weather="thunder"] .weather-rain { opacity: .45; }
 #weather-atmosphere[data-weather="thunder"][data-motion="on"] .weather-flash {
-    animation: weather-flash 8s linear infinite;
+    animation: weather-flash var(--flash-duration, 8s) linear infinite;
 }
 
 /* 减少动态 / 页面隐藏时暂停所有新动画 */
@@ -200,4 +206,50 @@ body.liquid-home .settings-content .weather-effects-hint { margin: 0; color: var
     #weather-atmosphere .weather-haze,
     #weather-atmosphere .weather-wind,
     #weather-atmosphere .weather-flash { animation: none !important; }
+}
+
+/* ================================================================
+   分天气开关（设置 → 氛围 → 天气特效）
+   data-off 由 weather-effects.js 写入，命中即隐藏对应图层
+   ================================================================ */
+#weather-atmosphere[data-off~="sun"] .weather-sun,
+#weather-atmosphere[data-off~="sun"] .weather-sun::after { opacity: 0 !important; }
+#weather-atmosphere[data-off~="cloud"] .weather-clouds { opacity: 0 !important; }
+#weather-atmosphere[data-off~="fog"] .weather-mist { opacity: 0 !important; }
+#weather-atmosphere[data-off~="haze"] .weather-haze { opacity: 0 !important; }
+#weather-atmosphere[data-off~="wind"] .weather-wind { opacity: 0 !important; }
+#weather-atmosphere[data-off~="thunder"] .weather-flash { display: none !important; }
+#weather-atmosphere[data-off~="frost"][data-cold="true"] .weather-frost { opacity: 0 !important; }
+
+/* ================================================================
+   常驻漂浮物层（与天气无关）
+   ================================================================ */
+#ambient-particles {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: .92;
+    transition: opacity 1.2s ease;
+}
+body.navigation-open #ambient-particles,
+body:has(#settings-container.show, #resource-detail-dialog[open], .modal-overlay.show) #ambient-particles { opacity: .28; }
+body.animations-off #ambient-particles { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    #ambient-particles { display: none; }
+}
+
+/* ================================================================
+   雨雪分级：暴雨、暴雪时整屏压暗并起水汽，和毛毛雨拉开差距
+   opacity 由 weather-effects.js 写入的 --fx-veil 控制（0~0.3）
+   ================================================================ */
+#weather-atmosphere .weather-rain-veil {
+    background: linear-gradient(180deg, rgb(52 68 92 / .62), rgb(64 82 106 / .34) 55%, rgb(80 98 124 / .14) 100%);
+    opacity: var(--fx-veil, 0);
+    transition: opacity 1.4s ease;
+}
+.dark-mode #weather-atmosphere .weather-rain-veil {
+    background: linear-gradient(180deg, rgb(6 11 22 / .66), rgb(12 20 34 / .38) 55%, rgb(18 28 44 / .16) 100%);
 }

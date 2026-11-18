@@ -206,7 +206,7 @@ body.liquid-home .input-wrapper,
 body.liquid-home .form-item input,
 body.liquid-home .form-item select,
 body.liquid-home .url-input { background: var(--glass-card); border-color: var(--glass-line); color: var(--text-primary); }
-body.liquid-home .modal-content { border-radius: 24px; background-color: color-mix(in srgb, var(--glass-surface) 85%, var(--bg-secondary) 15%); }
+body.liquid-home .modal-content { border-radius: 24px; background-color: color-mix(in srgb, var(--bg-secondary) 92%, transparent); }
 body.liquid-home .modal-header h3 { font-weight: 550; }
 body.liquid-home .btn-primary { background: var(--primary-color); box-shadow: 0 4px 12px rgb(var(--primary-rgb) / .14); border-radius: 12px; }
 body.home-density-compact #navigation-view .catalog-resource { min-height: 80px; }
@@ -259,7 +259,25 @@ body.liquid-home #message-container { min-width: 0; width: max-content; max-widt
 body.liquid-home > .container { padding-top: 29svh; }
 body.liquid-home .page-header { margin-bottom: 22px; padding: 0; }
 body.liquid-home .datetime-display { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 14px; }
+/* 时间 / 日期 / 天气三块在 liquid 皮肤里是「无底色的一行文字」。
+   基础排版仍由这条 (0,2,1) 负责，窄屏的 11px 才能正常覆盖。 */
 body.liquid-home .datetime-chip { background: transparent; border: 0; box-shadow: none; border-radius: 0; margin: 0; padding: 0; min-height: 0; font-size: 12px; color: var(--text-secondary); }
+/* 但 styles.css 里 .dark-mode.home-glass-enabled .datetime-chip（三个类，0,3,0）
+   会在深色 + 玻璃模式下把它们重新刷成 rgba(15,23,42,.72) 的近黑实心块。
+   下面这条只做「去底色」，权重提到 (0,3,1)，不掺字号/间距，避免影响窄屏。 */
+body.liquid-home .datetime-display > .datetime-chip,
+body.liquid-home.home-glass-enabled .datetime-display > .datetime-chip,
+body.liquid-home.dark-mode .datetime-display > .datetime-chip,
+body.liquid-home.dark-mode.home-glass-enabled .datetime-display > .datetime-chip {
+    background: transparent;
+    background-color: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+/* 天气胶囊仍要保留「可悬停看详情」的定位上下文 */
+body.liquid-home .datetime-display > .datetime-chip.has-detail { position: relative; }
 body.liquid-home #current-time { font-size: 34px; line-height: 1.2; font-weight: 450; letter-spacing: -.04em; font-variant-numeric: tabular-nums; color: var(--text-primary); }
 body.liquid-home #weather-info { position: relative; gap: 6px; cursor: default; }
 body.liquid-home .weather-detail { text-align: left; z-index: 60; background: color-mix(in srgb, var(--glass-surface) 30%, var(--bg-secondary) 70%); border: 1px solid var(--glass-edge); border-radius: 16px; box-shadow: var(--glass-shadow); }
@@ -292,34 +310,198 @@ body.liquid-home .environment-editor-row > .icon-button i { font-size: 15px; }
 body.liquid-home .environment-editor-row > .icon-button:hover { background: color-mix(in srgb, #c37b73 12%, transparent); border-color: color-mix(in srgb, #c37b73 30%, transparent); color: #b45d55; }
 #network-environment-error:empty { display: none; }
 
-/* 设置只保留标题栏和内容区两层，搜索收进标题栏。 */
-body.liquid-home #settings-box { display: grid; grid-template-columns: 184px minmax(0, 1fr); grid-template-rows: 64px minmax(0, 1fr); height: min(88svh, 800px); }
-body.liquid-home .settings-header { grid-column: 1 / -1; grid-row: 1; display: flex; align-items: center; gap: 20px; padding: 12px 20px; min-width: 0; }
+/* ================================================================
+   设置面板外壳（唯一权威定义）
+   ----------------------------------------------------------------
+   结构：标题栏（含设置搜索）+ 左侧分组导航 + 右侧内容区。
+   之前 settings_box.css 里还留着 3 套互相打架的栅格（190/220/236px），
+   加上首页 body 的 text-align:center 一路继承进面板，才导致标签按钮、
+   分区标题、列表项全部居中错位。这里一次性收口：
+     1. 栅格只在这里定义，其它文件不再重复声明；
+     2. 面板内强制 text-align:left（需要居中的空状态各自声明）；
+     3. 面板底色抬到 88% 不透明，玻璃只保留一层，保证文字对比度。
+   ================================================================ */
+body.liquid-home #settings-box {
+    display: grid;
+    grid-template-columns: 208px minmax(0, 1fr);
+    grid-template-rows: 60px minmax(0, 1fr);
+    height: min(88svh, 840px);
+    text-align: left;
+    background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
+}
+
+/* 标题栏：标题 / 搜索 / 操作三段，搜索在剩余空间里居中，不再挤在标题右边 */
+body.liquid-home .settings-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 14px 0 18px;
+    min-width: 0;
+    border-bottom: 1px solid var(--glass-line);
+}
 body.liquid-home .settings-header .header-title { flex: 0 0 auto; gap: 8px; }
-body.liquid-home .settings-header .header-title h2 { font-size: 17px; font-weight: 550; }
-body.liquid-home .settings-header .header-title > i { width: 28px; height: 28px; font-size: 18px; background: transparent; }
-body.liquid-home .settings-header .settings-searchbar { grid-column: auto; grid-row: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; flex: 0 1 380px; min-width: 0; min-height: 34px; max-height: 36px; margin: 0; padding: 0 10px; gap: 7px; background: var(--glass-card); border: 1px solid var(--glass-line); border-radius: 11px; box-shadow: none; }
+body.liquid-home .settings-header .header-title h2 { font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+body.liquid-home .settings-header .header-title > i { width: 26px; height: 26px; font-size: 17px; background: transparent; }
+body.liquid-home .settings-header .settings-searchbar {
+    grid-column: auto;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    flex: 1 1 260px;
+    max-width: 420px;
+    margin: 0 auto;
+    min-width: 0;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 10px;
+    gap: 7px;
+    background: var(--glass-card);
+    border: 1px solid var(--glass-line);
+    border-radius: 10px;
+    box-shadow: none;
+}
 body.liquid-home .settings-header .settings-searchbar input { min-width: 0; font-size: 12px; height: 32px; padding: 0; }
 body.liquid-home .settings-header .settings-searchbar > i { font-size: 14px; }
-body.liquid-home #settings-search-count { white-space: nowrap; font-size: 10px; }
+body.liquid-home #settings-search-count { white-space: nowrap; font-size: 10px; color: var(--text-tertiary); }
 body.liquid-home #clear-settings-search { width: 22px; height: 22px; }
-body.liquid-home .settings-header .header-actions { margin-left: auto; gap: 3px; }
-body.liquid-home #settings-box > .settings-tabs { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 14px 10px; border-right: 1px solid var(--glass-line); border-bottom: 0; overflow-y: auto; }
-body.liquid-home .settings-tabs .tab-button { min-height: 42px; padding: 9px 11px; gap: 9px; border-radius: 11px; }
-body.liquid-home .settings-tabs .tab-button-text > span { font-size: 12px; font-weight: 500; }
+body.liquid-home .settings-header .header-actions { margin-left: auto; gap: 4px; flex: 0 0 auto; }
+
+/* 左侧导航：一级分组（可折叠）+ 二级页面 */
+body.liquid-home #settings-box > .settings-tabs {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 8px 8px 12px;
+    border-right: 1px solid var(--glass-line);
+    border-bottom: 0;
+    overflow-y: auto;
+    background: linear-gradient(180deg, rgb(var(--primary-rgb) / .045), transparent 38%);
+    scrollbar-width: thin;
+}
+.tab-group { display: flex; flex-direction: column; gap: 1px; }
+.tab-group + .tab-group {
+    margin-top: 3px;
+    padding-top: 4px;
+    border-top: 1px solid color-mix(in srgb, var(--glass-line) 70%, transparent);
+}
+.tab-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: 100%;
+    min-height: 24px;
+    padding: 4px 7px 3px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-tertiary);
+    font: inherit;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition: color var(--transition-fast) ease, background var(--transition-fast) ease;
+}
+.tab-group-toggle:hover { color: var(--text-secondary); background: var(--glass-card); }
+.tab-group-toggle i { font-size: 13px; opacity: .65; transition: transform .18s ease; }
+.tab-group-toggle:focus-visible { outline: 2px solid rgb(var(--primary-rgb) / .35); outline-offset: 1px; }
+.tab-group.is-active > .tab-group-toggle { color: var(--text-secondary); }
+.tab-group.collapsed > .tab-group-items { display: none; }
+.tab-group.collapsed > .tab-group-toggle i { transform: rotate(-90deg); }
+.tab-group-items { display: flex; flex-direction: column; gap: 1px; }
+body.liquid-home .settings-tabs .tab-button {
+    min-height: 32px;
+    padding: 5px 10px 5px 18px;
+    gap: 9px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    justify-content: flex-start;
+    text-align: left;
+}
+body.liquid-home .settings-tabs .tab-button-text { min-width: 0; }
+body.liquid-home .settings-tabs .tab-button-text > span { font-size: 12.5px; font-weight: 500; }
 body.liquid-home .settings-tabs .tab-button-text > small { display: none; }
-body.liquid-home .settings-tabs .tab-button i { width: 22px; height: 22px; font-size: 16px; background: transparent; }
-body.liquid-home #settings-box > .settings-content { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; overflow-y: auto; padding: 22px; }
-body.liquid-home .tab-header { position: static; margin: 0 0 18px; padding: 0 0 14px; border-bottom: 1px solid var(--glass-line); background: transparent; backdrop-filter: none; gap: 10px; }
+body.liquid-home .settings-tabs .tab-button i { width: 20px; height: 20px; font-size: 16px; background: transparent; color: var(--text-tertiary); }
+body.liquid-home .settings-tabs .tab-button:hover { background: var(--glass-card); }
+body.liquid-home .settings-tabs .tab-button.active {
+    background: rgb(var(--primary-rgb) / .1);
+    color: var(--primary-color);
+    box-shadow: inset 0 0 0 1px rgb(var(--primary-rgb) / .16);
+}
+body.liquid-home .settings-tabs .tab-button.active i { color: var(--primary-color); }
+body.liquid-home .settings-tabs .tab-button.active .tab-button-text > span { font-weight: 600; }
+
+/* 右侧内容区 */
+body.liquid-home #settings-box > .settings-content {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 18px 20px 24px;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+
+/* 页头：标题与说明同一行，省一行高度；不再继承 body 的居中 */
+body.liquid-home .tab-header {
+    position: static;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 0 0 14px;
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--glass-line);
+    background: transparent;
+    backdrop-filter: none;
+    text-align: left;
+}
 body.liquid-home .tab-header > i { display: none; }
-body.liquid-home .tab-header h3 { font-size: 17px; font-weight: 550; }
-body.liquid-home .tab-header p { font-size: 11px; margin-top: 4px; }
-body.liquid-home .section-title { padding: 13px 16px; min-height: 0; }
+body.liquid-home .tab-header h3 { font-size: 16px; font-weight: 600; margin: 0; }
+body.liquid-home .tab-header p { font-size: 11.5px; margin: 0; color: var(--text-tertiary); }
+
+/* 分区
+   面板底色是浅灰，分区改用白色卡片浮起一层，行控件再落回浅灰 —— 四级层次 */
+body.liquid-home .settings-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-line);
+    box-shadow: none;
+}
+body.liquid-home .section-title { padding: 12px 14px; min-height: 0; text-align: left; background: color-mix(in srgb, var(--bg-tertiary) 62%, transparent); }
 body.liquid-home .section-title-left { gap: 8px; }
-body.liquid-home .section-title-left > i { width: auto; height: auto; background: transparent; font-size: 17px; }
-body.liquid-home .section-title-left > span { font-size: 13px; font-weight: 550; }
-body.liquid-home .section-content { padding: 16px; }
-body.liquid-home .option-item { padding: 12px; }
+body.liquid-home .section-title-left > i { width: auto; height: auto; background: transparent; font-size: 16px; }
+body.liquid-home .section-title-left > span { font-size: 13px; font-weight: 600; }
+body.liquid-home .section-content { padding: 14px; }
+/* 行级控件：落在白卡上的浅灰块，比玻璃卡（40% 白）在浅底上更分得清 */
+body.liquid-home .option-item,
+body.liquid-home .data-action-btn,
+body.liquid-home .search-engine-item,
+body.liquid-home .storage-item,
+body.liquid-home .search-hint,
+body.liquid-home .top-button-item {
+    background: var(--bg-primary);
+    border-color: var(--glass-line);
+}
+body.liquid-home .option-item { padding: 11px 13px; border-radius: 11px; }
+/* 深色下反相：行控件比分区卡片亮一档，才像「浮起」而不是凹陷 */
+body.liquid-home.dark-mode .option-item,
+body.liquid-home.dark-mode .data-action-btn,
+body.liquid-home.dark-mode .search-engine-item,
+body.liquid-home.dark-mode .storage-item,
+body.liquid-home.dark-mode .search-hint,
+body.liquid-home.dark-mode .top-button-item {
+    background: rgb(148 163 184 / .08);
+    border-color: rgb(203 213 225 / .1);
+}
 @media (max-width: 719px) {
     body.liquid-home #settings-box { width: calc(100% - 20px); height: min(94svh, 900px); max-height: 94svh; display: flex; flex-direction: column; }
     body.liquid-home .settings-header { flex: 0 0 auto; gap: 9px; padding: 10px 12px; }
@@ -327,10 +509,56 @@ body.liquid-home .option-item { padding: 12px; }
     body.liquid-home .settings-header .settings-searchbar { flex: 1; min-width: 80px; }
     body.liquid-home .settings-header .header-actions { margin-left: 0; }
     body.liquid-home #open-about { display: none; }
-    body.liquid-home #settings-box > .settings-tabs { flex-direction: row; flex: 0 0 auto; padding: 7px 10px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--glass-line); }
-    body.liquid-home .settings-tabs .tab-button { min-height: 34px; flex: 0 0 auto; padding: 7px 10px; }
-    body.liquid-home .settings-tabs .tab-button i { display: none; }
-    body.liquid-home #settings-box > .settings-content { padding: 16px; flex: 1; }
+    /* 窄屏：一级分组变顶部四等分标签，二级页面横排在下一行，只显示当前分组 */
+    body.liquid-home #settings-box > .settings-tabs {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 5px;
+        flex: 0 0 auto;
+        padding: 8px 10px 6px;
+        overflow: visible;
+        border-right: 0;
+        border-bottom: 1px solid var(--glass-line);
+        background: none;
+    }
+    .tab-group { display: contents; }
+    .tab-group-toggle {
+        grid-row: 1;
+        justify-content: center;
+        min-height: 30px;
+        padding: 6px 2px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        background: var(--glass-card);
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: -.01em;
+    }
+    .tab-group-toggle i { display: none; }
+    .tab-group.is-active > .tab-group-toggle {
+        color: var(--primary-color);
+        background: rgb(var(--primary-rgb) / .1);
+        border-color: rgb(var(--primary-rgb) / .2);
+    }
+    .tab-group-items {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        flex-direction: row;
+        gap: 4px;
+        overflow-x: auto;
+        padding-bottom: 2px;
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+    }
+    .tab-group-items::-webkit-scrollbar { display: none; }
+    .tab-group:not(.is-active) > .tab-group-items { display: none; }
+    .tab-group.collapsed > .tab-group-items { display: none; }
+    body.liquid-home .settings-tabs .tab-button { min-height: 34px; flex: 0 0 auto; padding: 7px 12px; scroll-snap-align: center; }
+    body.liquid-home .settings-tabs .tab-button i { width: 18px; height: 18px; font-size: 15px; }
+    body.liquid-home #settings-box > .settings-content { padding: 14px 14px 22px; flex: 1; }
+    body.liquid-home .tab-header { gap: 2px; margin-bottom: 12px; padding-bottom: 10px; }
+    body.liquid-home .tab-header p { font-size: 11px; }
     body.liquid-home #settings-search-count { display: none; }
     .environment-editor-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) 32px; padding-bottom: 10px; border-bottom: 1px solid var(--glass-line); }
     .environment-editor-row .environment-probe { grid-column: 1 / 3; grid-row: 2; }
@@ -389,7 +617,7 @@ body.liquid-home #links-tab #catalog-scan-btn:hover:not(:disabled) { transform: 
 .settings-group-filter:hover, .group-manage-button:hover { background: var(--glass-card); }
 .settings-group-filter[aria-pressed="true"] { border-color: var(--glass-edge); background: var(--glass-card); color: var(--primary-color); }
 .group-manage-button { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-line); border-radius: 0; color: var(--text-tertiary); font-size: 11px; }
-.links-collection { min-width: 0; border: 1px solid var(--glass-line); border-radius: 16px; overflow: hidden; background: var(--glass-card); }
+.links-collection { min-width: 0; border: 1px solid var(--glass-line); border-radius: 16px; overflow: hidden; background: var(--bg-secondary); }
 .links-list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--glass-line); }
 #links-filter-summary { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: var(--text-tertiary); }
 #links-kind-filter { border: 0; border-radius: 6px; padding: 4px; color: var(--text-secondary); background: transparent; font: inherit; font-size: 11px; max-width: 118px; }
@@ -435,7 +663,8 @@ body.liquid-home #category-modal .category-item-count { flex-shrink: 0; margin: 
 body.liquid-home #category-modal .category-action-btn { width: 27px; height: 27px; font-size: 13px; background: transparent; border: 0; }
 body.liquid-home #category-modal .category-item-actions { gap: 1px; }
 @media (max-width: 1050px) {
-    .links-workspace { grid-template-columns: 112px minmax(0, 1fr); gap: 12px; }
+    /* 分组侧栏早已下线，这里曾为它保留 112px 空列，导致窄屏下入口列表被挤成一竖条 */
+    .links-workspace { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     body.liquid-home #links-tab .settings-link-item { grid-template-columns: minmax(0, 1fr) 80px auto; gap: 6px; }
     body.liquid-home #links-tab .link-drag-handle { display: none; }
 }
@@ -524,6 +753,74 @@ body.liquid-home.navigation-open .page-header h1 { display: none; }
 body.liquid-home.navigation-open .datetime-display { margin: 0; justify-content: flex-start; align-items: center; gap: 3px 8px; }
 body.liquid-home.navigation-open #current-time { flex-basis: 100%; font-size: 22px; line-height: 1.15; }
 body.liquid-home.navigation-open #current-date, body.liquid-home.navigation-open #weather-info { font-size: 10px; line-height: 1.4; white-space: nowrap; }
+/* 抽屉顶栏是紧凑工具条：右栏 / 角落 / 水印这些「搬走时钟」的布局在这里一律退回行内，
+   否则 position:fixed 会让时间脱离栅格（原位置留白）并飞到抽屉外面 */
+body.liquid-home.navigation-open .datetime-display,
+body.liquid-home.navigation-open.clock-layout-right-rail .datetime-display,
+body.liquid-home.navigation-open.clock-layout-corner .datetime-display,
+body.liquid-home.navigation-open.clock-layout-hero .datetime-display,
+body.liquid-home.navigation-open.clock-layout-watermark .datetime-display {
+    position: static;
+    inset: auto;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    transform: none;
+    z-index: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 2px 8px;
+    margin: 0;
+    pointer-events: auto;
+    /* 旧规则为了避开浮动时钟会把整块隐藏，现在已改回行内，必须重新可见 */
+    opacity: 1;
+    visibility: visible;
+}
+body.liquid-home.navigation-open #current-time,
+body.liquid-home.navigation-open.clock-layout-right-rail #current-time,
+body.liquid-home.navigation-open.clock-layout-corner #current-time,
+body.liquid-home.navigation-open.clock-layout-hero #current-time,
+body.liquid-home.navigation-open.clock-layout-watermark #current-time {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: baseline;
+    font-size: 22px;
+    line-height: 1.15;
+    letter-spacing: -.01em;
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+}
+/* 右栏布局为了让数字竖排把冒号藏了，抽屉里是横排，冒号要放回来 */
+body.liquid-home.navigation-open.clock-layout-right-rail #current-time .clock-colon {
+    display: inline;
+}
+body.liquid-home.navigation-open #current-time .clock-seconds,
+body.liquid-home.navigation-open.clock-layout-right-rail #current-time .clock-seconds {
+    margin-top: 0;
+    font-size: .72em;
+    letter-spacing: 0;
+    color: var(--text-tertiary);
+}
+body.liquid-home.navigation-open #current-time .clock-period {
+    margin: 0 0 0 3px;
+    font-size: .62em;
+    letter-spacing: 0;
+}
+/* 水印布局把时间做成了整屏淡色层，抽屉里必须恢复成可读的实色 */
+body.liquid-home.navigation-open.clock-layout-watermark #current-time {
+    color: var(--text-primary);
+    -webkit-text-fill-color: currentColor;
+    background: none;
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
 body.liquid-home.navigation-open .home-header > .search-container-wrapper { min-width: 0; max-width: none; width: 100%; margin: 0; }
 body.liquid-home.navigation-open .search-container, body.liquid-home.navigation-open .search-container.fixed { position: relative; inset: auto; display: flex; flex-direction: row; flex-wrap: nowrap; max-width: none; width: 100%; box-sizing: border-box; min-height: 44px; margin: 0; padding: 4px; border-radius: 16px; animation: none; transition: none; }
 body.liquid-home.navigation-open #search-input { min-width: 0; width: 0; flex: 1; padding: 8px 10px; font-size: 13px; text-align: left; }
@@ -586,7 +883,7 @@ body.liquid-home.navigation-open .search-button.icon-failed .search-button-text 
 #navigation-view .shortcut-card:hover { transform: translateY(-3px); background: color-mix(in srgb, var(--glass-card) 80%, white 8%); box-shadow: inset 0 1px 0 rgb(255 255 255 / .7), 0 12px 20px -16px rgb(35 70 125 / .45); }
 #navigation-view .shortcut-card > .link-card { flex: 1; height: auto; min-height: var(--shortcut-main-height, 68px); padding: var(--shortcut-card-padding, 14px 14px 8px); border: 0; background: transparent; border-radius: inherit; box-shadow: none; }
 #navigation-view .shortcut-card > .link-card:hover { transform: none; background: transparent; box-shadow: none; }
-#navigation-view .shortcut-card.has-route-options .link-card-content { padding-right: 22px; }
+#navigation-view .shortcut-card.has-route-options .link-card-content { padding-right: 30px; }
 #navigation-view .shortcut-card .link-card-thumbnail { overflow: hidden; }
 #navigation-view .shortcut-card .link-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #navigation-view .route-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-width: 0; padding: var(--shortcut-routes-padding, 3px 12px 12px); }
@@ -602,7 +899,8 @@ body.liquid-home.navigation-open .search-button.icon-failed .search-button-text 
 .url-state[data-state="checking"] { background: #7c9cce; animation: route-checking 1s ease-in-out infinite; }
 .url-state[data-state="off"], .url-state[data-state="unsupported"] { background: transparent; border: 1px solid #9daabd; }
 @keyframes route-checking { 50% { opacity: .35; } }
-#navigation-view .route-settings-button { position: absolute; top: 10px; right: 9px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text-tertiary); font-size: 16px; cursor: pointer; }
+/* 点击热区放大到 30px 并压到最上层：24px 的目标太容易点偏到卡片本身（点偏=直接打开地址） */
+#navigation-view .route-settings-button { position: absolute; top: 7px; right: 6px; z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: var(--text-secondary); font-size: 17px; cursor: pointer; }
 #navigation-view .route-settings-button:hover, #navigation-view .route-settings-button[aria-expanded="true"] { color: var(--primary-color); background: var(--primary-light); }
 
 /* AI 卡片右上角的模型看板按钮：位于路线按钮左侧；探测到模型后带数量徽标 */
@@ -610,7 +908,11 @@ body.liquid-home.navigation-open .search-button.icon-failed .search-button-text 
 #navigation-view .has-route-options .ai-board-button { right: 40px; }
 #navigation-view .ai-board-button:hover { color: var(--primary-color); background: var(--primary-light); }
 #navigation-view .ai-board-count { position: absolute; top: -5px; right: -7px; min-width: 15px; padding: 1px 4px; border-radius: 8px; background: var(--primary-color); color: #fff; font-size: 9px; font-weight: 600; line-height: 1.2; text-align: center; }
-.route-popover { position: fixed; z-index: 1200; width: min(350px, calc(100% - 24px)); max-height: min(70svh, 540px); box-sizing: border-box; overflow-y: auto; padding: 14px; border: 1px solid var(--glass-edge); border-radius: 20px; background: color-mix(in srgb, var(--glass-surface) 60%, var(--bg-secondary) 40%); box-shadow: var(--glass-shadow); backdrop-filter: blur(24px); text-align: left; color: var(--text-primary); scrollbar-width: thin; }
+/* 从卡片左上角长出来：transform-origin 跟着锚点走，才像「卡片的菜单」 */
+.route-popover { transform-origin: top left; animation: routePopIn .15s cubic-bezier(.2, .7, .3, 1); }
+@keyframes routePopIn { from { opacity: 0; transform: translateY(-5px) scale(.985); } to { opacity: 1; transform: none; } }
+.route-popover { position: fixed; z-index: 1200; width: min(350px, calc(100% - 24px)); max-height: min(70svh, 540px); box-sizing: border-box; overflow-y: auto; padding: 14px; border: 1px solid var(--glass-edge); border-radius: 20px; /* 菜单现在压在卡片上，60% 的玻璃底会让卡片内容透上来，提到 94% 与网络气泡一致 */
+    background: color-mix(in srgb, var(--bg-secondary) 97%, transparent); box-shadow: var(--glass-shadow); backdrop-filter: blur(24px); text-align: left; color: var(--text-primary); scrollbar-width: thin; }
 .route-popover-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 0 2px 10px; }
 .route-popover-heading strong { display: block; font-size: 13px; font-weight: 550; }
 .route-popover-heading small { display: block; margin-top: 3px; font-size: 10px; color: var(--text-tertiary); overflow-wrap: anywhere; }
@@ -636,7 +938,7 @@ body.liquid-home .route-popover .icon-button { width: 25px; height: 25px; font-s
     #navigation-view .shortcut-card > .link-card { min-height: 64px; padding: 13px 11px 8px; gap: 9px; }
     #navigation-view .route-chips { gap: 4px; padding: 3px 9px 10px; }
     #navigation-view .route-chip { padding: 4px 5px; font-size: 9px; }
-    #navigation-view .route-settings-button { top: 7px; right: 6px; width: 22px; height: 22px; }
+    #navigation-view .route-settings-button { top: 5px; right: 4px; width: 28px; height: 28px; font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
     #navigation-view .shortcut-card, #navigation-view .route-chip, .url-state { transition: none; animation: none; }
@@ -1038,3 +1340,26 @@ body.search-layout-bottom-bar.clock-layout-corner .datetime-display { bottom: 17
   }
   body.search-layout-hero #search-input { font-size: 15px; padding: 11px 12px; }
 }
+
+/* ================================================================
+   立即预览：面板淡出成幽灵，把整屏让给天气特效 / 漂浮物
+   （放在文件末尾，才能压过上面 liquid-home 的玻璃底色与背景模糊）
+   ================================================================ */
+body.fx-previewing #settings-container {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    cursor: pointer;
+}
+body.fx-previewing #settings-box {
+    opacity: .06;
+    transform: scale(.98);
+    pointer-events: none;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+body.fx-previewing #weather-atmosphere { opacity: 1 !important; }
+body.fx-previewing #ambient-particles { opacity: .9; }

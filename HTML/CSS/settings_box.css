@@ -3394,99 +3394,8 @@ body.dark-mode #link-modal .url-item {
     box-shadow: 0 0 0 4px var(--primary-light);
 }
 
-@media (min-width: 640px) {
-    #settings-box {
-        height: min(86vh, 820px);
-        display: grid;
-        grid-template-columns: 190px minmax(0, 1fr);
-        grid-template-rows: auto auto minmax(0, 1fr);
-    }
-
-    .settings-header {
-        grid-column: 1 / -1;
-        padding: 18px 22px;
-    }
-
-    .settings-tabs {
-        grid-column: 1;
-        grid-row: 2 / 4;
-        display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 6px;
-        padding: 18px 14px;
-        background:
-            linear-gradient(180deg, rgba(93, 95, 239, 0.08), transparent 42%),
-            var(--bg-tertiary);
-        border-right: 1px solid rgba(148, 163, 184, 0.18);
-        border-bottom: none;
-        overflow-x: hidden;
-        overflow-y: auto;
-    }
-
-    .tab-button {
-        width: 100%;
-        justify-content: flex-start;
-        gap: 10px;
-        min-height: 44px;
-        padding: 11px 12px;
-        border-radius: 12px;
-        text-align: left;
-        box-shadow: none;
-    }
-
-    .tab-button i {
-        width: 22px;
-        display: inline-flex;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .tab-button.active {
-        background: var(--primary-light);
-        color: var(--primary-color);
-        box-shadow: inset 3px 0 0 var(--primary-color);
-    }
-
-    .tab-button.active i {
-        animation: none;
-    }
-
-    .settings-searchbar {
-        grid-column: 2;
-        grid-row: 2;
-        margin: 16px 20px 0;
-    }
-
-    .settings-content {
-        grid-column: 2;
-        grid-row: 3;
-        min-width: 0;
-        min-height: 0;
-        padding: 18px 20px 24px;
-    }
-
-    .tab-header {
-        position: sticky;
-        top: -18px;
-        z-index: 4;
-        margin: -18px -20px 18px;
-        padding: 18px 20px 14px;
-        background: color-mix(in srgb, var(--bg-primary) 94%, transparent);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-    }
-
-    #links-tab .links-manager-header {
-        margin: -18px -20px 16px;
-    }
-}
-
-@media (min-width: 900px) {
-    #settings-box {
-        grid-template-columns: 220px minmax(0, 1fr);
-    }
-}
+/* 旧的三套设置外壳栅格（640/900/720 断点各定义一次列宽）已删除：
+   外壳只在 navigation.css 的 body.liquid-home 段定义一次，避免再次互相覆盖。 */
 
 body.dark-mode .settings-tabs {
     border-right-color: rgba(148, 163, 184, 0.16);
@@ -4340,7 +4249,7 @@ body.dark-mode .search-hint {
     max-width: 180px;
 }
 .groups-manager {
-    padding: 4px 0;
+    padding: 14px;
 }
 .groups-manager .categories-list {
     max-height: none;
@@ -4366,3 +4275,579 @@ body.dark-mode .search-hint {
     font: inherit;
     font-size: 12px;
 }
+
+/* ================================================================
+   Settings Components v2 — 组件级收敛
+   ----------------------------------------------------------------
+   外壳栅格统一在 navigation.css（body.liquid-home 段）定义，这里只处理
+   组件本身的排版问题：
+     1. 首页 body 的 text-align:center 会一路继承进面板 —— 面板内强制左对齐；
+     2. 选项卡片用弹性网格：两列自适应，奇数项自动铺满整行，消灭右侧空洞；
+     3. 每行「标签左 / 控件右」右边缘对齐，下拉不再拉成整行宽度；
+     4. 开关关闭态原来和卡片同色（几乎看不见），重设轨道色；
+     5. 主题预览卡片重画，去掉溢出的色块与缺字形的图标。
+   ================================================================ */
+
+/* ---- 1. 文本对齐基线 ---- */
+#settings-container,
+#settings-box,
+.settings-content,
+.tab-content,
+.settings-section,
+.section-content,
+.option-item,
+.section-title,
+.tab-header {
+    text-align: left;
+}
+/* 需要居中的空状态 / 关于页各自保留 */
+.links-empty,
+.categories-empty,
+.empty-state,
+.about-content,
+.visit-stats-empty,
+.settings-search-empty,
+.launcher-empty {
+    text-align: center;
+}
+
+/* ---- 2. 选项网格：flex 换行，奇数项自动占满整行 ---- */
+.layout-options,
+.visual-options-grid,
+.button-settings-grid,
+.weather-settings,
+.data-actions,
+.theme-selector {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+}
+.layout-options > .option-item,
+.visual-options-grid > .option-item,
+.button-settings-grid > .option-item,
+.weather-settings > .option-item,
+.data-actions > .data-action-btn {
+    flex: 1 1 calc(50% - 8px);
+    min-width: min(100%, 240px);
+    box-sizing: border-box;
+}
+/* 堆叠项（下拉/输入/范围）与显式跨列项占满一整行 */
+.layout-options > .option-item-stacked,
+.visual-options-grid > .option-item-stacked,
+.button-settings-grid > .option-item-stacked,
+.weather-settings > .option-item-stacked,
+.layout-options > .option-item-span,
+.button-settings-grid > .option-item-span,
+.weather-settings > .option-item-span,
+.layout-options > .option-item:has(> .format-select),
+.visual-options-grid > .option-item:has(> .format-select),
+.weather-settings > .option-item:has(> .format-select) {
+    flex-basis: 100%;
+}
+
+/* ---- 3. 选项行几何：标签左 / 控件右，右边缘对齐 ---- */
+.option-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 13px;
+    border-radius: 11px;
+    background: var(--bg-primary);
+    border: 1px solid color-mix(in srgb, var(--glass-line) 70%, transparent);
+}
+.option-item:hover {
+    background: color-mix(in srgb, var(--bg-tertiary) 70%, transparent);
+    border-color: color-mix(in srgb, var(--primary-color) 14%, transparent);
+}
+.option-item .option-header { min-width: 0; }
+.option-item .option-header span { line-height: 1.35; }
+
+/* 行内下拉：右侧定宽，不再拉满整行 */
+.option-item:not(.option-item-stacked):has(> .format-select) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(150px, 260px);
+    align-items: center;
+    gap: 14px;
+}
+.option-item:not(.option-item-stacked):has(> .format-select) > .format-select { width: 100%; }
+.option-item > .toggle-switch { flex: 0 0 auto; margin-left: auto; }
+
+/* 堆叠项内部：控件与标签同宽 */
+.option-item-stacked { display: flex; flex-direction: column; align-items: stretch; gap: 9px; }
+.option-item-stacked .range-control { width: 100%; }
+
+/* ---- 4. 开关：关闭态需要看得见 ---- */
+.toggle-slider {
+    background-color: #cbd5e1;
+    box-shadow: inset 0 0 0 1px rgb(15 23 42 / .06);
+}
+.toggle-slider:before {
+    box-shadow: 0 1px 3px rgb(15 23 42 / .22), 0 0 1px rgb(15 23 42 / .18);
+}
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary-color);
+    box-shadow: none;
+}
+.toggle-switch input:focus-visible + .toggle-slider {
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+body.dark-mode .toggle-slider {
+    background-color: #4a5b74;
+    box-shadow: inset 0 0 0 1px rgb(226 240 255 / .08);
+}
+body.dark-mode .toggle-switch input:checked + .toggle-slider { background: var(--primary-color); }
+
+/* ---- 5. 主题预览卡片重画 ---- */
+.theme-selector > .theme-option {
+    box-sizing: border-box;
+    flex: 1 1 calc((100% - 26px) / 3);
+    min-width: min(100%, 112px);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 13px;
+    border: 1px solid var(--glass-line);
+    background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
+    position: relative;
+    cursor: pointer;
+    transition: border-color var(--transition-fast) ease, background var(--transition-fast) ease;
+}
+.theme-selector > .theme-option:hover {
+    transform: none;
+    border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+.theme-selector > .theme-option.selected {
+    border-color: color-mix(in srgb, var(--primary-color) 52%, transparent);
+    background: rgb(var(--primary-rgb) / .08);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 26%, transparent);
+}
+.theme-name {
+    font-size: 12px;
+    font-weight: 550;
+    text-align: center;
+    color: var(--text-secondary);
+}
+.theme-option.selected .theme-name { color: var(--primary-color); }
+
+.theme-preview {
+    width: 100%;
+    height: 56px;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--glass-line);
+    background: #f8fafc;
+}
+.theme-preview .preview-header {
+    flex: 0 0 13px;
+    height: 13px;
+    border-radius: 0;
+}
+.theme-preview .preview-content {
+    position: static;
+    flex: 1;
+    display: block;
+    padding: 7px;
+    height: auto;
+    border: 0;
+    background: transparent;
+}
+/* 两行「文本条」，让缩略图读起来像一页界面而不是两块色块 */
+.theme-preview .preview-content::before,
+.theme-preview .preview-content::after {
+    content: '';
+    display: block;
+    height: 6px;
+    border-radius: 3px;
+}
+.theme-preview .preview-content::before { width: 62%; margin-bottom: 5px; }
+.theme-preview .preview-content::after { width: 88%; }
+.light-preview { background: #f8fafc; }
+.light-preview .preview-header { background: linear-gradient(90deg, #5D5FEF, #818CF8); }
+.light-preview .preview-content::before,
+.light-preview .preview-content::after { background: #e2e8f0; }
+.dark-preview { background: #0f172a; }
+.dark-preview .preview-header { background: linear-gradient(90deg, #818CF8, #5D5FEF); }
+.dark-preview .preview-content::before,
+.dark-preview .preview-content::after { background: #334155; }
+
+/* 跟随系统：左右对半分色 + 中间圆环，代替缺字形的图标字体 */
+.auto-preview {
+    background: linear-gradient(90deg, #f8fafc 0 50%, #0f172a 50% 100%);
+    display: block;
+}
+.auto-preview .preview-icon { display: none; }
+.auto-preview::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border-radius: 50%;
+    background: linear-gradient(90deg, #ffffff 0 50%, #1e293b 50% 100%);
+    box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgb(15 23 42 / .24);
+}
+
+.theme-option .theme-check {
+    top: 6px;
+    right: 6px;
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgb(15 23 42 / .28);
+}
+
+/* ---- 6. 快捷方式：筛选下拉此前继承原生外观（白底下拉 + 黑边） ---- */
+#links-tab .links-list-toolbar select,
+#links-tab .links-filter select {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 30px;
+    padding: 0 26px 0 10px;
+    border: 1px solid var(--glass-line);
+    border-radius: 9px;
+    background-color: var(--glass-card);
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23687b96' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px 12px;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+    max-width: 168px;
+}
+body.dark-mode #links-tab .links-list-toolbar select,
+body.dark-mode #links-tab .links-filter select {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2391a8c6' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+#links-tab .links-list-toolbar select:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--primary-color) 45%, transparent);
+    outline-offset: 1px;
+}
+#links-tab .links-list-toolbar #links-filter-summary {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+}
+/* 两个筛选器并排靠右，摘要留在最左 */
+#links-tab .links-list-toolbar #links-group-filter { margin-left: auto; }
+
+/* ---- 7. 分组：新建输入框左侧图标压住占位文字 ---- */
+.groups-manager .category-add-row { align-items: center; gap: 8px; }
+.groups-manager #new-category-name,
+.groups-manager .category-add-row input[type="text"] { padding-left: 38px; }
+.groups-manager .category-add-row .btn-primary { height: 40px; }
+.groups-manager .category-add-row .input-icon { left: 13px; font-size: 15px; }
+
+/* ---- 8. 服务：会话操作按钮被压成两行、UA 从尾部截断 ---- */
+.server-session-actions button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    min-width: 58px;
+    padding: 6px 11px;
+}
+.server-session-ua {
+    direction: ltr;
+    text-align: left;
+    max-width: 100%;
+}
+.server-session-row { gap: 10px; }
+.server-session-info { min-width: 0; }
+
+/* ---- 9. 搜索引擎行：图标与文字列的留白 ---- */
+.search-engine-item { text-align: left; }
+.search-engine-info { min-width: 0; }
+.search-engine-name { text-align: left; }
+/* p 的默认外边距会把行撑高 32px（1440 下尤其明显） */
+.search-engine-url { text-align: left; margin: 0; }
+.search-engine-actions { flex: 0 0 auto; }
+
+/* ---- 10. 内容区不出现横向滚动 ---- */
+.settings-content { overflow-x: hidden; }
+.settings-content > .tab-content { min-width: 0; }
+
+/* 窄屏：所有双列排布退化为单列 */
+@media (max-width: 719px) {
+    .layout-options > .option-item,
+    .visual-options-grid > .option-item,
+    .button-settings-grid > .option-item,
+    .weather-settings > .option-item,
+    .data-actions > .data-action-btn { flex-basis: 100%; }
+    .option-item:not(.option-item-stacked):has(> .format-select) {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+    .option-item:not(.option-item-stacked):has(> .format-select) > .format-select { max-width: none; }
+}
+/* 主题卡片始终三列并排：竖排会把首屏撑掉 300px，缩略图本身仍可读 */
+@media (max-width: 519px) {
+    .theme-selector { gap: 6px; }
+    .theme-selector > .theme-option { padding: 6px; gap: 6px; min-width: min(100%, 88px); }
+    .theme-selector .theme-name { font-size: 11px; }
+    .theme-preview { height: 46px; }
+}
+
+/* ---- 11. 服务监听地址：长网卡名不再顶到卡片边 ---- */
+.server-address-row { flex-wrap: wrap; row-gap: 6px; }
+.server-address-row .server-address-url { flex: 1 1 220px; min-width: 0; }
+.server-address-row .route-chip { flex: 0 0 auto; margin-left: auto; }
+
+/* ---- 12. 分组管理卡片：新建行与列表同一内边距 ---- */
+.groups-manager .category-add-row { margin-bottom: 14px; }
+.groups-manager .categories-list { gap: 8px; }
+
+/* ---- 13. 只有标题的 option-item（如「覆盖样式」「自定义 JS」说明行）
+   原来是带底色的空卡片，看起来像输入框却点不动；退化成普通分区标签 ---- */
+/* #settings-box 前缀是为了压过 navigation.css 里 body.liquid-home .option-item 的底色 */
+#settings-box .option-item:not(:has(> :not(.option-header))) {
+    min-height: 0;
+    padding: 2px 2px 0;
+    background: transparent;
+    border-color: transparent;
+}
+#settings-box .option-item:not(:has(> :not(.option-header))):hover {
+    background: transparent;
+    border-color: transparent;
+}
+#settings-box .option-item:not(:has(> :not(.option-header))) .option-header span {
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+}
+
+/* ---- 14. 自定义按钮头部：.btn-secondary 默认 flex:1 会被拉成整行宽按钮 ---- */
+#settings-box .custom-buttons-header .btn-secondary {
+    flex: 0 0 auto;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    border-radius: 10px;
+}
+@media (max-width: 768px) {
+    #settings-box .custom-buttons-header .btn-secondary { flex: 1 1 auto; width: 100%; }
+}
+
+/* ---- 15. 数据 → 本机服务扫描：主按钮被 flex:1 拉满整行，
+   「探测服务名」的开关文字又被 44px 宽的 label 挤没了 ---- */
+#settings-box .scan-panel-actions { gap: 12px; }
+#settings-box .scan-panel-actions .btn-primary {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 10px 16px;
+    font-size: 12.5px;
+    border-radius: 10px;
+}
+#settings-box .scan-probe-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    height: 24px;
+    padding-left: 52px;
+    gap: 0;
+    flex: 0 0 auto;
+}
+#settings-box .scan-probe-toggle .toggle-slider {
+    width: 44px;
+    height: 24px;
+    right: auto;
+}
+#settings-box .scan-probe-label { font-size: 11.5px; white-space: nowrap; }
+
+/* ================================================================
+   氛围设置：分段选择器 / 预览按钮 / 漂浮物卡片
+   ================================================================ */
+
+/* ---- 分段选择器（强度、速度） ---- */
+.segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
+    flex: 0 0 auto;
+}
+.segmented button {
+    min-width: 46px;
+    padding: 6px 11px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.segmented button:hover { color: var(--text-primary); }
+.segmented button:focus-visible { outline: 2px solid rgb(var(--primary-rgb) / .38); outline-offset: 1px; }
+.segmented button[aria-checked="true"] {
+    background: var(--bg-secondary);
+    color: var(--primary-color);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgb(15 23 42 / .12);
+}
+body.dark-mode .segmented button[aria-checked="true"] {
+    background: rgb(148 163 184 / .2);
+    color: var(--text-primary);
+}
+
+/* ---- 立即预览：按「雨 / 雪 / 其他」分行的胶囊按钮 ---- */
+.fx-preview-rows { display: grid; gap: 9px; }
+.fx-preview-row { display: flex; align-items: flex-start; gap: 10px; }
+.fx-preview-row-label {
+    flex: 0 0 28px;
+    padding-top: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+}
+.fx-preview-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.fx-preview-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--glass-line);
+    border-radius: 9px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 11.5px;
+    line-height: 1.4;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color var(--transition-fast) ease, background var(--transition-fast) ease, color var(--transition-fast) ease;
+}
+.fx-preview-btn:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 32%, transparent);
+    color: var(--text-primary);
+}
+.fx-preview-btn.is-playing {
+    background: rgb(var(--primary-rgb) / .12);
+    border-color: color-mix(in srgb, var(--primary-color) 48%, transparent);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+.fx-preview-stop {
+    color: var(--text-tertiary);
+    border-style: dashed;
+}
+
+/* ---- 漂浮物类型卡片 ---- */
+.particle-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+}
+.particle-card {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px;
+    border: 1px solid var(--glass-line);
+    border-radius: 12px;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--transition-fast) ease, background var(--transition-fast) ease, box-shadow var(--transition-fast) ease;
+}
+.particle-card:hover { border-color: color-mix(in srgb, var(--primary-color) 28%, transparent); }
+.particle-card[aria-pressed="true"] {
+    border-color: color-mix(in srgb, var(--primary-color) 55%, transparent);
+    background: rgb(var(--primary-rgb) / .08);
+    color: var(--primary-color);
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 26%, transparent);
+}
+.particle-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.particle-swatch {
+    position: relative;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--bg-tertiary);
+}
+.particle-swatch--none {
+    background: repeating-linear-gradient(45deg, transparent 0 5px, rgb(148 163 184 / .18) 5px 6px), var(--bg-tertiary);
+}
+.particle-swatch--meteor { background: linear-gradient(160deg, #1b2740, #0d1526); }
+.particle-swatch--meteor::before {
+    content: '';
+    position: absolute;
+    top: 8px; right: 7px;
+    width: 22px; height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #fff, rgb(255 255 255 / 0));
+    transform: rotate(28deg);
+    box-shadow: 0 0 6px rgb(180 214 255 / .9);
+}
+.particle-swatch--firefly { background: linear-gradient(160deg, #16261f, #0b1512); }
+.particle-swatch--firefly::before {
+    content: '';
+    position: absolute;
+    left: 10px; top: 12px;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: #ffe07a;
+    box-shadow: 0 0 6px 2px rgb(255 224 122 / .8), 12px 9px 0 -1px rgb(198 255 190 / .9), 12px 9px 5px 1px rgb(198 255 190 / .55), 3px 16px 0 -1px rgb(255 224 122 / .8), 3px 16px 4px 1px rgb(255 224 122 / .5);
+}
+.particle-swatch--leaf { background: linear-gradient(160deg, #f4ead9, #e8dcc6); }
+.particle-swatch--leaf::before {
+    content: '';
+    position: absolute;
+    left: 12px; top: 11px;
+    width: 12px; height: 14px;
+    border-radius: 60% 10% 60% 10%;
+    background: linear-gradient(140deg, #d99a4e, #b9713a);
+    transform: rotate(-18deg);
+}
+.particle-swatch--sakura { background: linear-gradient(160deg, #fdeef4, #f8dbe8); }
+.particle-swatch--sakura::before {
+    content: '';
+    position: absolute;
+    left: 13px; top: 13px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #f6a8c6;
+    box-shadow: 0 -6px 0 -1px #f6a8c6, 6px 0 0 -1px #f8bcd4, -6px 0 0 -1px #f8bcd4, 0 6px 0 -1px #f4b6cf;
+}
+.particle-swatch--dust { background: linear-gradient(160deg, #eef2f7, #dfe6ef); }
+.particle-swatch--dust::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 22% 28%, rgb(120 140 165 / .55) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 62% 18%, rgb(120 140 165 / .4) 0 1.2px, transparent 1.8px),
+        radial-gradient(circle at 78% 62%, rgb(120 140 165 / .5) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 38% 74%, rgb(120 140 165 / .45) 0 1.4px, transparent 2px),
+        radial-gradient(circle at 54% 46%, rgb(120 140 165 / .3) 0 1px, transparent 1.6px);
+}
+body.dark-mode .particle-swatch--leaf { background: linear-gradient(160deg, #2b2a24, #1d1c18); }
+body.dark-mode .particle-swatch--sakura { background: linear-gradient(160deg, #2c232a, #1d171c); }
+body.dark-mode .particle-swatch--dust { background: linear-gradient(160deg, #232b36, #171d26); }
+body.dark-mode .particle-swatch--none { background: repeating-linear-gradient(45deg, transparent 0 5px, rgb(148 163 184 / .14) 5px 6px), #1b2431; }
+
+@media (max-width: 719px) {
+    .particle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .fx-preview-row { gap: 8px; }
+    .fx-preview-row-label { flex-basis: 26px; font-size: 10.5px; }
+    .fx-preview-btn { padding: 5px 9px; font-size: 11px; }
+}
+
+/* ---- 16. 立即预览时的「让出画面」样式放在 navigation.css 末尾（需要压过 liquid-home 的玻璃层） ---- */
+#settings-box { transition: opacity .28s ease, transform .28s ease; }

@@ -1851,9 +1851,9 @@ body[data-min-clock-pos^="right-"]  .minimal-clock-bg { align-items: flex-end; }
 /* 极简模式子选项（§3.3）：默认为「禁用态」而非完全隐藏——保留可见但灰，提升可发现性；
    body 未进入 minimal-mode 时灰禁用，进入后由 JS 移除 disabled 状态。 */
 .minimal-sub-option {
-  opacity: 0.42;
+  opacity: 0.55;
   pointer-events: none;
-  filter: grayscale(0.4);
+  filter: grayscale(0.25);
   transition: opacity var(--transition-normal) ease, filter var(--transition-normal) ease;
 }
 /* 极简模式开启：子项激活 */
