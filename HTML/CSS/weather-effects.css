@@ -96,6 +96,110 @@ body.liquid-home .settings-content .weather-effects-hint { margin: 0; color: var
 #weather-atmosphere[data-weather="clear"] .weather-sun { opacity: .9; }
 #weather-atmosphere[data-weather="partly-cloudy"] .weather-sun { opacity: .55; }
 
+/* ================================================================
+   夜间天空：22:00 的晴天不该再挂太阳
+   data-daypart 由 weather-effects.js 按本地时间写入（06:30–18:30 为 day）
+   ================================================================ */
+#weather-atmosphere .weather-night {
+    background:
+        radial-gradient(ellipse at 82% 10%, rgb(132 168 222 / .22), transparent 50%),
+        linear-gradient(180deg, rgb(22 36 66 / .52), rgb(28 44 76 / .22) 40%, transparent 70%);
+    opacity: 0;
+}
+.dark-mode #weather-atmosphere .weather-night {
+    background: linear-gradient(180deg, rgb(9 16 32 / .5), rgb(12 22 40 / .18) 48%, transparent 78%);
+}
+#weather-atmosphere[data-daypart="night"][data-weather="clear"] .weather-night { opacity: 1; }
+#weather-atmosphere[data-daypart="night"][data-weather="partly-cloudy"] .weather-night { opacity: .6; }
+
+#weather-atmosphere .weather-stars { opacity: 0; }
+#weather-atmosphere .weather-stars::before,
+#weather-atmosphere .weather-stars::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-repeat: no-repeat;
+}
+#weather-atmosphere .weather-stars::before {
+    background-image:
+        radial-gradient(1.6px 1.6px at 9% 14%, #fff, transparent),
+        radial-gradient(1.2px 1.2px at 17% 32%, #e8f2ff, transparent),
+        radial-gradient(1.8px 1.8px at 24% 9%, #fff, transparent),
+        radial-gradient(1px 1px at 31% 26%, #dce9ff, transparent),
+        radial-gradient(1.4px 1.4px at 38% 12%, #fff, transparent),
+        radial-gradient(1.1px 1.1px at 46% 30%, #eaf3ff, transparent),
+        radial-gradient(1.7px 1.7px at 54% 8%, #fff, transparent),
+        radial-gradient(1.2px 1.2px at 62% 24%, #dfeaff, transparent),
+        radial-gradient(1.5px 1.5px at 71% 13%, #fff, transparent),
+        radial-gradient(1px 1px at 79% 31%, #e6f0ff, transparent),
+        radial-gradient(1.8px 1.8px at 88% 10%, #fff, transparent),
+        radial-gradient(1.2px 1.2px at 94% 27%, #dfeaff, transparent),
+        radial-gradient(1.3px 1.3px at 13% 52%, #fff, transparent),
+        radial-gradient(1px 1px at 29% 46%, #e4efff, transparent),
+        radial-gradient(1.4px 1.4px at 68% 49%, #fff, transparent),
+        radial-gradient(1.1px 1.1px at 86% 45%, #e6f0ff, transparent);
+}
+#weather-atmosphere .weather-stars::after {
+    background-image:
+        radial-gradient(1px 1px at 6% 23%, #fff, transparent),
+        radial-gradient(1.5px 1.5px at 21% 18%, #fff, transparent),
+        radial-gradient(1px 1px at 35% 38%, #e9f2ff, transparent),
+        radial-gradient(1.3px 1.3px at 42% 6%, #fff, transparent),
+        radial-gradient(1px 1px at 58% 41%, #e6f0ff, transparent),
+        radial-gradient(1.4px 1.4px at 66% 16%, #fff, transparent),
+        radial-gradient(1px 1px at 74% 36%, #eef5ff, transparent),
+        radial-gradient(1.6px 1.6px at 83% 22%, #fff, transparent),
+        radial-gradient(1px 1px at 91% 40%, #e3eeff, transparent),
+        radial-gradient(1.2px 1.2px at 12% 66%, #fff, transparent),
+        radial-gradient(1px 1px at 48% 58%, #e6f0ff, transparent),
+        radial-gradient(1.2px 1.2px at 77% 62%, #fff, transparent);
+    opacity: .75;
+}
+#weather-atmosphere .weather-moon {
+    inset: auto;
+    /* 避开右上角的工具栏按钮，落在搜索框上方 */
+    top: 15%;
+    right: 6%;
+    width: clamp(64px, 8vmax, 118px);
+    height: clamp(64px, 8vmax, 118px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #ffffff, #f4f7fc 42%, #dde6f3 74%, #c6d2e4 100%);
+    box-shadow: 0 0 26px 8px rgb(214 231 255 / .34), 0 0 96px 36px rgb(150 186 240 / .16);
+    opacity: 0;
+}
+#weather-atmosphere .weather-moon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 62% 64%, rgb(158 176 202 / .26) 0 9%, transparent 10%),
+        radial-gradient(circle at 40% 68%, rgb(158 176 202 / .2) 0 6%, transparent 7%),
+        radial-gradient(circle at 66% 34%, rgb(158 176 202 / .18) 0 5%, transparent 6%);
+}
+#weather-atmosphere[data-daypart="night"][data-weather="clear"] .weather-moon { opacity: .92; }
+#weather-atmosphere[data-daypart="night"][data-weather="partly-cloudy"] .weather-moon { opacity: .36; }
+#weather-atmosphere[data-daypart="night"][data-weather="clear"] .weather-stars { opacity: .82; }
+#weather-atmosphere[data-daypart="night"][data-weather="partly-cloudy"] .weather-stars { opacity: .3; }
+/* 夜里不再画太阳（双保险：CSS 与 JS 的 daypart 都判断） */
+#weather-atmosphere[data-daypart="night"][data-weather="clear"] .weather-sun,
+#weather-atmosphere[data-daypart="night"][data-weather="partly-cloudy"] .weather-sun { opacity: 0; }
+
+@keyframes weather-star-twinkle {
+    from { opacity: .4; }
+    to { opacity: 1; }
+}
+#weather-atmosphere[data-motion="on"][data-daypart="night"] .weather-stars::before {
+    animation: weather-star-twinkle 5.6s ease-in-out infinite alternate;
+}
+#weather-atmosphere[data-motion="on"][data-daypart="night"] .weather-stars::after {
+    animation: weather-star-twinkle 7.4s ease-in-out infinite alternate-reverse;
+}
+@media (prefers-reduced-motion: reduce) {
+    #weather-atmosphere .weather-stars::before,
+    #weather-atmosphere .weather-stars::after { animation: none; }
+}
+
 /* 云层：多云 / 阴 / 雨雪 / 雷暴共用，慢速漂移 */
 .weather-clouds {
     opacity: 0;
@@ -213,7 +317,10 @@ body.liquid-home .settings-content .weather-effects-hint { margin: 0; color: var
    data-off 由 weather-effects.js 写入，命中即隐藏对应图层
    ================================================================ */
 #weather-atmosphere[data-off~="sun"] .weather-sun,
-#weather-atmosphere[data-off~="sun"] .weather-sun::after { opacity: 0 !important; }
+#weather-atmosphere[data-off~="sun"] .weather-sun::after,
+#weather-atmosphere[data-off~="sun"] .weather-moon,
+#weather-atmosphere[data-off~="sun"] .weather-stars,
+#weather-atmosphere[data-off~="sun"] .weather-night { opacity: 0 !important; }
 #weather-atmosphere[data-off~="cloud"] .weather-clouds { opacity: 0 !important; }
 #weather-atmosphere[data-off~="fog"] .weather-mist { opacity: 0 !important; }
 #weather-atmosphere[data-off~="haze"] .weather-haze { opacity: 0 !important; }

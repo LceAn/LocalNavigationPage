@@ -362,11 +362,165 @@ function getSearchButtonIconMode() {
     return ['text', 'logo', 'logo-text'].includes(mode) ? mode : 'logo-text';
 }
 
+// 引擎按钮展示方式：all（全部）/ single（只显示当前，点击展开）/ hidden（不显示，回车用默认）
+function getSearchEngineDisplay() {
+    const mode = getSetting('searchEngineDisplay', 'all');
+    return ['all', 'single', 'hidden'].includes(mode) ? mode : 'all';
+}
+
+// 引擎图标：取不到图标时用首字母兜底，避免按钮/菜单出现空位
+function searchEngineIconMarkup(engine, className) {
+    const icon = getSearchEngineIcon(engine);
+    if (!icon) {
+        return `<span class="${className} search-engine-letter" aria-hidden="true">${escapeHTML(String(engine.name || '?').trim().charAt(0).toUpperCase())}</span>`;
+    }
+    return `<img class="${className}" src="${icon.src}" alt="" loading="lazy">`;
+}
+
+let searchEngineMenu = null;
+let searchEngineMenuTrigger = null;
+
+function closeSearchEngineMenu(restoreFocus = false) {
+    if (!searchEngineMenu) return;
+    searchEngineMenu.remove();
+    searchEngineMenu = null;
+    if (searchEngineMenuTrigger) {
+        searchEngineMenuTrigger.setAttribute('aria-expanded', 'false');
+        if (restoreFocus && searchEngineMenuTrigger.isConnected) {
+            searchEngineMenuTrigger.focus({ preventScroll: true });
+        }
+        searchEngineMenuTrigger = null;
+    }
+}
+
+function buildSearchEngineMenu() {
+    const engines = loadSearchEngines();
+    const current = getDefaultSearchEngine();
+    const menu = document.createElement('div');
+    menu.className = 'search-engine-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', '选择搜索引擎');
+
+    engines.forEach((engine, index) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'search-engine-menu-item';
+        item.dataset.index = String(index);
+        item.setAttribute('role', 'menuitemradio');
+        item.setAttribute('aria-checked', String(engine.name === current?.name));
+        item.innerHTML = searchEngineIconMarkup(engine, 'search-engine-menu-icon')
+            + `<span class="search-engine-menu-name">${escapeHTML(engine.name)}</span>`
+            + '<i class="ri-check-line" aria-hidden="true"></i>';
+        const img = item.querySelector('img');
+        if (img) img.addEventListener('error', () => img.remove());
+        item.addEventListener('click', () => {
+            const same = engine.name === getDefaultSearchEngine()?.name;
+            setSetting('defaultSearchEngine', engine.name);
+            renderDefaultEngineSelect();
+            updateSearchButtons();
+            if (!same) showMessage('已切换默认搜索引擎：' + engine.name);
+            document.getElementById('search-input')?.focus();
+        });
+        menu.append(item);
+    });
+
+    const sep = document.createElement('div');
+    sep.className = 'search-engine-menu-sep';
+    const manage = document.createElement('button');
+    manage.type = 'button';
+    manage.className = 'search-engine-menu-manage';
+    manage.setAttribute('role', 'menuitem');
+    manage.innerHTML = '<i class="ri-settings-3-line" aria-hidden="true"></i><span>管理搜索引擎</span>';
+    manage.addEventListener('click', () => {
+        closeSearchEngineMenu();
+        window.openSettingsPanel?.();
+        window.activateSettingsTab?.('search');
+    });
+    menu.append(sep, manage);
+
+    menu.addEventListener('keydown', event => {
+        if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+        const items = [...menu.querySelectorAll('.search-engine-menu-item, .search-engine-menu-manage')];
+        if (!items.length) return;
+        event.preventDefault();
+        const idx = items.indexOf(document.activeElement);
+        const next = (idx + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
+        items[next]?.focus();
+    });
+    return menu;
+}
+
+function toggleSearchEngineMenu(trigger) {
+    if (searchEngineMenu && searchEngineMenuTrigger === trigger) {
+        closeSearchEngineMenu(true);
+        return;
+    }
+    closeSearchEngineMenu();
+    const wrapper = trigger.closest('.search-container-wrapper') || trigger.parentElement;
+    if (!wrapper) return;
+    searchEngineMenuTrigger = trigger;
+    searchEngineMenu = buildSearchEngineMenu();
+    wrapper.append(searchEngineMenu);
+    trigger.setAttribute('aria-expanded', 'true');
+    searchEngineMenu.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
+}
+
+// 占位文字随展示方式变化，隐藏按钮时也能看出回车会用哪个引擎
+function updateSearchPlaceholder() {
+    const input = document.getElementById('search-input');
+    if (!input) return;
+    if (!input.dataset.basePlaceholder) {
+        input.dataset.basePlaceholder = input.getAttribute('placeholder') || '';
+    }
+    const base = input.dataset.basePlaceholder;
+    const mode = getSearchEngineDisplay();
+    const engine = getDefaultSearchEngine();
+    const isZh = String(getSetting('language', 'zh-CN') || 'zh-CN').toLowerCase().startsWith('zh');
+    if (!engine || !isZh || mode === 'all') {
+        input.placeholder = base;
+        return;
+    }
+    input.placeholder = mode === 'hidden'
+        ? `在「${engine.name}」中搜索，/引擎名 可切换`
+        : `输入搜索词，回车用「${engine.name}」搜索`;
+}
+
 // 更新搜索框按钮
 function updateSearchButtons() {
     const engines = loadSearchEngines();
     const buttonContainer = document.querySelector('.search-buttons');
     if (!buttonContainer) return;
+
+    closeSearchEngineMenu();
+    const display = getSearchEngineDisplay();
+    updateSearchPlaceholder();
+    buttonContainer.hidden = display === 'hidden';
+    buttonContainer.classList.toggle('search-buttons-single', display === 'single');
+    buttonContainer.innerHTML = '';
+    if (!engines.length || display === 'hidden') return;
+
+    // 只显示当前引擎：点击展开完整列表
+    if (display === 'single') {
+        const engine = getDefaultSearchEngine() || engines[0];
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'search-button search-button-single';
+        button.setAttribute('aria-haspopup', 'menu');
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-label', `当前搜索引擎：${engine.name}，点击切换`);
+        button.title = `当前：${engine.name}，点击切换`;
+        button.innerHTML = searchEngineIconMarkup(engine, 'search-button-icon')
+            + `<span class="search-button-text">${escapeHTML(engine.name)}</span>`
+            + '<i class="ri-arrow-down-s-line search-button-caret" aria-hidden="true"></i>';
+        const img = button.querySelector('img');
+        if (img) img.addEventListener('error', () => img.remove());
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            toggleSearchEngineMenu(button);
+        });
+        buttonContainer.append(button);
+        return;
+    }
 
     const iconMode = getSearchButtonIconMode();
 
@@ -422,6 +576,20 @@ function updateSearchButtons() {
         }
     });
 }
+
+// 菜单外部点击 / Esc / 窗口尺寸变化时收起
+document.addEventListener('click', event => {
+    if (!searchEngineMenu) return;
+    if (searchEngineMenu.contains(event.target)) return;
+    if (event.target.closest?.('.search-button-single')) return;
+    closeSearchEngineMenu();
+});
+document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape' || !searchEngineMenu) return;
+    event.preventDefault();
+    closeSearchEngineMenu(true);
+});
+window.addEventListener('resize', () => closeSearchEngineMenu());
 
 function performSearch(engine) {
     const searchTerm = document.getElementById('search-input')?.value.trim();

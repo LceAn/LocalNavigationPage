@@ -386,8 +386,8 @@ body.liquid-home #settings-box > .settings-tabs {
 }
 .tab-group { display: flex; flex-direction: column; gap: 1px; }
 .tab-group + .tab-group {
-    margin-top: 3px;
-    padding-top: 4px;
+    margin-top: 2px;
+    padding-top: 3px;
     border-top: 1px solid color-mix(in srgb, var(--glass-line) 70%, transparent);
 }
 .tab-group-toggle {
@@ -396,8 +396,8 @@ body.liquid-home #settings-box > .settings-tabs {
     justify-content: space-between;
     gap: 6px;
     width: 100%;
-    min-height: 24px;
-    padding: 4px 7px 3px 10px;
+    min-height: 22px;
+    padding: 3px 7px 2px 10px;
     border: 0;
     border-radius: 7px;
     background: transparent;
@@ -417,8 +417,8 @@ body.liquid-home #settings-box > .settings-tabs {
 .tab-group.collapsed > .tab-group-toggle i { transform: rotate(-90deg); }
 .tab-group-items { display: flex; flex-direction: column; gap: 1px; }
 body.liquid-home .settings-tabs .tab-button {
-    min-height: 32px;
-    padding: 5px 10px 5px 18px;
+    min-height: 30px;
+    padding: 4px 10px 4px 18px;
     gap: 9px;
     border-radius: 10px;
     border: 1px solid transparent;
@@ -1363,3 +1363,216 @@ body.fx-previewing #settings-box {
 }
 body.fx-previewing #weather-atmosphere { opacity: 1 !important; }
 body.fx-previewing #ambient-particles { opacity: .9; }
+
+/* ================================================================
+   首页搜索框外观（设置 → 页面布局 → 搜索框样式）
+   ----------------------------------------------------------------
+   只作用于首页/抽屉外的搜索框；抽屉顶栏保持原来的紧凑造型，
+   避免把 0 圆角、下划线这些外观带进只有 44px 高的工具条。
+   ================================================================ */
+
+/* 纯色卡片：去掉玻璃，实底 + 柔和投影 */
+body:not(.navigation-open).search-style-solid .search-container {
+    background: var(--bg-secondary);
+    border: 1px solid color-mix(in srgb, var(--text-primary) 8%, transparent);
+    box-shadow: 0 14px 34px -22px rgb(15 23 42 / .42);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-radius: 18px;
+}
+body.dark-mode:not(.navigation-open).search-style-solid .search-container {
+    background: #1e293b;
+    border-color: rgb(148 163 184 / .2);
+    box-shadow: 0 16px 36px -22px rgb(0 0 0 / .55);
+}
+
+/* 描边轻量：透明底，只留一圈细边 */
+body:not(.navigation-open).search-style-outline .search-container {
+    background: transparent;
+    border: 1.5px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-radius: 18px;
+}
+body:not(.navigation-open).search-style-outline .search-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgb(var(--primary-rgb) / .12);
+}
+body.dark-mode:not(.navigation-open).search-style-outline .search-container {
+    border-color: rgb(148 163 184 / .3);
+}
+body.dark-mode:not(.navigation-open).search-style-outline .search-container:focus-within {
+    border-color: var(--primary-color);
+}
+body.search-style-outline .search-buttons,
+body.search-style-minimal .search-buttons {
+    background: transparent;
+    border-color: transparent;
+}
+
+/* 下划线极简：无框无底，只留一条底线 */
+body:not(.navigation-open).search-style-minimal .search-container {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--text-primary) 18%, transparent);
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    padding: 2px 2px 6px;
+}
+body:not(.navigation-open).search-style-minimal .search-container:focus-within {
+    border-bottom-color: var(--primary-color);
+    box-shadow: none;
+}
+body:not(.navigation-open).search-style-minimal .search-buttons::before { display: none; }
+
+/* 方角紧凑：实底 + 小圆角，和「玻璃胶囊」拉开材质差异 */
+body:not(.navigation-open).search-style-square .search-container {
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
+    border-color: color-mix(in srgb, var(--text-primary) 10%, transparent);
+    box-shadow: 0 10px 26px -20px rgb(15 23 42 / .45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+body.dark-mode:not(.navigation-open).search-style-square .search-container {
+    background: color-mix(in srgb, #1e293b 94%, transparent);
+    border-color: rgb(148 163 184 / .2);
+}
+body.search-style-square .search-buttons { border-radius: 7px; }
+body.search-style-square .search-button { border-radius: 6px; }
+body.search-style-square .search-button-single { border-radius: 6px; }
+
+/* ================================================================
+   引擎按钮展示方式
+   ================================================================ */
+
+/* 隐藏按钮：整块让位给输入框 */
+.search-buttons[hidden] { display: none !important; }
+
+/* 单个引擎：只留当前引擎 + 展开箭头 */
+.search-buttons-single {
+    padding: 3px;
+    gap: 0;
+}
+.search-buttons-single::before { display: none; }
+.search-button-single {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+    max-width: 200px;
+    padding: 8px 11px;
+    border-radius: var(--rounded-full);
+    font-size: 13px;
+}
+.search-button-single .search-button-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.search-button-caret {
+    flex: 0 0 auto;
+    font-size: 15px;
+    opacity: .72;
+    transition: transform .16s ease;
+}
+.search-button-single[aria-expanded="true"] {
+    background: var(--primary-light);
+    color: var(--primary-color);
+}
+.search-button-single[aria-expanded="true"] .search-button-caret { transform: rotate(180deg); }
+
+/* 左右悬浮布局里按钮是网格：单引擎时不要留出三列空位 */
+body.search-layout-left-rail .search-buttons-single,
+body.search-layout-right-rail .search-buttons-single {
+    grid-template-columns: minmax(0, 1fr);
+}
+body.search-layout-left-rail .search-button-single,
+body.search-layout-right-rail .search-button-single { justify-content: center; max-width: none; }
+
+/* 展开的引擎列表 */
+.search-engine-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 2px;
+    z-index: 80;
+    min-width: 196px;
+    max-width: min(280px, calc(100vw - 32px));
+    box-sizing: border-box;
+    padding: 6px;
+    border: 1px solid var(--glass-edge);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bg-secondary) 97%, transparent);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transform-origin: top right;
+    animation: searchEngineMenuIn .14s ease-out;
+    text-align: left;
+}
+@keyframes searchEngineMenuIn {
+    from { opacity: 0; transform: translateY(-4px) scale(.985); }
+    to { opacity: 1; transform: none; }
+}
+.search-engine-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+}
+.search-engine-menu-item:hover { background: var(--primary-light); color: var(--text-primary); }
+.search-engine-menu-item[aria-checked="true"] { color: var(--primary-color); font-weight: 600; }
+.search-engine-menu-item > .ri-check-line { margin-left: auto; opacity: 0; font-size: 14px; }
+.search-engine-menu-item[aria-checked="true"] > .ri-check-line { opacity: 1; }
+.search-engine-menu-icon { flex: 0 0 auto; width: 15px; height: 15px; object-fit: contain; border-radius: 3px; }
+.search-engine-letter {
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    font-size: 9px;
+    font-weight: 700;
+}
+.search-engine-menu-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-engine-menu-sep { height: 1px; margin: 5px 4px; background: var(--glass-line); }
+.search-engine-menu-manage {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-tertiary);
+    font: inherit;
+    font-size: 11.5px;
+    text-align: left;
+    cursor: pointer;
+}
+.search-engine-menu-manage:hover { color: var(--primary-color); background: var(--primary-light); }
+.search-engine-menu-manage i { font-size: 13px; }
+
+@media (max-width: 768px) {
+    /* 窄屏下搜索框变成竖排，单引擎时不要让胶囊底座撑满整行 */
+    .search-buttons-single { width: auto; align-self: flex-end; margin-left: auto; }
+}
+@media (max-width: 719px) {
+    .search-button-single { max-width: 160px; padding: 7px 9px; font-size: 12px; }
+    .search-engine-menu { right: 0; min-width: 180px; }
+}

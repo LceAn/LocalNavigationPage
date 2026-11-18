@@ -20,9 +20,10 @@ function weatherApi(render = false) {
   const media = {matches:false,addEventListener:(name,fn)=>{listeners.media=fn;}};
   const window = {innerWidth:1600,innerHeight:900,devicePixelRatio:2,matchMedia:()=>media,
     addEventListener:(name,fn)=>{listeners[name]=fn;},requestAnimationFrame:fn=>{frames.set(++id,fn);return id;},cancelAnimationFrame:key=>frames.delete(key),
-    setTimeout:(fn,delay)=>{timers.set(++id,{fn,delay});return id;},clearTimeout:key=>timers.delete(key)};
+    setTimeout:(fn,delay)=>{timers.set(++id,{fn,delay});return id;},clearTimeout:key=>timers.delete(key),
+    setInterval:(fn,delay)=>{timers.set(++id,{fn,delay});return id;}};
   const sandbox = vm.createContext({window,document,performance:{now:()=>100},getSetting:(key,fallback)=>key==='displaySettings'?settings:fallback,setSetting(){},MutationObserver:class {constructor(fn){observer=fn;} observe(){}}});
-  vm.runInContext(source+'\nglobalThis.api={getWeatherAtmosphereCondition,advanceColdWeatherHistory,resolveWeatherAtmosphere,getWeatherCanvasScale,resolveWeatherFxTuning,weatherFxProfile};',sandbox);
+  vm.runInContext(source+'\nglobalThis.api={getWeatherAtmosphereCondition,advanceColdWeatherHistory,resolveWeatherAtmosphere,getWeatherCanvasScale,resolveWeatherFxTuning,weatherFxProfile,resolveWeatherDaypart};',sandbox);
   return {api:sandbox.api,window,document,layer,rain,snow,frames,timers,listeners,settings,media,classes,mutate:()=>observer()};
 }
 const {api} = weatherApi();
@@ -188,4 +189,15 @@ test('强度与速度映射到粒子数量/透明度倍率，非法值回落标�
   assert.equal(junk.count, normal.count);
   assert.equal(junk.speed, normal.speed);
   assert.equal(junk.off.length, 0, '非数组的分项开关应忽略，避免误关全部效果');
+});
+
+test('昼夜判断：06:30–18:30 为白天，其余为夜晚', () => {
+  const at = (h, m = 0) => new Date(2026, 10, 18, h, m);
+  assert.equal(api.resolveWeatherDaypart(at(0, 10)), 'night');
+  assert.equal(api.resolveWeatherDaypart(at(6, 29)), 'night');
+  assert.equal(api.resolveWeatherDaypart(at(6, 30)), 'day');
+  assert.equal(api.resolveWeatherDaypart(at(12, 0)), 'day');
+  assert.equal(api.resolveWeatherDaypart(at(18, 29)), 'day');
+  assert.equal(api.resolveWeatherDaypart(at(18, 30)), 'night');
+  assert.equal(api.resolveWeatherDaypart(at(23, 50)), 'night');
 });

@@ -4851,3 +4851,75 @@ body.dark-mode .particle-swatch--none { background: repeating-linear-gradient(45
 
 /* ---- 16. 立即预览时的「让出画面」样式放在 navigation.css 末尾（需要压过 liquid-home 的玻璃层） ---- */
 #settings-box { transition: opacity .28s ease, transform .28s ease; }
+
+/* ---- 17. 交互与快捷键：键位列表与录制态 ---- */
+.shortcut-rows { display: flex; flex-direction: column; gap: 8px; }
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
+}
+.shortcut-row.is-recording {
+    border-color: color-mix(in srgb, var(--primary-color) 52%, transparent);
+    background: rgb(var(--primary-rgb) / .08);
+}
+.shortcut-row-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.shortcut-row-text > span { font-size: 12.5px; color: var(--text-primary); }
+.shortcut-row-text small { font-size: 10.5px; color: var(--text-tertiary); }
+.shortcut-kbd {
+    flex: 0 0 auto;
+    margin-left: auto;
+    min-width: 78px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-line);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: center;
+    white-space: nowrap;
+}
+.shortcut-row.is-recording .shortcut-kbd {
+    color: var(--primary-color);
+    border-color: color-mix(in srgb, var(--primary-color) 40%, transparent);
+}
+.shortcut-row-buttons { flex: 0 0 auto; display: flex; gap: 4px; }
+.shortcut-btn {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-line);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: color var(--transition-fast) ease, border-color var(--transition-fast) ease, background var(--transition-fast) ease;
+}
+.shortcut-btn:hover { color: var(--primary-color); border-color: color-mix(in srgb, var(--primary-color) 32%, transparent); }
+.shortcut-btn:disabled { opacity: .42; cursor: default; }
+.shortcut-row.is-recording .shortcut-record-btn {
+    background: var(--primary-color);
+    border-color: transparent;
+    color: #fff;
+}
+
+/* 关于页入口按钮：.btn-secondary 默认 flex:1，别被拉成整行 */
+#about-open-shortcuts {
+    flex: 0 0 auto;
+    align-self: flex-start;
+    margin-top: 10px;
+    padding: 8px 14px;
+    font-size: 12px;
+    border-radius: 9px;
+}
+
+@media (max-width: 719px) {
+    .shortcut-row { flex-wrap: wrap; row-gap: 8px; }
+    .shortcut-kbd { order: 3; margin-left: 0; }
+    .shortcut-row-buttons { margin-left: auto; }
+}

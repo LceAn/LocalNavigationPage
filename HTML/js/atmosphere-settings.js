@@ -5,6 +5,7 @@
         weatherEffectIntensity: 'normal',
         weatherEffectSpeed: 'normal',
         weatherEffectOff: [],
+        weatherDayNight: true,
         ambientParticle: 'none',
         ambientParticleDensity: 55,
         ambientParticleSpeed: 50
@@ -52,6 +53,17 @@
         refreshFx();
         toast(`动画速度：${{ slow: '慢', normal: '正常', fast: '快' }[value] || value}`);
     });
+
+    /* ---------- 昼夜感知 ---------- */
+    const dayNightToggle = document.getElementById('weather-day-night-toggle');
+    if (dayNightToggle) {
+        dayNightToggle.checked = read().weatherDayNight !== false;
+        dayNightToggle.addEventListener('change', () => {
+            write({ weatherDayNight: dayNightToggle.checked });
+            refreshFx();
+            toast(dayNightToggle.checked ? '已开启昼夜感知' : '已关闭昼夜感知');
+        });
+    }
 
     /* ---------- 分天气开关 ---------- */
     const offSet = () => new Set(read().weatherEffectOff || []);

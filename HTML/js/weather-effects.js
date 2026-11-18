@@ -9,6 +9,15 @@ const WEATHER_COLD_WINDOW = 6 * 60 * 60 * 1000;
 const WEATHER_COLD_DURATION = 60 * 60 * 1000;
 
 /* 粒子强度：数量倍率 / 单颗透明度倍率 / 整层浓度 */
+// 白天窗口：06:30–18:30（本地时间）。夜间晴天不再画太阳，改用月亮与星空。
+const WEATHER_DAY_START_HOUR = 6.5;
+const WEATHER_NIGHT_START_HOUR = 18.5;
+
+function resolveWeatherDaypart(date = new Date()) {
+    const hour = date.getHours() + date.getMinutes() / 60;
+    return hour >= WEATHER_DAY_START_HOUR && hour < WEATHER_NIGHT_START_HOUR ? 'day' : 'night';
+}
+
 const WEATHER_FX_INTENSITY = {
     light: { count: .7, alpha: .92, opacity: .94 },
     normal: { count: 1, alpha: 1, opacity: 1 },
@@ -169,8 +178,18 @@ function getWeatherCanvasScale(width, height, ratio) {
     let previewTimer = 0;
     let builtSignature = '';
     let gust = 1;
+    let daypart = '';
 
     const rand = (min, max) => min + Math.random() * (max - min);
+
+    // 只负责切换 day/night 属性；CSS 用过渡做日落到夜晚的淡入淡出
+    function applyDaypart(settings = {}) {
+        const next = settings.weatherDayNight === false ? 'day' : resolveWeatherDaypart(new Date());
+        if (next === daypart) return next;
+        daypart = next;
+        layer.dataset.daypart = next;
+        return next;
+    }
 
     function resizeCanvas() {
         width = Math.max(1, window.innerWidth);
@@ -294,6 +313,7 @@ function getWeatherCanvasScale(width, height, ratio) {
         const now = Date.now();
         const settings = typeof loadDisplaySettings === 'function' ? loadDisplaySettings() : getSetting('displaySettings', {});
         tuning = resolveWeatherFxTuning(settings);
+        applyDaypart(settings);
         const previousKind = state.kind;
         state = resolveWeatherAtmosphere(observation, settings, history, now);
         // 预览优先：点「立即预览」时忽略真实天气与总开关
@@ -341,6 +361,11 @@ function getWeatherCanvasScale(width, height, ratio) {
         refresh();
     };
     window.refreshWeatherAtmosphere = refresh;
+    // 页面长时间开着时，日落/日出到点自动切换（只改属性，不重建粒子）
+    window.setInterval?.(() => {
+        const settings = typeof loadDisplaySettings === 'function' ? loadDisplaySettings() : getSetting('displaySettings', {});
+        applyDaypart(settings);
+    }, 60 * 1000);
     // 立即预览：kind 为空表示停止；不写设置，只影响当前画面
     window.previewWeatherAtmosphere = (kind, duration = 6000) => {
         window.clearTimeout(previewTimer);
